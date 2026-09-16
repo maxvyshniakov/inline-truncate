@@ -1,0 +1,24 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "allowJs": false,
+    "incremental": false,
+    "noEmit": true,
+    "types": [
+      "vite/client",
+      "node",
+      "react",
+      "react-dom"
+    ],
+    "lib": [
+      "DOM",
+      "DOM.Iterable",
+      "ES2023"
+    ]
+  },
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.tsx"
+  ],
+  "exclude": []
+}
