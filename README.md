@@ -1,5 +1,7 @@
 # @skipstery/text-truncate
 
+The package is currently private. See the [standalone quick start](../../docs/GETTING_STARTED.md) for local archive installation.
+
 React text truncation and search highlighting. Depends on Inline Measure, not Sid-Kit or Data Grid.
 
 ```tsx
