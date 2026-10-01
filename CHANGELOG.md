@@ -4,6 +4,8 @@ Versions and release rules: [docs/VERSIONING.md](docs/VERSIONING.md).
 
 ## Unreleased
 
+## 0.1.1 - 2026-10-01
+
 ### Changed
 
 - Published to the private GitHub Packages registry from its own repository,
