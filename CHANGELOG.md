@@ -4,6 +4,12 @@ Versions and release rules: [docs/VERSIONING.md](docs/VERSIONING.md).
 
 ## Unreleased
 
+### Changed
+
+- The README documents every `TextTruncate` prop, the `truncateText` and
+  `HighlightedMatchText` exports, and that measured truncation keeps grapheme
+  clusters whole.
+
 ## 0.1.3 - 2026-10-02
 
 ### Changed

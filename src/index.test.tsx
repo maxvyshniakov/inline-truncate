@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { render, cleanup, screen } from "@testing-library/react";
-import { HighlightedMatchText, TextTruncate } from "./index";
+import { HighlightedMatchText, TextTruncate, truncateText } from "./index";
 
 const originalFonts = Object.getOwnPropertyDescriptor(document, "fonts");
 const originalRO = globalThis.ResizeObserver;
@@ -32,6 +32,26 @@ afterEach(() => {
   else delete (document as unknown as { fonts?: unknown }).fonts;
   globalThis.ResizeObserver = originalRO;
   vi.restoreAllMocks();
+});
+
+describe("truncateText", () => {
+  // One unit per UTF-16 code unit: a code-point cut could keep "👍" and drop its
+  // skin-tone modifier, which a grapheme cut must not do.
+  const measureText = (value: string) => value.length;
+
+  it("keeps whole grapheme clusters before the end marker", () => {
+    expect(truncateText({ text: "a👍🏽bc", maxWidth: 6, measureText, mode: "end" })).toEqual({
+      text: "a...",
+      truncated: true,
+    });
+  });
+
+  it("keeps whole grapheme clusters on both sides of the middle marker", () => {
+    expect(truncateText({ text: "a👍🏽bc👍🏽d", maxWidth: 8, measureText, mode: "middle" })).toEqual({
+      text: "a...d",
+      truncated: true,
+    });
+  });
 });
 
 describe("HighlightedMatchText", () => {

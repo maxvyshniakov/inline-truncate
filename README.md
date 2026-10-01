@@ -4,14 +4,32 @@ React text truncation and search highlighting. Depends on Inline Measure, not Si
 
 ```tsx
 import { TextTruncate } from "@skipstery/text-truncate";
-<TextTruncate text="Quarterly-design-review.pdf" mode="middle" />
+
+<TextTruncate text="Quarterly-design-review.pdf" mode="middle" query="design" />
 ```
 
-Compile the package class names with Tailwind CSS 4, including this package in your source scan. It is independent of a design system, but currently requires Tailwind utilities.
+`TextTruncate` renders a block `span` that fills its container, so give the
+container a constrained width.
 
-Highlight colors use `--text-truncate-highlight-background` and `--text-truncate-highlight-foreground`, with amber and current-text defaults. Hosts can override those variables. Data Grid maps them to its theme.
+| Prop | Default | Meaning |
+| --- | --- | --- |
+| `text` | required | The full string. |
+| `mode` | required | `"end"` keeps the start of the text; `"middle"` keeps both ends. |
+| `strategy` | `"auto"` | `"css"` truncates with CSS `text-overflow`. `"measure"` measures the text with Inline Measure and shortens the string, again after a resize or once fonts load. `"auto"` measures for `middle` and uses CSS for `end`. |
+| `ellipsis` | `"end"` | `"start"` puts the ellipsis first and keeps the end of the text visible. CSS strategy only. |
+| `query` | none | Highlights every case-insensitive match. |
+| `className` | none | Merged onto the root `span`. |
+| `measureExtra` | none | Written to `data-truncate-measure-extra` for hosts that measure the cell, such as Data Grid auto-fit. |
 
-`mode="end"` preserves the start; `mode="middle"` preserves both ends. See the Data Grid Storybook for a constrained-width example and `src/index.test.tsx` for Unicode and truncation behavior.
+Measured truncation never splits a grapheme cluster such as an emoji or a letter with a
+combining mark. The package also exports `truncateText`, which truncates with
+any `measureText` callback, `HighlightedMatchText`, which highlights without
+truncating, and `splitTextGraphemes`.
+
+Highlight colors use `--text-truncate-highlight-background` and
+`--text-truncate-highlight-foreground`, with amber and current-text defaults.
+Hosts can override those variables; Data Grid maps them to its search-match
+colors.
 
 ## Install
 
@@ -32,14 +50,14 @@ export GITHUB_TOKEN=$(gh auth token)
 bun add @skipstery/text-truncate react@^19.2.8 react-dom@^19.2.8
 ```
 
-Import Tailwind in your stylesheet and scan only the package's `dist`:
+The class names are Tailwind utilities, so Tailwind CSS 4 must compile them;
+the package needs no design system. Scan only the package's `dist`, with a
+path relative to your stylesheet:
 
 ```css
 @import "tailwindcss";
 @source "../node_modules/@skipstery/text-truncate/dist";
 ```
-
-Browser measurement requires a mounted, constrained-width element.
 
 ## Development
 
@@ -53,6 +71,9 @@ bun run verify
 packed-consumer check, lint, tests and types. `bun install` points Git at
 `.githooks`, whose pre-push hook runs it on each pushed commit. Releases and
 publishing follow [docs/VERSIONING.md](docs/VERSIONING.md).
+
+Live examples are in the Data Grid Storybook, which renders Inline Measure and
+Text Truncate demos alongside the grid.
 
 ## License
 
