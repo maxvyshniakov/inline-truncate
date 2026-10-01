@@ -1,0 +1,4 @@
+#!/bin/sh
+# Runs `bun run verify` on the commits being pushed; see scripts/pre-push.mjs.
+# Installed by `bun install` (scripts/install-git-hooks.mjs).
+exec node "$(git rev-parse --show-toplevel)/scripts/pre-push.mjs" "$@"

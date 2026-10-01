@@ -1,8 +1,8 @@
 {
   "name": "@skipstery/text-truncate",
   "version": "0.1.0",
-  "private": true,
   "type": "module",
+  "description": "React text truncation and search highlighting, measured with Inline Measure.",
   "files": [
     "dist",
     "LICENSE"
@@ -14,15 +14,21 @@
     }
   },
   "scripts": {
-    "build": "bun run --filter @skipstery/inline-measure build && rm -rf dist && tsc -p tsconfig.build.json",
+    "prepare": "node scripts/install-git-hooks.mjs",
+    "build": "rm -rf dist && tsc -p tsconfig.build.json",
     "prepack": "bun run build",
+    "verify": "node scripts/verify.mjs",
+    "release": "node scripts/release.mjs",
+    "release:publish": "node scripts/publish.mjs",
+    "check:changelogs": "node scripts/check-changelogs.mjs",
+    "check:consumer": "node scripts/check-packed-consumer.mjs",
+    "lint": "oxlint --config .oxlintrc.json --max-warnings=0 src scripts",
+    "test": "node --test scripts/test-scripts.mjs && vitest --config vitest.config.ts run",
     "typecheck": "tsc --noEmit -p tsconfig.build.json && tsc --noEmit -p tsconfig.test.json",
-    "typecheck:fast": "tsc --noEmit -p tsconfig.build.json",
-    "test": "vitest --config vitest.config.ts run",
-    "test:run": "vitest --config vitest.config.ts run src"
+    "typecheck:fast": "tsc --noEmit -p tsconfig.build.json"
   },
   "dependencies": {
-    "@skipstery/inline-measure": "workspace:*",
+    "@skipstery/inline-measure": "^0.1.1",
     "clsx": "2.1.1",
     "tailwind-merge": "3.6.0"
   },
@@ -31,21 +37,26 @@
     "react-dom": "^19.2.8"
   },
   "devDependencies": {
-    "@types/react": "19.2.18",
-    "@types/react-dom": "19.2.5",
-    "typescript": "7.0.2",
-    "@types/node": "26.3.0",
-    "vite": "8.2.2",
     "@testing-library/dom": "10.4.1",
     "@testing-library/jest-dom": "7.0.1",
-    "vitest": "4.1.11",
     "@testing-library/react": "16.3.2",
-    "happy-dom": "20.11.6"
+    "@types/node": "26.3.0",
+    "@types/react": "19.2.18",
+    "@types/react-dom": "19.2.5",
+    "happy-dom": "20.11.6",
+    "oxlint": "1.80.0",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "typescript": "7.0.2",
+    "vite": "8.2.2",
+    "vitest": "4.1.11"
   },
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/skipstery/ui.git",
-    "directory": "packages/text-truncate"
+    "url": "git+https://github.com/skipstery/text-truncate.git"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com/"
   }
 }
