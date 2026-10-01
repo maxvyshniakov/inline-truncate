@@ -4,6 +4,12 @@ Versions and release rules: [docs/VERSIONING.md](docs/VERSIONING.md).
 
 ## Unreleased
 
+### Changed
+
+- Update `tailwind-merge` to 3.7.0. Classes passed to `TextTruncate` through
+  `className` merge more precisely in a few edge cases, for example `px-*` now
+  overrides an earlier `ps-*`/`pe-*`.
+
 ## 0.1.1 - 2026-10-01
 
 ### Changed
