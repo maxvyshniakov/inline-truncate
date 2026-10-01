@@ -1,6 +1,6 @@
 {
   "name": "@skipstery/text-truncate",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "type": "module",
   "description": "React text truncation and search highlighting, measured with Inline Measure.",
   "files": [

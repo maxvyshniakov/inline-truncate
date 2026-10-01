@@ -4,6 +4,8 @@ Versions and release rules: [docs/VERSIONING.md](docs/VERSIONING.md).
 
 ## Unreleased
 
+## 0.1.3 - 2026-10-02
+
 ### Changed
 
 - `cn` is a caret range (`^0.4.0`) instead of an exact version, so an app
