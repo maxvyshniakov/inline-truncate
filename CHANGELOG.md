@@ -4,6 +4,8 @@ Versions and release rules: [docs/VERSIONING.md](docs/VERSIONING.md).
 
 ## Unreleased
 
+## 0.1.2 - 2026-10-02
+
 ### Changed
 
 - Merge class names with [`cn`](https://github.com/shadcn-ui/cn) 0.4.0, the
