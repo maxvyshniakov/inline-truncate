@@ -4,6 +4,13 @@ Versions and release rules: [docs/VERSIONING.md](docs/VERSIONING.md).
 
 ## Unreleased
 
+### Changed
+
+- `cn` is a caret range (`^0.4.0`) instead of an exact version, so an app
+  that also depends on it, as Sid-Kit and Data Grid do, can share one copy
+  with Text Truncate. The range starts at the version Text Truncate is tested
+  with.
+
 ## 0.1.2 - 2026-10-02
 
 ### Changed
