@@ -6,9 +6,14 @@ Versions and release rules: [docs/VERSIONING.md](docs/VERSIONING.md).
 
 ### Changed
 
-- Update `tailwind-merge` to 3.7.0. Classes passed to `TextTruncate` through
-  `className` merge more precisely in a few edge cases, for example `px-*` now
-  overrides an earlier `ps-*`/`pe-*`.
+- Merge class names with [`cn`](https://github.com/shadcn-ui/cn) 0.4.0, the
+  engine Sid-Kit and Data Grid use, instead of `clsx` and `tailwind-merge`,
+  which leave the dependencies. Classes passed to `TextTruncate` through
+  `className` merge more precisely in a few edge cases: a later `px-*` removes
+  earlier `ps-*` and `pe-*`, with the same physical/logical-axis rule for
+  margins, insets, borders and scroll spacing, and `max-h-none`,
+  `shadow-inner`, `columns-auto` and `bg-conic` now replace their group.
+  Legacy `bg-gradient-to-*` classes remain alongside background colors.
 
 ## 0.1.1 - 2026-10-01
 

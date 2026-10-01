@@ -2,9 +2,8 @@
 
 import React from "react";
 import type { ReactNode } from "react";
-import { clsx, type ClassValue } from "clsx";
 import { createCanvasTextMeasurer } from "@skipstery/inline-measure";
-import { twMerge } from "tailwind-merge";
+import { cn } from "cn";
 
 export type TextTruncateMode = "middle" | "end";
 export type TextTruncateStrategy = "auto" | "css" | "measure";
@@ -13,10 +12,6 @@ export type TextTruncateEllipsis = "end" | "start";
 const TRUNCATION_MARKER = "...";
 const HIGHLIGHT_CLASS_NAME =
   "relative isolate rounded-[2px] text-[var(--text-truncate-highlight-foreground,currentColor)] before:pointer-events-none before:absolute before:inset-x-0 before:inset-y-0 before:-z-10 before:rounded-[2px] before:bg-[var(--text-truncate-highlight-background,#fde68a)]";
-
-function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs));
-}
 
 export function splitTextGraphemes(text: string): string[] {
   if (typeof Intl !== "undefined" && "Segmenter" in Intl) {
