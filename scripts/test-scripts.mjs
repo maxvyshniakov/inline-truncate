@@ -9,7 +9,7 @@ import { publishBlockers, registryUrl } from "./publish.mjs";
 import { cutRelease } from "./release.mjs";
 import { verifySteps } from "./verify.mjs";
 
-const changelog = `# @skipstery/example Changelog
+const changelog = `# @maxvyshniakov/example Changelog
 
 Versions and release rules: [docs/VERSIONING.md](docs/VERSIONING.md).
 
@@ -38,7 +38,7 @@ test("releases follow the requested level and move Unreleased entries", () => {
 });
 
 test("a version mismatch and, for releases, Unreleased entries fail", () => {
-  const pkg = { name: "@skipstery/example", version: "0.2.0", changelog };
+  const pkg = { name: "@maxvyshniakov/example", version: "0.2.0", changelog };
   assert.deepEqual(changelogIssues(pkg), []);
   assert.match(changelogIssues({ ...pkg, version: "0.2.1" }).join("\n"), /does not match the newest changelog release 0.2.0/);
   assert.match(changelogIssues(pkg, { release: true }).join("\n"), /"## Unreleased" has entries/);
@@ -55,7 +55,7 @@ test("publishing requires a token, a clean pushed main, a released changelog and
 });
 
 test("the registry check reads the scoped package from GitHub Packages", () => {
-  assert.equal(registryUrl("@skipstery/inline-measure"), "https://npm.pkg.github.com/@skipstery%2finline-measure");
+  assert.equal(registryUrl("@maxvyshniakov/inline-measure"), "https://npm.pkg.github.com/@maxvyshniakov%2finline-measure");
 });
 
 test("verify runs CI's steps, and CI runs verify --release", () => {

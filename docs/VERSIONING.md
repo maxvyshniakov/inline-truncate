@@ -1,7 +1,7 @@
 # Versions, changelog and publishing
 
 The package owns its version and its `CHANGELOG.md`, and is published to the
-private GitHub Packages registry as `@skipstery/<name>`.
+private GitHub Packages registry as `@maxvyshniakov/<name>`.
 
 ## Rules
 
@@ -26,7 +26,7 @@ private GitHub Packages registry as `@skipstery/<name>`.
    - **patch** for fixes and compatible additions.
 
    After `1.0.0`, breaking changes take a major version.
-4. Depend on other `@skipstery` packages with `^x.y.z` ranges, so applications
+4. Depend on other `@maxvyshniakov` packages with `^x.y.z` ranges, so applications
    install one copy of each. Raise the floor when this package starts to need a
    newer version, and release this package with an entry saying so.
 5. Keep entries consumer-facing: what changed for users of the package and what
@@ -48,7 +48,7 @@ builds first) and pushes a `v<version>` tag. The token needs `write:packages`;
 ## Format
 
 ```md
-# @skipstery/<package> Changelog
+# @maxvyshniakov/<package> Changelog
 
 Versions and release rules: [docs/VERSIONING.md](docs/VERSIONING.md).
 

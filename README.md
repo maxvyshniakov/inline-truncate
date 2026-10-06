@@ -1,9 +1,9 @@
-# @skipstery/text-truncate
+# @maxvyshniakov/text-truncate
 
 React text truncation and search highlighting. Depends on Inline Measure, not Sid-Kit or Data Grid.
 
 ```tsx
-import { TextTruncate } from "@skipstery/text-truncate";
+import { TextTruncate } from "@maxvyshniakov/text-truncate";
 
 <TextTruncate text="Quarterly-design-review.pdf" mode="middle" query="design" />
 ```
@@ -34,12 +34,12 @@ colors.
 ## Install
 
 The package is private and lives in GitHub Packages. Point bun at the registry
-for the `@skipstery` scope:
+for the `@maxvyshniakov` scope:
 
 ```toml
 # bunfig.toml
 [install.scopes]
-skipstery = { url = "https://npm.pkg.github.com/", token = "$GITHUB_TOKEN" }
+maxvyshniakov = { url = "https://npm.pkg.github.com/", token = "$GITHUB_TOKEN" }
 ```
 
 Then install with a token that has `read:packages`
@@ -47,7 +47,7 @@ Then install with a token that has `read:packages`
 
 ```sh
 export GITHUB_TOKEN=$(gh auth token)
-bun add @skipstery/text-truncate react@^19.2.8 react-dom@^19.2.8
+bun add @maxvyshniakov/text-truncate react@^19.2.8 react-dom@^19.2.8
 ```
 
 The class names are Tailwind utilities, so Tailwind CSS 4 must compile them;
@@ -56,7 +56,7 @@ path relative to your stylesheet:
 
 ```css
 @import "tailwindcss";
-@source "../node_modules/@skipstery/text-truncate/dist";
+@source "../node_modules/@maxvyshniakov/text-truncate/dist";
 ```
 
 ## Development

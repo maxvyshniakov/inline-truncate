@@ -75,7 +75,7 @@ try {
     dependencies: { [manifest.name]: `file:${tarball}`, ...Object.fromEntries(peers.map(peer => [peer, pinned(peer)])) },
     devDependencies: Object.fromEntries(typePackages.map(name => [name, pinned(name)])),
   }, null, 2)}\n`);
-  // Dependencies on other @skipstery packages come from the private registry.
+  // Dependencies on other @maxvyshniakov packages come from the private registry.
   if (fs.existsSync(path.join(repositoryRoot, "bunfig.toml"))) {
     fs.copyFileSync(path.join(repositoryRoot, "bunfig.toml"), path.join(consumerDir, "bunfig.toml"));
   }

@@ -3,9 +3,9 @@
   "configVersion": 1,
   "workspaces": {
     "": {
-      "name": "@skipstery/text-truncate",
+      "name": "@maxvyshniakov/text-truncate",
       "dependencies": {
-        "@skipstery/inline-measure": "^0.1.1",
+        "@maxvyshniakov/inline-measure": "^0.2.0",
         "cn": "^0.4.0",
       },
       "devDependencies": {
@@ -43,6 +43,8 @@
     "@jridgewell/sourcemap-codec": ["@jridgewell/sourcemap-codec@1.6.0", "", {}, "sha512-T7jf+5zgsZHwNJ4lvQ7/aezbyk0nNX+zJVWpmHA7VYsEx7a7qr5Rg5IbtJFqkgze5Y2sruq1RUY8Q837Od7iFw=="],
 
     "@jridgewell/trace-mapping": ["@jridgewell/trace-mapping@0.3.31", "", { "dependencies": { "@jridgewell/resolve-uri": "^3.1.0", "@jridgewell/sourcemap-codec": "^1.4.14" } }, "sha512-zzNR+SdQSDJzc8joaeP8QQoCQr8NuYx2dIIytl1QeBEZHJ9uW6hebsrYgbz8hJwUQao3TWCMtmfV8Nu1twOLAw=="],
+
+    "@maxvyshniakov/inline-measure": ["@maxvyshniakov/inline-measure@0.2.0", "https://npm.pkg.github.com/download/@maxvyshniakov/inline-measure/0.2.0/e1c5513c2f0d93b85b0302afaee2147687dca743", { "dependencies": { "linebreak": "^1.1.0" } }, "sha512-DaeZzIl09z4lb6tsMsX5bdpDmOxu7u+1QRTE4dR59YkGdkNuTycbxDp9sRpMtEVjjVpT8QeLrN9vsv1prfkbxA=="],
 
     "@oxc-project/types": ["@oxc-project/types@0.152.0", "", {}, "sha512-oM/5rLBm2tPkg0iBgkH/FOeR3PCDpY19GTgAZjMFM8h9WI9VW7cLgzp6nwtarYKmovavIQZ+Fe/RKX/8C8O/Rw=="],
 
@@ -115,8 +117,6 @@
     "@rolldown/binding-win32-x64-msvc": ["@rolldown/binding-win32-x64-msvc@1.2.12", "", { "os": "win32", "cpu": "x64" }, "sha512-WIw2haVKwjuYdXkHaoC0mF8Le71TuCBxjrdKqLbJGctbBABj+ClfmNvtbOnzpq3RokNo5+V1qhtSzJyXorsklQ=="],
 
     "@rolldown/pluginutils": ["@rolldown/pluginutils@1.0.1", "", {}, "sha512-2j9bGt5Jh8hj+vPtgzPtl72j0yRxHAyumoo6TNfAjsLB04UtpSvPbPcDcBMxz7n+9CYB0c1GxQFxYRg2jimqGw=="],
-
-    "@skipstery/inline-measure": ["@skipstery/inline-measure@0.1.1", "https://npm.pkg.github.com/download/@skipstery/inline-measure/0.1.1/cff10ca10ee60b8908c070a92a41378367810ddf", { "dependencies": { "linebreak": "1.1.0" } }, "sha512-CKl5FUSZ6Rqx5bfvBL/9bXTRLARcuN0va+L78IvNgd5+fk3IoVkewJRTHEUaCxCKDGFn0HTFxm5A33nY9HijWw=="],
 
     "@testing-library/dom": ["@testing-library/dom@10.4.2", "", { "dependencies": { "@babel/code-frame": "^7.10.4", "@babel/runtime": "^7.12.5", "@types/aria-query": "^5.0.1", "aria-query": "5.3.0", "dom-accessibility-api": "^0.5.9", "lz-string": "^1.5.0", "picocolors": "1.1.1", "pretty-format": "^27.0.2" } }, "sha512-yzr2S9HyAIdhz2/6qHgbs665Q7PKVcDF05vsOlHPxG1mo36gKVesdYVeDLnXgfjJ03CrKRk08knc6+E/9m8v2Q=="],
 

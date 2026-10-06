@@ -2,7 +2,7 @@
 
 import React from "react";
 import type { ReactNode } from "react";
-import { createCanvasTextMeasurer } from "@skipstery/inline-measure";
+import { createCanvasTextMeasurer } from "@maxvyshniakov/inline-measure";
 import { cn } from "cn";
 
 export type TextTruncateMode = "middle" | "end";

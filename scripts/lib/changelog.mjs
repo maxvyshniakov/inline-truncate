@@ -1,7 +1,7 @@
 // Package changelog format shared by `bun run release` and `check:changelogs`.
 // The policy lives in docs/VERSIONING.md.
 //
-//   # @skipstery/<package> Changelog
+//   # @maxvyshniakov/<package> Changelog
 //
 //   <optional intro paragraph>
 //

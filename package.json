@@ -1,6 +1,6 @@
 {
-  "name": "@skipstery/text-truncate",
-  "version": "0.1.4",
+  "name": "@maxvyshniakov/text-truncate",
+  "version": "0.2.0",
   "type": "module",
   "description": "React text truncation and search highlighting, measured with Inline Measure.",
   "files": [
@@ -28,7 +28,7 @@
     "typecheck:fast": "tsc --noEmit -p tsconfig.build.json"
   },
   "dependencies": {
-    "@skipstery/inline-measure": "^0.1.1",
+    "@maxvyshniakov/inline-measure": "^0.2.0",
     "cn": "^0.4.0"
   },
   "peerDependencies": {
@@ -53,7 +53,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/skipstery/text-truncate.git"
+    "url": "git+https://github.com/maxvyshniakov/text-truncate.git"
   },
   "publishConfig": {
     "registry": "https://npm.pkg.github.com/"

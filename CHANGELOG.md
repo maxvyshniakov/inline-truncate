@@ -1,8 +1,14 @@
-# @skipstery/text-truncate Changelog
+# @maxvyshniakov/text-truncate Changelog
 
 Versions and release rules: [docs/VERSIONING.md](docs/VERSIONING.md).
 
 ## Unreleased
+
+## 0.2.0 - 2026-10-06
+
+### Breaking
+
+- Breaking: publish as `@maxvyshniakov/text-truncate` after the GitHub account rename. Replace the old package scope in imports and registry configuration.
 
 ## 0.1.4 - 2026-10-02
 
@@ -39,9 +45,9 @@ Versions and release rules: [docs/VERSIONING.md](docs/VERSIONING.md).
 ### Changed
 
 - Published to the private GitHub Packages registry from its own repository,
-  github.com/skipstery/text-truncate. Install it by version instead of from a
+  github.com/maxvyshniakov/text-truncate. Install it by version instead of from a
   local archive; see the README.
-- Depends on `@skipstery/inline-measure` `^0.1.1` from the registry instead of
+- Depends on `@maxvyshniakov/inline-measure` `^0.1.1` from the registry instead of
   the exact version packed alongside it.
 
 ## 0.1.0 - 2026-09-17
