@@ -45,6 +45,20 @@ It refuses to publish from anything but a clean `main` that matches
 builds first) and pushes a `v<version>` tag. The token needs `write:packages`;
 `gh auth refresh -h github.com -s read:packages,write:packages` adds it.
 
+After publication and tag creation, the same command requests Data Grid's
+**Update catalog dependencies** workflow. Its catalog and package dependencies
+advance together only after Data Grid tests and every Storybook render/axe check
+pass. Stable incompatible versions are included; Data Grid cuts and publishes
+its own release when adopting them.
+
+The publishing token needs access to Data Grid with Actions write permission
+for the immediate notification. No additional cross-repository secret is stored.
+If notification fails (including a repository-scoped Actions token), publication
+still succeeds and Data Grid's hourly registry check discovers the release.
+Retry only the notification with `node scripts/notify-data-grid.mjs`; do not
+republish an existing version. Failed Data Grid checks leave its main and live
+catalog unchanged and appear in its workflow log.
+
 ## Format
 
 ```md

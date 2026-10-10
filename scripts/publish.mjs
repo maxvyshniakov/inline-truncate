@@ -8,6 +8,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { changelogIssues, rootPackage } from "./check-changelogs.mjs";
+import { notifyDataGrid } from "./notify-data-grid.mjs";
 
 const repositoryRoot = fileURLToPath(new URL("..", import.meta.url));
 const git = (...args) => execFileSync("git", args, { cwd: repositoryRoot, encoding: "utf8" }).trim();
@@ -64,4 +65,5 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
   git("tag", "--annotate", tag, "--message", `${pkg.name} ${pkg.version}`);
   git("push", "origin", tag);
   console.log(`Published ${pkg.name}@${pkg.version} and pushed ${tag}.`);
+  await notifyDataGrid(process.env.GITHUB_TOKEN);
 }

@@ -8,6 +8,19 @@ import { commitsToVerify } from "./pre-push.mjs";
 import { publishBlockers, registryUrl } from "./publish.mjs";
 import { cutRelease } from "./release.mjs";
 import { verifySteps } from "./verify.mjs";
+import { notifyDataGrid } from "./notify-data-grid.mjs";
+
+test("publication notifies only Data Grid main and a failed notification is recoverable", async () => {
+  let request;
+  assert.equal(await notifyDataGrid("test-token", async (url, options) => {
+    request = { url, options };
+    return { ok: true };
+  }), true);
+  assert.equal(request.url, "https://api.github.com/repos/maxvyshniakov/data-grid/actions/workflows/update-catalog-dependencies.yml/dispatches");
+  assert.equal(request.options.method, "POST");
+  assert.deepEqual(JSON.parse(request.options.body), { ref: "main" });
+  assert.equal(await notifyDataGrid("test-token", async () => ({ ok: false, status: 403 })), false);
+});
 
 const changelog = `# @maxvyshniakov/example Changelog
 
