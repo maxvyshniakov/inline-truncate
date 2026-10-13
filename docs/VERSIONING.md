@@ -54,7 +54,7 @@ its own release when adopting them.
 The publishing token needs access to Data Grid with Actions write permission
 for the immediate notification. No additional cross-repository secret is stored.
 If notification fails (including a repository-scoped Actions token), publication
-still succeeds and Data Grid's hourly registry check discovers the release.
+still succeeds and Data Grid's daily registry check discovers the release.
 Retry only the notification with `node scripts/notify-data-grid.mjs`; do not
 republish an existing version. Failed Data Grid checks leave its main and live
 catalog unchanged and appear in its workflow log.

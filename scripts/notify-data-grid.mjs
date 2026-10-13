@@ -16,8 +16,8 @@ export async function notifyDataGrid(token, fetcher = fetch) {
     return true;
   } catch (error) {
     // Publication already succeeded. Do not retry an immutable package release:
-    // Data Grid's hourly registry check also discovers this version.
-    console.warn(`Data Grid notification failed: ${error.message}. Its hourly registry check will retry discovery.`);
+    // Data Grid's daily registry check also discovers this version.
+    console.warn(`Data Grid notification failed: ${error.message}. Its daily registry check will retry discovery, or run: node scripts/notify-data-grid.mjs`);
     return false;
   }
 }
