@@ -13,4 +13,7 @@ Behavior changes need focused tests. Public contracts need matching README and
 changelog entries under `## Unreleased`; cut them into a version with
 `bun run release -- <patch|minor|major>` right before pushing to main.
 `bun run verify` is the push gate and the command CI runs; the pre-push hook runs it.
+Everyday pushes go to `dev` (`git push origin HEAD:dev`), where only the pre-push hook runs. A release pushes
+the same tip to both branches (`git push origin HEAD:dev HEAD:main`), so `origin/main` stays an ancestor of
+`origin/dev`; Checks runs on `main` only, on the self-hosted homelab runner. Never force-push.
 All default examples and documentation use English.
