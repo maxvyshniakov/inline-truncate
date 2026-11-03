@@ -9,7 +9,7 @@
         "cn": "^0.4.0",
       },
       "devDependencies": {
-        "@maxvyshniakov/repo-kit": "0.1.2",
+        "@maxvyshniakov/repo-kit": "0.2.1",
         "@testing-library/dom": "10.4.2",
         "@testing-library/jest-dom": "7.0.1",
         "@testing-library/react": "16.3.3",
@@ -47,7 +47,7 @@
 
     "@maxvyshniakov/inline-measure": ["@maxvyshniakov/inline-measure@0.2.0", "https://npm.pkg.github.com/download/@maxvyshniakov/inline-measure/0.2.0/e1c5513c2f0d93b85b0302afaee2147687dca743", { "dependencies": { "linebreak": "^1.1.0" } }, "sha512-DaeZzIl09z4lb6tsMsX5bdpDmOxu7u+1QRTE4dR59YkGdkNuTycbxDp9sRpMtEVjjVpT8QeLrN9vsv1prfkbxA=="],
 
-    "@maxvyshniakov/repo-kit": ["@maxvyshniakov/repo-kit@0.1.2", "https://npm.pkg.github.com/download/@maxvyshniakov/repo-kit/0.1.2/8ccafc4acbc608838e8f0b1f540683129ecc70bd", { "bin": { "repo-kit": "src/cli.mjs" } }, "sha512-jTQEoC/wvjzjXJ08khvZtSuXkhP0sKkFBgej1AtShfZC5uCCbghDz/jENSnwE5UKZw0ci1C8TVpQ8Sb/hIC2Gw=="],
+    "@maxvyshniakov/repo-kit": ["@maxvyshniakov/repo-kit@0.2.1", "https://npm.pkg.github.com/download/@maxvyshniakov/repo-kit/0.2.1/e8b84eab25f0af7f86d0e6f996c6d533a0e22f5b", { "bin": { "repo-kit": "src/cli.mjs" } }, "sha512-rpq5rgXTj4VJ7dT1vuqSyN/uUAj5g7Noe+/zNpVyVKiyy8Ww5d7hiQrZGmWUeX9zbQoGx2jC5oQsIchVd63ccw=="],
 
     "@oxc-project/types": ["@oxc-project/types@0.152.0", "", {}, "sha512-oM/5rLBm2tPkg0iBgkH/FOeR3PCDpY19GTgAZjMFM8h9WI9VW7cLgzp6nwtarYKmovavIQZ+Fe/RKX/8C8O/Rw=="],
 

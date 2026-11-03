@@ -19,6 +19,6 @@ jobs:
   # --release (no unreleased changelog entries, docs/VERSIONING.md) for main and
   # pull requests into main; dev and branches run plain verify.
   check:
-    uses: maxvyshniakov/repo-kit/.github/workflows/verify.yml@v0.1.2
+    uses: maxvyshniakov/repo-kit/.github/workflows/verify.yml@v0.2.1
     with:
       timeout-minutes: 15
