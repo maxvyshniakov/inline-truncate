@@ -32,8 +32,13 @@
 ## Release
 - Rules: [docs/VERSIONING.md](../VERSIONING.md). Cut right before pushing to `main`: `bun run release -- <patch|minor|major>`.
 - Publish from a clean checkout whose HEAD is `origin/main` by SHA (a worktree or detached HEAD is fine):
-  `bun run release:publish`. It runs the TLS gate, waits for Library checks on that commit, publishes, tags
+  `bunx repo-kit release-gate origin/main`, then `bun run release:publish`.
+- `repo-kit release-gate` is the local release gate: `verify --release` in a clean temporary worktree of the commit,
+  under a slotfather lease; a pass records the commit status `Library checks (local, macOS)`.
+- `release:publish` runs the TLS gate, refuses a commit without the release gate's passed status, publishes, tags
   `v<version>`, then requests Data Grid's catalog dependency workflow.
+- Library checks in CI are advisory. One line in `repo-kit.config.mjs`, `release: { gate: "ci" }`, switches back:
+  publish then waits for Library checks on the commit instead.
 - The token needs `write:packages` (`gh auth refresh -s write:packages`).
 - Data Grid adopts the release through its catalog dependency workflow, under the standing approval to release Data Grid
   when every check passes (maxvyshniakov/data-grid docs/CATALOG-DEPENDENCIES.md).

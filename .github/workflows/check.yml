@@ -12,13 +12,13 @@ permissions:
 concurrency:
   group: checks-${{ github.ref }}
   # A newer push to a pull request supersedes its older run; every main commit
-  # keeps its own result, which release:publish waits for.
+  # keeps its own result (release:publish waits for it under release.gate "ci").
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   # The same gate as the pre-push hook, behind repo-kit's Bun TLS gate. It adds
   # --release (no unreleased changelog entries, docs/VERSIONING.md) for main and
   # pull requests into main; dev and branches run plain verify.
   check:
-    uses: maxvyshniakov/repo-kit/.github/workflows/verify.yml@v0.2.3
+    uses: maxvyshniakov/repo-kit/.github/workflows/verify.yml@v0.3.0
     with:
       timeout-minutes: 15

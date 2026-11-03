@@ -34,24 +34,32 @@ private GitHub Packages registry as `@maxvyshniakov/<name>`.
 
 ## Publishing
 
-After the release commit is on `origin/main` and Library checks passed on it:
+After the release commit is on `origin/main`:
 
 ```sh
+git fetch origin && bunx repo-kit release-gate origin/main
 bun run release:publish
 ```
+
+`repo-kit release-gate` is the local release gate (repo-kit's README, "Release gate"): it runs
+`bun run verify -- --release` in a clean temporary worktree of the commit and, on a pass, records the commit
+status `Library checks (local, macOS)`.
 
 `release:publish` is `repo-kit publish` (`@maxvyshniakov/repo-kit`). In order, it:
 
 1. runs the Bun TLS gate;
 2. checks that HEAD is `origin/main` by SHA (a worktree or a detached HEAD is fine), the tree is clean,
    `## Unreleased` is empty and the tag is new;
-3. waits for Library checks on that commit;
+3. requires the release gate's passed status on that commit, and refuses without one, naming the command to run;
 4. runs `bun publish` (which builds first) and checks that the registry serves the version;
 5. pushes a `v<version>` tag.
 
 It uses `GITHUB_TOKEN`, or `gh auth token` when that is unset; the token needs `write:packages`
 (`gh auth refresh -h github.com -s read:packages,write:packages`).
 If the tag push fails after publication, it prints the recovery; `bun run release:publish -- --resume` finishes it.
+
+Library checks in CI are advisory. One line in `repo-kit.config.mjs`, `release: { gate: "ci" }`, switches back:
+step 3 then waits for Library checks on the commit and refuses when they fail.
 
 After publication and tag creation, the same command requests Data Grid's
 **Update catalog dependencies** workflow. Its catalog and package dependencies
