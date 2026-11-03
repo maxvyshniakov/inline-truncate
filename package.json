@@ -2,6 +2,7 @@
   "name": "@maxvyshniakov/text-truncate",
   "version": "0.2.0",
   "type": "module",
+  "packageManager": "bun@1.4.4",
   "description": "React text truncation and search highlighting, measured with Inline Measure.",
   "files": [
     "dist",
@@ -14,16 +15,18 @@
     }
   },
   "scripts": {
-    "prepare": "node scripts/install-git-hooks.mjs",
+    "prepare": "repo-kit hooks install",
     "build": "rm -rf dist && tsc -p tsconfig.build.json",
     "prepack": "bun run build",
-    "verify": "node scripts/verify.mjs",
-    "release": "node scripts/release.mjs",
-    "release:publish": "node scripts/publish.mjs",
-    "check:changelogs": "node scripts/check-changelogs.mjs",
-    "check:consumer": "node scripts/check-packed-consumer.mjs",
-    "lint": "oxlint --config .oxlintrc.json --max-warnings=0 src scripts",
-    "test": "node --test scripts/test-scripts.mjs && vitest --config vitest.config.ts run",
+    "verify": "repo-kit verify",
+    "release": "repo-kit release",
+    "release:publish": "repo-kit publish",
+    "check:changelogs": "repo-kit check-changelogs",
+    "check:kit": "repo-kit check",
+    "check:consumer": "repo-kit packed-consumer",
+    "security:tls": "repo-kit tls",
+    "lint": "oxlint --config .oxlintrc.json --max-warnings=0 src repo-kit.config.mjs",
+    "test": "vitest --config vitest.config.ts run",
     "typecheck": "tsc --noEmit -p tsconfig.build.json && tsc --noEmit -p tsconfig.test.json",
     "typecheck:fast": "tsc --noEmit -p tsconfig.build.json"
   },
@@ -36,6 +39,7 @@
     "react-dom": "^19.2.8"
   },
   "devDependencies": {
+    "@maxvyshniakov/repo-kit": "0.1.0",
     "@testing-library/dom": "10.4.2",
     "@testing-library/jest-dom": "7.0.1",
     "@testing-library/react": "16.3.3",

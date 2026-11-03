@@ -34,16 +34,24 @@ private GitHub Packages registry as `@maxvyshniakov/<name>`.
 
 ## Publishing
 
-After the release commit is on `origin/main`:
+After the release commit is on `origin/main` and Library checks passed on it:
 
 ```sh
-GITHUB_TOKEN=$(gh auth token) bun run release:publish
+bun run release:publish
 ```
 
-It refuses to publish from anything but a clean `main` that matches
-`origin/main` with an empty `## Unreleased`, then runs `bun publish` (which
-builds first) and pushes a `v<version>` tag. The token needs `write:packages`;
-`gh auth refresh -h github.com -s read:packages,write:packages` adds it.
+`release:publish` is `repo-kit publish` (`@maxvyshniakov/repo-kit`). In order, it:
+
+1. runs the Bun TLS gate;
+2. checks that HEAD is `origin/main` by SHA (a worktree or a detached HEAD is fine), the tree is clean,
+   `## Unreleased` is empty and the tag is new;
+3. waits for Library checks on that commit;
+4. runs `bun publish` (which builds first) and checks that the registry serves the version;
+5. pushes a `v<version>` tag.
+
+It uses `GITHUB_TOKEN`, or `gh auth token` when that is unset; the token needs `write:packages`
+(`gh auth refresh -h github.com -s read:packages,write:packages`).
+If the tag push fails after publication, it prints the recovery; `bun run release:publish -- --resume` finishes it.
 
 After publication and tag creation, the same command requests Data Grid's
 **Update catalog dependencies** workflow. Its catalog and package dependencies
@@ -55,7 +63,7 @@ The publishing token needs access to Data Grid with Actions write permission
 for the immediate notification. No additional cross-repository secret is stored.
 If notification fails (including a repository-scoped Actions token), publication
 still succeeds and Data Grid's daily registry check discovers the release.
-Retry only the notification with `node scripts/notify-data-grid.mjs`; do not
+Retry only the notification with `bun run repo-kit notify`; do not
 republish an existing version. Failed Data Grid checks leave its main and live
 catalog unchanged and appear in its workflow log.
 

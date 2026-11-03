@@ -1,27 +1,23 @@
-name: Checks
+name: Library checks
 on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch:
 permissions:
   contents: read
   packages: read
+# Jobs run on the self-hosted homelab runner (maxvyshniakov/proxmox
+# docs/ci-runner.md). Pushes to dev run only the local pre-push hook.
 concurrency:
   group: checks-${{ github.ref }}
-  cancel-in-progress: true
+  # A newer push to a pull request supersedes its older run; every main commit
+  # keeps its own result, which release:publish waits for.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
+  # The same gate as the pre-push hook, behind repo-kit's Bun TLS gate;
+  # --release: no unreleased changelog entries on main (docs/VERSIONING.md).
   check:
-    runs-on: [self-hosted, homelab]
-    timeout-minutes: 15
-    env:
-      # bunfig.toml reads @maxvyshniakov packages from GitHub Packages with this token.
-      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-    steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
-      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
-        with:
-          bun-version: "1.4.4"
-      - run: bun install --frozen-lockfile
-      # The same gate as the pre-push hook; --release: no unreleased changelog
-      # entries on main (docs/VERSIONING.md). Steps are listed in scripts/verify.mjs.
-      - run: bun run verify -- --release
+    uses: maxvyshniakov/repo-kit/.github/workflows/verify.yml@v0.1.0
+    with:
+      timeout-minutes: 15
