@@ -18,6 +18,6 @@ jobs:
   # The same gate as the pre-push hook, behind repo-kit's Bun TLS gate;
   # --release: no unreleased changelog entries on main (docs/VERSIONING.md).
   check:
-    uses: maxvyshniakov/repo-kit/.github/workflows/verify.yml@v0.1.0
+    uses: maxvyshniakov/repo-kit/.github/workflows/verify.yml@v0.1.1
     with:
       timeout-minutes: 15
