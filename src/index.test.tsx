@@ -1,28 +1,65 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { render, cleanup, screen } from "@testing-library/react";
-import { HighlightedMatchText, TextTruncate, truncateText } from "./index";
+import { act, render, cleanup, screen } from "@testing-library/react";
+import { HighlightedMatchText, TextTruncate, splitTextGraphemes, truncateText } from "./index";
 
 const originalFonts = Object.getOwnPropertyDescriptor(document, "fonts");
 const originalRO = globalThis.ResizeObserver;
 const originalClientWidth = Object.getOwnPropertyDescriptor(HTMLElement.prototype, "clientWidth");
 const originalGetContext = HTMLCanvasElement.prototype.getContext;
 
-function stubResizeObserver() {
-  globalThis.ResizeObserver = class {
-    observe() {}
-    unobserve() {}
-    disconnect() {}
-  } as unknown as typeof ResizeObserver;
+// A ResizeObserver that reports nothing by itself: `deliverResize` hands an
+// observation to every live observer watching the target, as a browser would
+// after the element's box changed.
+const liveResizeObservers = new Set<FakeResizeObserver>();
+
+class FakeResizeObserver {
+  private readonly targets = new Set<Element>();
+
+  constructor(private readonly callback: ResizeObserverCallback) {
+    liveResizeObservers.add(this);
+  }
+
+  observe(target: Element) {
+    this.targets.add(target);
+  }
+
+  unobserve(target: Element) {
+    this.targets.delete(target);
+  }
+
+  disconnect() {
+    this.targets.clear();
+    liveResizeObservers.delete(this);
+  }
+
+  deliver(target: Element) {
+    if (!this.targets.has(target)) return;
+    this.callback([{ target } as ResizeObserverEntry], this as unknown as ResizeObserver);
+  }
 }
 
-function stubDocumentFonts(status: "loaded" | "loading", readySpy: () => void) {
+function stubResizeObserver() {
+  globalThis.ResizeObserver = FakeResizeObserver as unknown as typeof ResizeObserver;
+}
+
+function deliverResize(target: Element) {
+  act(() => {
+    for (const observer of liveResizeObservers) observer.deliver(target);
+  });
+}
+
+function stubDocumentFonts(
+  status: "loaded" | "loading",
+  readySpy: () => void,
+  ready: () => Promise<unknown> = () => Promise.resolve(),
+) {
   Object.defineProperty(document, "fonts", {
     configurable: true,
     value: {
       status,
       get ready() {
         readySpy();
-        return Promise.resolve();
+        return ready();
       },
     },
   });
@@ -33,6 +70,7 @@ afterEach(() => {
   if (originalFonts) Object.defineProperty(document, "fonts", originalFonts);
   else delete (document as unknown as { fonts?: unknown }).fonts;
   globalThis.ResizeObserver = originalRO;
+  liveResizeObservers.clear();
   if (originalClientWidth) Object.defineProperty(HTMLElement.prototype, "clientWidth", originalClientWidth);
   else Reflect.deleteProperty(HTMLElement.prototype, "clientWidth");
   HTMLCanvasElement.prototype.getContext = originalGetContext;
@@ -43,24 +81,36 @@ const CHARACTER_WIDTH = 10;
 
 // Deterministic layout for the measure strategy: every root is `width` pixels
 // wide, Inline Measure's canvas gives every UTF-16 unit CHARACTER_WIDTH pixels,
-// and animation frames run at once.
+// and animation frames run at once. `setWidth` and `setCharacterWidth` change
+// the layout without telling the component, as a resize or a font swap would.
 function stubMeasuredLayout(width: number) {
+  let currentWidth = width;
+  let characterWidth = CHARACTER_WIDTH;
   stubResizeObserver();
   stubDocumentFonts("loaded", () => {});
   Object.defineProperty(HTMLElement.prototype, "clientWidth", {
     configurable: true,
-    get: () => width,
+    get: () => currentWidth,
   });
   const getContext = vi.fn(() => ({
     font: "",
-    measureText: (value: string) => ({ width: value.length * CHARACTER_WIDTH }),
+    measureText: (value: string) => ({ width: value.length * characterWidth }),
   }));
   HTMLCanvasElement.prototype.getContext = getContext as unknown as typeof HTMLCanvasElement.prototype.getContext;
   const requestAnimationFrame = vi.spyOn(window, "requestAnimationFrame").mockImplementation((callback) => {
     callback(0);
     return 1;
   });
-  return { getContext, requestAnimationFrame };
+  return {
+    getContext,
+    requestAnimationFrame,
+    setWidth: (next: number) => {
+      currentWidth = next;
+    },
+    setCharacterWidth: (next: number) => {
+      characterWidth = next;
+    },
+  };
 }
 
 function truncateRoot(container: HTMLElement) {
@@ -68,6 +118,25 @@ function truncateRoot(container: HTMLElement) {
   if (!root) throw new Error("TextTruncate root not rendered");
   return root;
 }
+
+describe("splitTextGraphemes", () => {
+  it("splits text into user-perceived characters", () => {
+    // Skin-tone emoji, a letter plus a combining acute accent, a flag made of two
+    // regional indicators, and a family joined with zero-width joiners.
+    expect(splitTextGraphemes("a👍🏽e\u0301🇺🇦👨‍👩‍👧")).toEqual(["a", "👍🏽", "e\u0301", "🇺🇦", "👨‍👩‍👧"]);
+    expect(splitTextGraphemes("")).toEqual([]);
+  });
+
+  it("falls back to whole code points when Intl.Segmenter is unavailable", () => {
+    const segmenter = Object.getOwnPropertyDescriptor(Intl, "Segmenter");
+    Reflect.deleteProperty(Intl, "Segmenter");
+    try {
+      expect(splitTextGraphemes("a👍🏽")).toEqual(["a", "👍", "🏽"]);
+    } finally {
+      if (segmenter) Object.defineProperty(Intl, "Segmenter", segmenter);
+    }
+  });
+});
 
 describe("truncateText", () => {
   // One unit per UTF-16 code unit: a code-point cut could keep "👍" and drop its
@@ -137,6 +206,21 @@ describe("HighlightedMatchText", () => {
 
   it("keeps text plain when query is empty", () => {
     const { container } = render(<HighlightedMatchText text="photo.jpg" query="" />);
+
+    expect(container.textContent).toBe("photo.jpg");
+    expect(container.querySelector("[data-slot='highlighted-match']")).toBeNull();
+  });
+
+  it("matches a trimmed query case-insensitively and keeps the text's own casing", () => {
+    const { container } = render(<HighlightedMatchText text="Photo-PHOTO.jpg" query="  photo " />);
+
+    const matches = container.querySelectorAll("[data-slot='highlighted-match']");
+    expect(Array.from(matches, (match) => match.textContent)).toEqual(["Photo", "PHOTO"]);
+    expect(container.textContent).toBe("Photo-PHOTO.jpg");
+  });
+
+  it("keeps text plain when nothing matches", () => {
+    const { container } = render(<HighlightedMatchText text="photo.jpg" query="video" />);
 
     expect(container.textContent).toBe("photo.jpg");
     expect(container.querySelector("[data-slot='highlighted-match']")).toBeNull();
@@ -290,5 +374,61 @@ describe("TextTruncate", () => {
     expect(withExtra).toHaveAttribute("data-truncate-measure-extra", "24");
     expect(without).not.toHaveAttribute("data-truncate-measure-extra");
     expect(withExtra.textContent).toBe(without.textContent);
+  });
+
+  it("measures again when its container is resized", () => {
+    const { setWidth } = stubMeasuredLayout(100);
+
+    const { container } = render(<TextTruncate mode="middle" text={fileName} />);
+    const root = truncateRoot(container);
+    expect(root.textContent).toBe("Qua....pdf");
+
+    setWidth(150);
+    expect(root.textContent).toBe("Qua....pdf");
+    deliverResize(root);
+    expect(root.textContent).toBe("Quarte...ew.pdf");
+
+    setWidth(400);
+    deliverResize(root);
+    expect(root.textContent).toBe(fileName);
+    expect(root).not.toHaveAttribute("data-truncate-state");
+  });
+
+  it("measures again once loading fonts are ready", async () => {
+    const { setCharacterWidth } = stubMeasuredLayout(100);
+    let resolveFonts = () => {};
+    const fontsReady = new Promise<void>((resolve) => {
+      resolveFonts = resolve;
+    });
+    stubDocumentFonts("loading", () => {}, () => fontsReady);
+
+    const { container } = render(<TextTruncate mode="middle" text={fileName} />);
+    const root = truncateRoot(container);
+    expect(root.textContent).toBe("Qua....pdf");
+
+    // The web font is narrower than the fallback the first measurement used.
+    setCharacterWidth(5);
+    expect(root.textContent).toBe("Qua....pdf");
+    await act(async () => {
+      resolveFonts();
+      await fontsReady;
+    });
+    expect(root.textContent).toBe("Quarterl...eview.pdf");
+  });
+
+  it("measures the new text when the text prop changes", () => {
+    stubMeasuredLayout(100);
+
+    const { container, rerender } = render(<TextTruncate mode="middle" text={fileName} />);
+    const root = truncateRoot(container);
+    expect(root.textContent).toBe("Qua....pdf");
+
+    rerender(<TextTruncate mode="middle" text="Annual-budget-forecast-2027.xlsx" />);
+    expect(root.textContent).toBe("Ann...xlsx");
+    expect(root).toHaveAttribute("data-truncate-original", "Annual-budget-forecast-2027.xlsx");
+
+    rerender(<TextTruncate mode="middle" text="notes.txt" />);
+    expect(root.textContent).toBe("notes.txt");
+    expect(root).not.toHaveAttribute("data-truncate-state");
   });
 });
