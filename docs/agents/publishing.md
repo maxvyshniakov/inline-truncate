@@ -23,7 +23,8 @@
 ## CI
 - `.github/workflows/check.yml` ("Library checks") runs on `main` pushes, pull requests and `workflow_dispatch`, on the
   self-hosted homelab runner (maxvyshniakov/proxmox `docs/ci-runner.md`). Nothing runs for `dev`.
-- It calls repo-kit's reusable `verify.yml`: job `check / verify`, `bun run verify -- --release` behind the TLS gate.
+- It calls repo-kit's reusable `verify.yml`: job `check / verify`, `bun run verify` behind the TLS gate, with `--release`
+  for `main` and pull requests into `main`. A manual run on `dev` or a branch runs without it, so Unreleased entries pass.
 - Find the run: `gh run list --workflow check.yml --commit <sha>`. A run queued for minutes means the runner is offline.
 - A push to `dev` is finished when the hook passed and `git ls-remote origin dev` shows the SHA. A push to `main` is
   finished when Library checks has a final result on it.
