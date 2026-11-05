@@ -25,13 +25,16 @@
     "check:kit": "repo-kit check",
     "check:consumer": "repo-kit packed-consumer",
     "security:tls": "repo-kit tls",
-    "lint": "oxlint --config .oxlintrc.json --max-warnings=0 src repo-kit.config.mjs",
-    "test": "vitest --config vitest.config.ts run",
+    "lint": "oxlint --config .oxlintrc.json --max-warnings=0 src scripts/perf repo-kit.config.mjs",
+    "test": "node --test scripts/perf/*.test.mjs && vitest --config vitest.config.ts run",
     "typecheck": "tsc --noEmit -p tsconfig.build.json && tsc --noEmit -p tsconfig.test.json",
-    "typecheck:fast": "tsc --noEmit -p tsconfig.build.json"
+    "typecheck:fast": "tsc --noEmit -p tsconfig.build.json",
+    "perf:capture": "slotfather run -n all --priority batch -- repo-kit heavy all node scripts/perf/run.mjs",
+    "perf:test": "node --test scripts/perf/*.test.mjs",
+    "check:browser": "repo-kit heavy 1 node scripts/perf/run.mjs --check"
   },
   "dependencies": {
-    "@maxvyshniakov/inline-measure": "^0.2.0",
+    "@maxvyshniakov/inline-measure": "^0.3.0",
     "cn": "^0.4.0"
   },
   "peerDependencies": {
@@ -52,7 +55,8 @@
     "react-dom": "^19.3.0",
     "typescript": "7.0.2",
     "vite": "8.3.2",
-    "vitest": "5.0.3"
+    "vitest": "5.0.3",
+    "playwright": "1.64.1"
   },
   "license": "MIT",
   "repository": {

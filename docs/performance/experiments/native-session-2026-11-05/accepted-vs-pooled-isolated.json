@@ -1,0 +1,692 @@
+{
+  "schemaVersion": 1,
+  "package": "@maxvyshniakov/text-truncate",
+  "workload": "text-truncate-v2",
+  "methodHash": "f1a4dc2bf8c920d32de3da6e5378d872761aa802a1f77757b5f410c0c6ccee0f",
+  "implementation": {
+    "reference": "working-tree",
+    "sourceHash": "8890baf0a4fa499faa1557e3f63b0bec9cca389ad13b362579ff779bf24eb9dc"
+  },
+  "timerResolutionMs": 0.09999996423721313,
+  "frameDurationMs": 16.69999999999999,
+  "revision": "091a5ef3bac149175f058a0aa64e316d7fa65a55",
+  "inlineMeasure": {
+    "version": "0.3.0",
+    "source": "registry",
+    "sourceHash": "fb5b4af0242484dabade8c7cc4b49698c22e877e15005472980cc8afe44e3a04"
+  },
+  "browser": "chromium/156.0.8078.4",
+  "environment": {
+    "host": "wintermute.local",
+    "osRelease": "27.2.0",
+    "platform": "darwin",
+    "arch": "arm64",
+    "cpu": "Apple M2 Max",
+    "viewport": {
+      "width": 1280,
+      "height": 800
+    },
+    "dpr": 1,
+    "frameIntervalMs": 17
+  },
+  "scenarios": [
+    {
+      "id": "algorithm.middle.50",
+      "samplesMs": [
+        13.5,
+        13.099999964237213,
+        13,
+        13.399999976158142,
+        13.300000011920929
+      ],
+      "medianMs": 13.300000011920929,
+      "p95Ms": 13.5,
+      "counters": {
+        "measureText": 3853,
+        "measuredCodeUnits": 52090,
+        "domReads": 0,
+        "reactCommits": 0
+      },
+      "correctness": true
+    },
+    {
+      "id": "algorithm.end.50",
+      "samplesMs": [
+        2,
+        2,
+        2,
+        1.800000011920929,
+        2.099999964237213
+      ],
+      "medianMs": 2,
+      "p95Ms": 2.099999964237213,
+      "counters": {
+        "measureText": 400,
+        "measuredCodeUnits": 11640,
+        "domReads": 0,
+        "reactCommits": 0
+      },
+      "correctness": true
+    },
+    {
+      "id": "algorithm.middle.200",
+      "samplesMs": [
+        51.59999996423721,
+        51.60000002384186,
+        54.700000047683716,
+        50.09999996423721,
+        51
+      ],
+      "medianMs": 51.59999996423721,
+      "p95Ms": 54.700000047683716,
+      "counters": {
+        "measureText": 15456,
+        "measuredCodeUnits": 209520,
+        "domReads": 0,
+        "reactCommits": 0
+      },
+      "correctness": true
+    },
+    {
+      "id": "algorithm.end.200",
+      "samplesMs": [
+        7.899999976158142,
+        8,
+        8.099999964237213,
+        7.699999988079071,
+        7.699999988079071
+      ],
+      "medianMs": 7.899999976158142,
+      "p95Ms": 8.099999964237213,
+      "counters": {
+        "measureText": 1600,
+        "measuredCodeUnits": 46890,
+        "domReads": 0,
+        "reactCommits": 0
+      },
+      "correctness": true
+    },
+    {
+      "id": "algorithm.repeated-labels.middle.200",
+      "samplesMs": [
+        48.10000002384186,
+        49.09999996423721,
+        49.10000002384186,
+        50.30000001192093,
+        48.09999996423721
+      ],
+      "medianMs": 49.09999996423721,
+      "p95Ms": 50.30000001192093,
+      "counters": {
+        "measureText": 15400,
+        "measuredCodeUnits": 207800,
+        "domReads": 0,
+        "reactCommits": 0
+      },
+      "correctness": true
+    },
+    {
+      "id": "algorithm.middle.long.50",
+      "samplesMs": [
+        14.800000011920929,
+        14.800000011920929,
+        14.699999988079071,
+        14.600000023841858,
+        15.699999988079071
+      ],
+      "medianMs": 14.800000011920929,
+      "p95Ms": 15.699999988079071,
+      "counters": {
+        "measureText": 4000,
+        "measuredCodeUnits": 94040,
+        "domReads": 0,
+        "reactCommits": 0
+      },
+      "correctness": true
+    },
+    {
+      "id": "components.mount.middle.cold.200",
+      "samplesMs": [
+        108.80000001192093,
+        119.20000004768372,
+        105.69999998807907,
+        104.5,
+        107.89999997615814
+      ],
+      "medianMs": 107.89999997615814,
+      "p95Ms": 119.20000004768372,
+      "counters": {
+        "measureText": 21385,
+        "measuredCodeUnits": 373707,
+        "domReads": 400,
+        "reactCommits": 3
+      },
+      "correctness": true
+    },
+    {
+      "id": "components.mount.measured-end.cold.200",
+      "samplesMs": [
+        45.10000002384186,
+        44.69999998807907,
+        43.80000001192093,
+        43.69999998807907,
+        43.09999996423721
+      ],
+      "medianMs": 43.80000001192093,
+      "p95Ms": 45.10000002384186,
+      "counters": {
+        "measureText": 1700,
+        "measuredCodeUnits": 62490,
+        "domReads": 400,
+        "reactCommits": 3
+      },
+      "correctness": true
+    },
+    {
+      "id": "components.mount.css-end.cold.200",
+      "samplesMs": [
+        42.5,
+        42.5,
+        42.30000001192093,
+        42.39999997615814,
+        42.19999998807907
+      ],
+      "medianMs": 42.39999997615814,
+      "p95Ms": 42.5,
+      "counters": {
+        "measureText": 0,
+        "measuredCodeUnits": 0,
+        "domReads": 0,
+        "reactCommits": 1
+      },
+      "correctness": true
+    },
+    {
+      "id": "components.mount.css-start.cold.200",
+      "samplesMs": [
+        48.19999998807907,
+        48,
+        48.30000001192093,
+        48.10000002384186,
+        48.09999996423721
+      ],
+      "medianMs": 48.10000002384186,
+      "p95Ms": 48.30000001192093,
+      "counters": {
+        "measureText": 0,
+        "measuredCodeUnits": 0,
+        "domReads": 0,
+        "reactCommits": 1
+      },
+      "correctness": true
+    },
+    {
+      "id": "components.mount.middle.cold.50",
+      "samplesMs": [
+        48.5,
+        48.69999998807907,
+        48.5,
+        48,
+        48.39999997615814
+      ],
+      "medianMs": 48.5,
+      "p95Ms": 48.69999998807907,
+      "counters": {
+        "measureText": 5329,
+        "measuredCodeUnits": 92906,
+        "domReads": 100,
+        "reactCommits": 3
+      },
+      "correctness": true
+    },
+    {
+      "id": "components.mount.highlight-middle.cold.50",
+      "samplesMs": [
+        48.30000001192093,
+        48.40000003576279,
+        48.30000001192093,
+        48.40000003576279,
+        48.19999998807907
+      ],
+      "medianMs": 48.30000001192093,
+      "p95Ms": 48.40000003576279,
+      "counters": {
+        "measureText": 5329,
+        "measuredCodeUnits": 92906,
+        "domReads": 100,
+        "reactCommits": 3
+      },
+      "correctness": true
+    },
+    {
+      "id": "components.mount.emoji-middle.cold.50",
+      "samplesMs": [
+        47.39999997615814,
+        47.200000047683716,
+        47.799999952316284,
+        47.39999997615814,
+        47.39999997615814
+      ],
+      "medianMs": 47.39999997615814,
+      "p95Ms": 47.799999952316284,
+      "counters": {
+        "measureText": 5350,
+        "measuredCodeUnits": 92790,
+        "domReads": 150,
+        "reactCommits": 3
+      },
+      "correctness": true
+    },
+    {
+      "id": "components.notifications.middle.warm.200",
+      "samplesMs": [
+        239.30000001192093,
+        237.0999999642372,
+        237.0999999642372,
+        238.39999997615814,
+        236.5999999642372
+      ],
+      "medianMs": 237.0999999642372,
+      "p95Ms": 239.30000001192093,
+      "counters": {
+        "measureText": 0,
+        "measuredCodeUnits": 0,
+        "domReads": 1000,
+        "reactCommits": 0
+      },
+      "correctness": true
+    },
+    {
+      "id": "components.resize.middle.warm.200",
+      "samplesMs": [
+        250.60000002384186,
+        251.89999997615814,
+        250.80000001192093,
+        256,
+        253.9000000357628
+      ],
+      "medianMs": 251.89999997615814,
+      "p95Ms": 256,
+      "counters": {
+        "measureText": 7459,
+        "measuredCodeUnits": 273635,
+        "domReads": 1000,
+        "reactCommits": 5
+      },
+      "correctness": true
+    },
+    {
+      "id": "components.change-text.middle.50",
+      "samplesMs": [
+        49.80000001192093,
+        50,
+        49.89999997615814,
+        49.80000001192093,
+        49.80000001192093
+      ],
+      "medianMs": 49.80000001192093,
+      "p95Ms": 50,
+      "counters": {
+        "measureText": 5169,
+        "measuredCodeUnits": 88586,
+        "domReads": 50,
+        "reactCommits": 2
+      },
+      "correctness": true
+    },
+    {
+      "id": "components.change-style.middle.50",
+      "samplesMs": [
+        50.09999996423721,
+        50.30000001192093,
+        50.19999998807907,
+        50.19999998807907,
+        50
+      ],
+      "medianMs": 50.19999998807907,
+      "p95Ms": 50.30000001192093,
+      "counters": {
+        "measureText": 3736,
+        "measuredCodeUnits": 49430,
+        "domReads": 50,
+        "reactCommits": 2
+      },
+      "correctness": true
+    }
+  ],
+  "correctness": {
+    "pass": true,
+    "failures": []
+  },
+  "comparison": [
+    {
+      "id": "algorithm.middle.50",
+      "inlineMeasureChanged": false,
+      "timingFloorMs": 0.09999996423721313,
+      "beforeMs": 13.300000011920929,
+      "afterMs": 13.300000011920929,
+      "deltaPercent": 0,
+      "regression": false,
+      "beforeInterval": [
+        13.100000023841858,
+        13.5
+      ],
+      "afterInterval": [
+        13,
+        13.5
+      ],
+      "beforeCalls": 3853,
+      "afterCalls": 3853
+    },
+    {
+      "id": "algorithm.end.50",
+      "inlineMeasureChanged": false,
+      "timingFloorMs": 0.09999996423721313,
+      "beforeMs": 2,
+      "afterMs": 2,
+      "deltaPercent": 0,
+      "regression": false,
+      "beforeInterval": [
+        1.7999999523162842,
+        2.100000023841858
+      ],
+      "afterInterval": [
+        1.800000011920929,
+        2.099999964237213
+      ],
+      "beforeCalls": 400,
+      "afterCalls": 400
+    },
+    {
+      "id": "algorithm.middle.200",
+      "inlineMeasureChanged": false,
+      "timingFloorMs": 0.09999996423721313,
+      "beforeMs": 51.40000003576279,
+      "afterMs": 51.59999996423721,
+      "deltaPercent": 0.3891049189402196,
+      "regression": false,
+      "beforeInterval": [
+        51.30000001192093,
+        57
+      ],
+      "afterInterval": [
+        50.09999996423721,
+        54.700000047683716
+      ],
+      "beforeCalls": 15456,
+      "afterCalls": 15456
+    },
+    {
+      "id": "algorithm.end.200",
+      "inlineMeasureChanged": false,
+      "timingFloorMs": 0.09999996423721313,
+      "beforeMs": 7.5,
+      "afterMs": 7.899999976158142,
+      "deltaPercent": 5.333333015441899,
+      "regression": false,
+      "beforeInterval": [
+        7.100000023841858,
+        9.300000011920929
+      ],
+      "afterInterval": [
+        7.699999988079071,
+        8.099999964237213
+      ],
+      "beforeCalls": 1600,
+      "afterCalls": 1600
+    },
+    {
+      "id": "algorithm.repeated-labels.middle.200",
+      "inlineMeasureChanged": false,
+      "timingFloorMs": 0.09999996423721313,
+      "beforeMs": 48.60000002384186,
+      "afterMs": 49.09999996423721,
+      "deltaPercent": 1.0288064612141268,
+      "regression": false,
+      "beforeInterval": [
+        47.40000003576279,
+        54.39999997615814
+      ],
+      "afterInterval": [
+        48.09999996423721,
+        50.30000001192093
+      ],
+      "beforeCalls": 15400,
+      "afterCalls": 15400
+    },
+    {
+      "id": "algorithm.middle.long.50",
+      "inlineMeasureChanged": false,
+      "timingFloorMs": 0.09999996423721313,
+      "beforeMs": 15,
+      "afterMs": 14.800000011920929,
+      "deltaPercent": -1.3333332538604692,
+      "regression": false,
+      "beforeInterval": [
+        14.5,
+        15.399999976158142
+      ],
+      "afterInterval": [
+        14.600000023841858,
+        15.699999988079071
+      ],
+      "beforeCalls": 4000,
+      "afterCalls": 4000
+    },
+    {
+      "id": "components.mount.middle.cold.200",
+      "inlineMeasureChanged": false,
+      "timingFloorMs": 16.69999999999999,
+      "beforeMs": 106.5,
+      "afterMs": 107.89999997615814,
+      "deltaPercent": 1.3145539682235974,
+      "regression": false,
+      "beforeInterval": [
+        101.89999997615814,
+        118
+      ],
+      "afterInterval": [
+        104.5,
+        119.20000004768372
+      ],
+      "beforeCalls": 21385,
+      "afterCalls": 21385
+    },
+    {
+      "id": "components.mount.measured-end.cold.200",
+      "inlineMeasureChanged": false,
+      "timingFloorMs": 16.69999999999999,
+      "beforeMs": 43.700000047683716,
+      "afterMs": 43.80000001192093,
+      "deltaPercent": 0.22883286985835305,
+      "regression": false,
+      "beforeInterval": [
+        42,
+        44
+      ],
+      "afterInterval": [
+        43.09999996423721,
+        45.10000002384186
+      ],
+      "beforeCalls": 1700,
+      "afterCalls": 1700
+    },
+    {
+      "id": "components.mount.css-end.cold.200",
+      "inlineMeasureChanged": false,
+      "timingFloorMs": 16.69999999999999,
+      "beforeMs": 42.30000001192093,
+      "afterMs": 42.39999997615814,
+      "deltaPercent": 0.2364065347731259,
+      "regression": false,
+      "beforeInterval": [
+        42,
+        47.60000002384186
+      ],
+      "afterInterval": [
+        42.19999998807907,
+        42.5
+      ],
+      "beforeCalls": 0,
+      "afterCalls": 0
+    },
+    {
+      "id": "components.mount.css-start.cold.200",
+      "inlineMeasureChanged": false,
+      "timingFloorMs": 16.69999999999999,
+      "beforeMs": 47.89999997615814,
+      "afterMs": 48.10000002384186,
+      "deltaPercent": 0.41753663420305287,
+      "regression": false,
+      "beforeInterval": [
+        47.700000047683716,
+        48.10000002384186
+      ],
+      "afterInterval": [
+        48,
+        48.30000001192093
+      ],
+      "beforeCalls": 0,
+      "afterCalls": 0
+    },
+    {
+      "id": "components.mount.middle.cold.50",
+      "inlineMeasureChanged": false,
+      "timingFloorMs": 16.69999999999999,
+      "beforeMs": 48.30000001192093,
+      "afterMs": 48.5,
+      "deltaPercent": 0.41407865016502843,
+      "regression": false,
+      "beforeInterval": [
+        48.10000002384186,
+        48.40000003576279
+      ],
+      "afterInterval": [
+        48,
+        48.69999998807907
+      ],
+      "beforeCalls": 5329,
+      "afterCalls": 5329
+    },
+    {
+      "id": "components.mount.highlight-middle.cold.50",
+      "inlineMeasureChanged": false,
+      "timingFloorMs": 16.69999999999999,
+      "beforeMs": 48.40000003576279,
+      "afterMs": 48.30000001192093,
+      "deltaPercent": -0.20661161935530137,
+      "regression": false,
+      "beforeInterval": [
+        48.200000047683716,
+        48.5
+      ],
+      "afterInterval": [
+        48.19999998807907,
+        48.40000003576279
+      ],
+      "beforeCalls": 5329,
+      "afterCalls": 5329
+    },
+    {
+      "id": "components.mount.emoji-middle.cold.50",
+      "inlineMeasureChanged": false,
+      "timingFloorMs": 16.69999999999999,
+      "beforeMs": 47.200000047683716,
+      "afterMs": 47.39999997615814,
+      "deltaPercent": 0.4237286615940139,
+      "regression": false,
+      "beforeInterval": [
+        45.80000001192093,
+        47.5
+      ],
+      "afterInterval": [
+        47.200000047683716,
+        47.799999952316284
+      ],
+      "beforeCalls": 5350,
+      "afterCalls": 5350
+    },
+    {
+      "id": "components.notifications.middle.warm.200",
+      "inlineMeasureChanged": false,
+      "timingFloorMs": 16.69999999999999,
+      "beforeMs": 238.10000002384186,
+      "afterMs": 237.0999999642372,
+      "deltaPercent": -0.41999162515938826,
+      "regression": false,
+      "beforeInterval": [
+        236.89999997615814,
+        238.5
+      ],
+      "afterInterval": [
+        236.5999999642372,
+        239.30000001192093
+      ],
+      "beforeCalls": 0,
+      "afterCalls": 0
+    },
+    {
+      "id": "components.resize.middle.warm.200",
+      "inlineMeasureChanged": false,
+      "timingFloorMs": 16.69999999999999,
+      "beforeMs": 253.5,
+      "afterMs": 251.89999997615814,
+      "deltaPercent": -0.6311637174918561,
+      "regression": false,
+      "beforeInterval": [
+        250.5999999642372,
+        266
+      ],
+      "afterInterval": [
+        250.60000002384186,
+        256
+      ],
+      "beforeCalls": 7459,
+      "afterCalls": 7459
+    },
+    {
+      "id": "components.change-text.middle.50",
+      "inlineMeasureChanged": false,
+      "timingFloorMs": 16.69999999999999,
+      "beforeMs": 50,
+      "afterMs": 49.80000001192093,
+      "deltaPercent": -0.39999997615813854,
+      "regression": false,
+      "beforeInterval": [
+        49.90000003576279,
+        50
+      ],
+      "afterInterval": [
+        49.80000001192093,
+        50
+      ],
+      "beforeCalls": 5169,
+      "afterCalls": 5169
+    },
+    {
+      "id": "components.change-style.middle.50",
+      "inlineMeasureChanged": false,
+      "timingFloorMs": 16.69999999999999,
+      "beforeMs": 50,
+      "afterMs": 50.19999998807907,
+      "deltaPercent": 0.39999997615813854,
+      "regression": false,
+      "beforeInterval": [
+        50,
+        50.09999996423721
+      ],
+      "afterInterval": [
+        50,
+        50.30000001192093
+      ],
+      "beforeCalls": 3736,
+      "afterCalls": 3736
+    }
+  ],
+  "experiment": {
+    "baseline": "accepted production e917",
+    "candidate": "pooled native session prototype",
+    "kind": "isolated",
+    "supportedImprovements": []
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "variant": "pooled-root-v2",
+  "productionBaseHash": "e917879917ed6dd867e9199f7ad38ca5a060cd758fadaee55f4352e354540f52",
+  "sourceHash": "8890baf0a4fa499faa1557e3f63b0bec9cca389ad13b362579ff779bf24eb9dc",
+  "sourceFrozen": true,
+  "change": "Repair externally detached active roots/probes before every native geometry read; old/new cleanup ownership isolated.",
+  "correctness": {
+    "chromium": {
+      "pass": true,
+      "browser": "chromium/156.0.8078.4",
+      "sourceHash": "8890baf0a4fa499faa1557e3f63b0bec9cca389ad13b362579ff779bf24eb9dc"
+    },
+    "firefox": {
+      "pass": true,
+      "browser": "firefox/159.0.1",
+      "sourceHash": "8890baf0a4fa499faa1557e3f63b0bec9cca389ad13b362579ff779bf24eb9dc"
+    },
+    "webkit": {
+      "pass": true,
+      "browser": "webkit/27.2",
+      "sourceHash": "8890baf0a4fa499faa1557e3f63b0bec9cca389ad13b362579ff779bf24eb9dc"
+    }
+  },
+  "nativeEquivalence": {
+    "comparisonsPerEngine": 1056,
+    "differences": 0,
+    "evidence": "artifacts/perf/native-equivalence.json",
+    "lifecycle": "active root removal, overlapping old/new owners, independent cleanup and probe-only removal verified in real engines; strict same-position width equality"
+  }
+}

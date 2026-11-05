@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "package": "@maxvyshniakov/text-truncate",
+  "workload": "text-truncate-v2",
+  "methodHash": "f1a4dc2bf8c920d32de3da6e5378d872761aa802a1f77757b5f410c0c6ccee0f",
+  "implementation": {
+    "reference": "working-tree",
+    "sourceHash": "ffe31ac3e6846af924dda77ae7dd04473c69607a1ca67c88218a6ed447e6bf56"
+  },
+  "timerResolutionMs": 1,
+  "frameDurationMs": 17,
+  "revision": "091a5ef3bac149175f058a0aa64e316d7fa65a55",
+  "inlineMeasure": {
+    "version": "0.3.0",
+    "source": "/Users/maxwish/inline-measure",
+    "sourceHash": "4a49c0796a58a5df0dce5160fd749add31670e40155bb4423a117c6677d778dd"
+  },
+  "browser": "webkit/27.2",
+  "environment": {
+    "host": "wintermute.local",
+    "osRelease": "27.2.0",
+    "platform": "darwin",
+    "arch": "arm64",
+    "cpu": "Apple M2 Max",
+    "viewport": {
+      "width": 1280,
+      "height": 800
+    },
+    "dpr": 1,
+    "frameIntervalMs": 17
+  },
+  "scenarios": [],
+  "correctness": {
+    "pass": true,
+    "failures": []
+  }
+}

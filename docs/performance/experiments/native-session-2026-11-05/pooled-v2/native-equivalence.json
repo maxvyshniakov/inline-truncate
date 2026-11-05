@@ -1,0 +1,80 @@
+[
+  {
+    "browser": "chromium",
+    "comparisons": 1056,
+    "differences": [],
+    "operations": [
+      {
+        "bodyAppends": 50,
+        "bodyRemoves": 50
+      },
+      {
+        "bodyAppends": 50,
+        "bodyRemoves": 50
+      },
+      {
+        "bodyAppends": 1,
+        "bodyRemoves": 1
+      }
+    ],
+    "lifecycle": {
+      "initial": 110.4375,
+      "fresh": 110.4375,
+      "repaired": 110.4375,
+      "afterOldCleanup": 110.4375,
+      "repairedProbe": 110.4375
+    }
+  },
+  {
+    "browser": "firefox",
+    "comparisons": 1056,
+    "differences": [],
+    "operations": [
+      {
+        "bodyAppends": 50,
+        "bodyRemoves": 50
+      },
+      {
+        "bodyAppends": 50,
+        "bodyRemoves": 50
+      },
+      {
+        "bodyAppends": 1,
+        "bodyRemoves": 1
+      }
+    ],
+    "lifecycle": {
+      "initial": 111.41667175292969,
+      "fresh": 111.41667175292969,
+      "repaired": 111.41667175292969,
+      "afterOldCleanup": 111.41667175292969,
+      "repairedProbe": 111.41667175292969
+    }
+  },
+  {
+    "browser": "webkit",
+    "comparisons": 1056,
+    "differences": [],
+    "operations": [
+      {
+        "bodyAppends": 50,
+        "bodyRemoves": 50
+      },
+      {
+        "bodyAppends": 50,
+        "bodyRemoves": 50
+      },
+      {
+        "bodyAppends": 1,
+        "bodyRemoves": 1
+      }
+    ],
+    "lifecycle": {
+      "initial": 112.0625,
+      "fresh": 112.0625,
+      "repaired": 112.0625,
+      "afterOldCleanup": 112.0625,
+      "repairedProbe": 112.0625
+    }
+  }
+]

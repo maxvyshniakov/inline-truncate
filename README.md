@@ -31,6 +31,31 @@ Highlight colors use `--text-truncate-highlight-background` and
 Hosts can override those variables; Data Grid maps them to its search-match
 colors.
 
+Measured truncation checks the complete result, including the marker, so font
+kerning at the cut is included. Query highlights recreate their decorated text nodes when the
+text or query changes, avoiding stale inline shaping during repeated resizes.
+Highlight customization is intended for colors; metric-changing host styles such
+as extra padding need their own measurement policy. Middle truncation measures only the edges it
+visits. Each mounted measured component reuses segmented text and a bounded
+width cache across resizes, and invalidates widths after a class or font-load
+change. Emoji inputs select through Canvas first, then verify the complete final string
+with a cached DOM measurement. At most two corrections use the observed width
+discrepancy; a native predicate handles larger disagreements. CSS numeric
+features, variation settings, word spacing and text transforms use a hidden DOM
+predicate when Canvas cannot express them. Emoji native widths are invalidated
+on font/style/query changes and resolution changes, independently of box resize. Inherited
+style changes must cause a resize, font-load event, or a component class/text
+change to trigger a new measurement; arbitrary ancestor style mutations are
+not observed.
+
+For `truncateText`, a nonpositive width returns the original text (useful before
+layout). If the width is smaller than `...`, the marker is still returned and
+may be clipped by the component. The marker remains three ASCII periods.
+Grapheme-safe cuts require `Intl.Segmenter`; older runtimes fall back to code
+points. This package has no multiline truncation API. Use CSS `line-clamp` for
+multiline clipping; Inline Measure's multiline entrypoint solves a different
+problem, the minimum width for a requested number of lines.
+
 ## Install
 
 The package is private and lives in GitHub Packages. Point bun at the registry
@@ -74,6 +99,33 @@ publishing follow [docs/VERSIONING.md](docs/VERSIONING.md).
 
 Live examples are in the Data Grid Storybook, which renders Inline Measure and
 Text Truncate demos alongside the grid.
+
+## Correctness and performance
+
+The standalone browser harness needs no Data Grid or Storybook build:
+
+```sh
+bun run check:browser -- --browser=chromium
+bun run check:browser -- --browser=firefox
+bun run check:browser -- --browser=webkit
+bun run perf:capture -- --runs=9 --output=artifacts/perf/baseline.json
+bun run perf:capture -- --runs=9 --baseline=artifacts/perf/baseline.json --strict --output=artifacts/perf/candidate.json
+```
+
+The scripts reserve machine slots (`all` for timings, one for correctness).
+Install browser engines with `bunx playwright install chromium webkit`; Firefox
+uses the installed `moz-firefox` channel. A filtered run accepts
+`--scenario=algorithm.middle`. Set `INLINE_MEASURE_SOURCE=/path/to/inline-measure`
+to test its source explicitly; the default uses the installed registry package.
+Comparing different Inline Measure versions or source digests also requires
+`--allow-inline-measure-change`; the report labels this as a combined experiment.
+`--ref=<commit>` measures this package's committed production source with the
+current harness, without checking out or modifying the working tree.
+
+See [the measurement method and recorded results](docs/performance/README.md).
+Quick behavior and operation-budget tests plus report-comparison tests run in
+`bun run test`. Browser correctness and timing are separate commands, not part
+of the default push gate.
 
 ## License
 

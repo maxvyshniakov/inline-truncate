@@ -1,0 +1,59 @@
+[
+  {
+    "browser": "chromium",
+    "comparisons": 1056,
+    "differences": [],
+    "operations": [
+      {
+        "bodyAppends": 50,
+        "bodyRemoves": 50
+      },
+      {
+        "bodyAppends": 50,
+        "bodyRemoves": 50
+      },
+      {
+        "bodyAppends": 1,
+        "bodyRemoves": 1
+      }
+    ]
+  },
+  {
+    "browser": "firefox",
+    "comparisons": 1056,
+    "differences": [],
+    "operations": [
+      {
+        "bodyAppends": 50,
+        "bodyRemoves": 50
+      },
+      {
+        "bodyAppends": 50,
+        "bodyRemoves": 50
+      },
+      {
+        "bodyAppends": 1,
+        "bodyRemoves": 1
+      }
+    ]
+  },
+  {
+    "browser": "webkit",
+    "comparisons": 1056,
+    "differences": [],
+    "operations": [
+      {
+        "bodyAppends": 50,
+        "bodyRemoves": 50
+      },
+      {
+        "bodyAppends": 50,
+        "bodyRemoves": 50
+      },
+      {
+        "bodyAppends": 1,
+        "bodyRemoves": 1
+      }
+    ]
+  }
+]

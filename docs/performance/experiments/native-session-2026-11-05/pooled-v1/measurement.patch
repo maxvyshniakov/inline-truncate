@@ -1,0 +1,88 @@
+--- a/src/measurement.ts
++++ b/src/measurement.ts
+@@ -21,6 +21,40 @@
+   dispose: () => void;
+ }
+
++interface DocumentProbeRoot {
++  root: HTMLElement;
++  cleanupTimer?: ReturnType<typeof setTimeout>;
++}
++// Retain only an empty container between synchronous measurement sessions in
++// the same callback batch. Per-component strings and widths never enter here.
++const documentProbeRoots = new WeakMap<Document, DocumentProbeRoot>();
++function acquireProbeRoot(ownerDocument: Document) {
++  let entry = documentProbeRoots.get(ownerDocument);
++  if (entry && entry.root.parentElement !== ownerDocument.body) {
++    if (entry.cleanupTimer !== undefined) clearTimeout(entry.cleanupTimer);
++    entry = undefined;
++  }
++  if (!entry) {
++    const root = createInlineMeasurementRoot(ownerDocument);
++    // Isolate layout propagation, while preserving intrinsic text sizing.
++    // Size containment would invalidate the max-content measurement contract.
++    root.style.contain = "layout style";
++    entry = {root};
++    documentProbeRoots.set(ownerDocument, entry);
++    ownerDocument.body.append(root);
++  }
++  return entry;
++}
++function releaseProbeRoot(ownerDocument: Document, entry: DocumentProbeRoot) {
++  if (entry.cleanupTimer !== undefined) return;
++  entry.cleanupTimer = setTimeout(() => {
++    entry.cleanupTimer = undefined;
++    if (entry.root.childNodes.length) return;
++    entry.root.remove();
++    if (documentProbeRoots.get(ownerDocument) === entry) documentProbeRoots.delete(ownerDocument);
++  }, 0);
++}
++
+ // One lazy DOM probe per update for CSS features Canvas cannot express.
+ // Include the component's own highlight markup when such text is decorated.
+ export function createMeasurementSession(element: HTMLElement, computed: CSSStyleDeclaration, query?: string): MeasurementSession {
+@@ -32,17 +66,18 @@
+     || nonDefault(computed.textTransform, "none");
+   if (!needsDOM && !emojiText) return {measureText:createCanvasTextMeasurer(computed),dispose:()=>{}};
+   const hasHighlights = !!query?.trim() && highlightedTextParts(element.dataset.truncateOriginal ?? "",query).some(part=>part.matched);
+-  let root: HTMLElement | undefined;
++  let root: DocumentProbeRoot | undefined;
+   let probe: HTMLElement;
+-  const box = getHorizontalBoxWidth(element);
++  let box: number | undefined;
+   const measureDOM = (value: string) => {
+     if (!root) {
+-      root = createInlineMeasurementRoot(element.ownerDocument);
++      box = getHorizontalBoxWidth(element);
++      root = acquireProbeRoot(element.ownerDocument);
+       probe = createInlineTextMeasurementNode({sourceElement:element,text:value});
+       probe.style.wordSpacing = computed.wordSpacing;
+       probe.style.direction = computed.direction;
+       probe.lang = element.closest("[lang]")?.getAttribute("lang") ?? element.ownerDocument.documentElement.lang;
+-      root.append(probe); element.ownerDocument.body.append(root);
++      root.root.append(probe);
+     }
+     if (!hasHighlights) { probe.textContent=value; }
+     else probe.replaceChildren(...highlightedTextParts(value,query).map(part=>{
+@@ -51,7 +86,7 @@
+       span.dataset.slot="highlighted-match";span.className=HIGHLIGHT_CLASS_NAME;span.textContent=part.text;
+       return span;
+     }));
+-    const contentWidth = Math.max(0,probe.getBoundingClientRect().width - box);
++    const contentWidth = Math.max(0,probe.getBoundingClientRect().width - box!);
+     if (!hasHighlights) return contentWidth;
+     // Inline positioned spans can extend the text range beyond the intrinsic
+     // advance width of its containing box. Match the painted range oracle.
+@@ -62,6 +97,11 @@
+     measureText:needsDOM ? measureDOM : createCanvasTextMeasurer(computed),
+     verifyText:!needsDOM && emojiText ? measureDOM : undefined,
+     measureExact:!needsDOM && emojiText ? measureDOM : undefined,
+-    dispose() {root?.remove();},
++    dispose() {
++      if (!root) return;
++      probe.remove();
++      releaseProbeRoot(element.ownerDocument, root);
++      root = undefined;
++    },
+   };
+ }

@@ -1,0 +1,23 @@
+--- a/src/measurement.ts
++++ b/src/measurement.ts
+@@ -34,9 +34,10 @@
+   const hasHighlights = !!query?.trim() && highlightedTextParts(element.dataset.truncateOriginal ?? "",query).some(part=>part.matched);
+   let root: HTMLElement | undefined;
+   let probe: HTMLElement;
+-  const box = getHorizontalBoxWidth(element);
++  let box: number | undefined;
+   const measureDOM = (value: string) => {
+     if (!root) {
++      box = getHorizontalBoxWidth(element);
+       root = createInlineMeasurementRoot(element.ownerDocument);
+       probe = createInlineTextMeasurementNode({sourceElement:element,text:value});
+       probe.style.wordSpacing = computed.wordSpacing;
+@@ -51,7 +52,7 @@
+       span.dataset.slot="highlighted-match";span.className=HIGHLIGHT_CLASS_NAME;span.textContent=part.text;
+       return span;
+     }));
+-    const contentWidth = Math.max(0,probe.getBoundingClientRect().width - box);
++    const contentWidth = Math.max(0,probe.getBoundingClientRect().width - box!);
+     if (!hasHighlights) return contentWidth;
+     // Inline positioned spans can extend the text range beyond the intrinsic
+     // advance width of its containing box. Match the painted range oracle.

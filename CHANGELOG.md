@@ -4,6 +4,28 @@ Versions and release rules: [docs/VERSIONING.md](docs/VERSIONING.md).
 
 ## Unreleased
 
+### Changed
+
+- Middle truncation measures visible edges lazily and reuses bounded,
+  component-local measurements across resize updates.
+- Emoji inputs verify the final Canvas-selected result instead of measuring
+  every candidate in the DOM; native widths are cached and invalidated on
+  font/style/query and device-pixel-ratio changes.
+- Require Inline Measure `^0.3.0`, matching the version used by Data Grid.
+- Add standalone browser correctness and performance commands, with reproducible
+  baseline comparisons for batches, mounting, resizing and content/style changes.
+
+### Fixed
+
+- Recreate highlighted text nodes when text or query changes so browsers cannot
+  retain stale inline shaping through repeated resize updates.
+- Measure the complete truncated string so shaping around the marker cannot
+  make the selected result overflow its measured width.
+- Recompute measured text after class changes and later font loads; pending
+  font readiness no longer schedules a frame after unmount.
+- Preserve emoji widths, numeric/font features, variation settings, word spacing and text
+  transforms through a DOM measurement fallback when Canvas cannot express them.
+
 ## 0.2.0 - 2026-10-06
 
 ### Breaking

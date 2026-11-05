@@ -432,3 +432,187 @@ describe("TextTruncate", () => {
     expect(root).not.toHaveAttribute("data-truncate-state");
   });
 });
+
+describe("truncateText measurement work", () => {
+  it("does not measure every hidden prefix and suffix of a long middle-truncated string", () => {
+    const measureText = vi.fn((value: string) => value.length);
+    expect(truncateText({text: "a".repeat(10_000), maxWidth:30, mode:"middle", measureText}).text)
+      .toBe("aaaaaaaaaaaaa...aaaaaaaaaaaaaa");
+    expect(measureText.mock.calls.length).toBeLessThan(80);
+  });
+});
+
+describe("truncateText marker shaping", () => {
+  it.each(["middle", "end"] as const)("fits the whole %s result when the marker changes shaping", mode => {
+    const measureText = (value: string) => value.length + (value.includes("...") && value !== "..." ? 2 : 0);
+    const result = truncateText({text:"abcdefghij", maxWidth:5, mode, measureText});
+    expect(result).toEqual({text:"...", truncated:true});
+    expect(measureText(result.text)).toBeLessThanOrEqual(5);
+  });
+});
+
+
+describe("TextTruncate deferred updates", () => {
+  it("does not schedule another frame when fonts finish after unmount", async () => {
+    stubResizeObserver();
+    let finish!: () => void;
+    Object.defineProperty(document, "fonts", {configurable:true, value:{status:"loading",ready:new Promise<void>(resolve => {finish=resolve;})}});
+    const raf = vi.spyOn(window, "requestAnimationFrame").mockReturnValue(1);
+    const {unmount} = render(<TextTruncate mode="middle" text="long-file-name.pdf" />);
+    expect(raf).toHaveBeenCalledTimes(1);
+    unmount();
+    await act(async () => { finish(); await Promise.resolve(); });
+    expect(raf).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("TextTruncate repeated measurement", () => {
+  it("reuses text widths on resize and invalidates them when its class changes", () => {
+    let notify!: () => void;
+    globalThis.ResizeObserver = class { constructor(callback: () => void) {notify=callback;} observe() {} disconnect() {} } as unknown as typeof ResizeObserver;
+    const frames: FrameRequestCallback[] = [];
+    vi.spyOn(window,"requestAnimationFrame").mockImplementation(callback => {frames.push(callback);return frames.length;});
+    vi.spyOn(HTMLElement.prototype,"clientWidth","get").mockReturnValue(12);
+    const measureText = vi.fn((value: string) => ({width:value.length}));
+    vi.spyOn(HTMLCanvasElement.prototype,"getContext").mockReturnValue({font:"",measureText} as unknown as CanvasRenderingContext2D);
+    const {rerender} = render(<TextTruncate mode="middle" text="a-long-filename.pdf" className="small" />);
+    act(() => {frames.shift()!(0);});
+    expect(screen.getByText("a-lo...e.pdf")).toBeTruthy();
+    const calls = measureText.mock.calls.length;
+    act(() => {notify(); frames.shift()!(0);});
+    expect(measureText.mock.calls.length).toBe(calls);
+    rerender(<TextTruncate mode="middle" text="a-long-filename.pdf" className="large" />);
+    expect(frames).toHaveLength(1);
+    act(() => {frames.shift()!(0);});
+    expect(measureText.mock.calls.length).toBeGreaterThan(calls);
+  });
+});
+
+describe("truncateText boundary contract", () => {
+  it.each([
+    {text:"",maxWidth:20,expected:"",truncated:false},
+    {text:"abc",maxWidth:0,expected:"abc",truncated:false},
+    {text:"abc",maxWidth:3,expected:"abc",truncated:false},
+    {text:"abcdef",maxWidth:2,expected:"...",truncated:true},
+    {text:"abcdef",maxWidth:3,expected:"...",truncated:true},
+  ])("preserves the documented result at width $maxWidth for '$text'", ({text,maxWidth,expected,truncated}) => {
+    expect(truncateText({text,maxWidth,mode:"end",measureText:value=>value.length})).toEqual({text:expected,truncated});
+  });
+});
+
+describe("TextTruncate later font cycles", () => {
+  it("waits for a later loading cycle even when the browser only emits loading", async () => {
+    stubResizeObserver();
+    let finish!: () => void;
+    const fonts = Object.assign(new EventTarget(), {status:"loaded",ready:new Promise<void>(resolve=>{finish=resolve;})});
+    Object.defineProperty(document,"fonts",{configurable:true,value:fonts});
+    const raf=vi.spyOn(window,"requestAnimationFrame").mockReturnValue(1);
+    render(<TextTruncate mode="middle" text="a-long-filename.pdf" />);
+    expect(raf).toHaveBeenCalledTimes(1);
+    fonts.status="loading"; fonts.dispatchEvent(new Event("loading"));
+    await act(async()=>{fonts.status="loaded";finish();await Promise.resolve();});
+    expect(raf).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("TextTruncate decorated node lifetime", () => {
+  function measurementFrames() {
+    stubResizeObserver();
+    const frames: FrameRequestCallback[] = [];
+    vi.spyOn(window,"requestAnimationFrame").mockImplementation(callback=>{frames.push(callback);return frames.length;});
+    vi.spyOn(HTMLElement.prototype,"clientWidth","get").mockReturnValue(12);
+    vi.spyOn(HTMLCanvasElement.prototype,"getContext").mockReturnValue({font:"",measureText:(value:string)=>({width:value.length})} as unknown as CanvasRenderingContext2D);
+    return () => act(()=>{frames.shift()!(0);});
+  }
+  it("recreates highlighted spans when a cut or query changes", () => {
+    const nextFrame=measurementFrames();
+    const {rerender}=render(<TextTruncate mode="middle" query="abc" text="abc-long-filename.pdf" />);
+    const original=screen.getByText("abc");
+    nextFrame();
+    const cut=screen.getByText("abc");
+    expect(cut).not.toBe(original);
+    rerender(<TextTruncate mode="middle" query="ABC" text="abc-long-filename.pdf" />);
+    expect(screen.getByText("abc")).not.toBe(cut);
+    nextFrame();
+  });
+  it("retains the ordinary text node when no query decorates the cut", () => {
+    const nextFrame=measurementFrames();
+    const {container}=render(<TextTruncate mode="middle" text="abc-long-filename.pdf" />);
+    const element=container.querySelector("[data-truncate]")!;
+    const original=element.firstChild;
+    nextFrame();
+    expect(element.textContent).toBe("abc-...e.pdf");
+    expect(element.firstChild).toBe(original);
+  });
+});
+
+describe("TextTruncate emoji verification work", () => {
+  it("verifies the final cut once, reuses native widths, and invalidates them after a font cycle", () => {
+    let notify!: () => void;
+    globalThis.ResizeObserver = class {constructor(callback:()=>void){notify=callback;}observe(){}disconnect(){}} as unknown as typeof ResizeObserver;
+    const fonts=Object.assign(new EventTarget(),{status:"loaded"});
+    Object.defineProperty(document,"fonts",{configurable:true,value:fonts});
+    const frames: FrameRequestCallback[]=[];
+    vi.spyOn(window,"requestAnimationFrame").mockImplementation(callback=>{frames.push(callback);return frames.length;});
+    vi.spyOn(HTMLElement.prototype,"clientWidth","get").mockReturnValue(12);
+    vi.spyOn(HTMLCanvasElement.prototype,"getContext").mockReturnValue({font:"",measureText:(value:string)=>({width:value.length})} as unknown as CanvasRenderingContext2D);
+    const native=vi.spyOn(HTMLElement.prototype,"getBoundingClientRect").mockImplementation(function(this:HTMLElement){return {width:this.textContent?.length ?? 0,height:16} as DOMRect;});
+    const {container}=render(<TextTruncate mode="middle" text="abc-🪑-long-filename.pdf" />);
+    act(()=>{frames.shift()!(0);});
+    expect(container.textContent).toBe("abc-...e.pdf");
+    expect(native).toHaveBeenCalledTimes(1);
+    act(()=>{notify();frames.shift()!(0);});
+    expect(native).toHaveBeenCalledTimes(1);
+    act(()=>{fonts.dispatchEvent(new Event("loadingdone"));frames.shift()!(0);});
+    expect(native).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("TextTruncate native verification boundaries", () => {
+  function scene(width:number,canvas:(text:string)=>number,native:(text:string)=>number) {
+    stubResizeObserver();
+    const frames:FrameRequestCallback[]=[];
+    vi.spyOn(window,"requestAnimationFrame").mockImplementation(callback=>{frames.push(callback);return frames.length;});
+    vi.spyOn(HTMLElement.prototype,"clientWidth","get").mockReturnValue(width);
+    vi.spyOn(HTMLCanvasElement.prototype,"getContext").mockReturnValue({font:"",measureText:(value:string)=>({width:canvas(value)})} as unknown as CanvasRenderingContext2D);
+    const reads=vi.spyOn(HTMLElement.prototype,"getBoundingClientRect").mockImplementation(function(this:HTMLElement){return {width:native(this.textContent ?? ""),height:16} as DOMRect;});
+    return {reads,next:()=>act(()=>{frames.shift()!(0);})};
+  }
+  it("uses exact selection when the measured discrepancy exhausts the Canvas budget", () => {
+    const {next}=scene(30,value=>value.includes("🪑") ? 0 : value.length*2,value=>value.length*2);
+    const {container}=render(<TextTruncate mode="middle" text="abc-🪑-long-file.pdf" />);
+    next();
+    expect(container.textContent).toBe("abc-🪑...le.pdf");
+  });
+  it("measures a marker-only final result while preserving unavoidable clipping", () => {
+    const {next,reads}=scene(1,value=>value.length,value=>value.length);
+    const {container}=render(<TextTruncate mode="middle" text="abc-🪑-long-file.pdf" />);
+    next();
+    expect(container.textContent).toBe("...");
+    expect(reads).toHaveBeenCalledTimes(1);
+  });
+  it("remeasures on DPR-only changes, rebinds the resolution query and cleans it up", () => {
+    const {next,reads}=scene(12,value=>value.length,value=>value.length);
+    const ratio=vi.spyOn(window,"devicePixelRatio","get").mockReturnValue(1);
+    const queries:{media:string;listeners:Set<()=>void>}[]=[];
+    const match=vi.spyOn(window,"matchMedia").mockImplementation(media=>{
+      const query={media,listeners:new Set<()=>void>()};queries.push(query);
+      return {media,matches:true,addEventListener:(_type:string,listener:()=>void)=>query.listeners.add(listener),removeEventListener:(_type:string,listener:()=>void)=>query.listeners.delete(listener)} as unknown as MediaQueryList;
+    });
+    const {unmount}=render(<TextTruncate mode="middle" text="abc-🪑-long-file.pdf" />);
+    next();
+    expect(queries).toHaveLength(1);
+    expect(queries[0].media).toContain("1dppx");
+    ratio.mockReturnValue(2);
+    act(()=>{for(const listener of queries[0].listeners)listener();});
+    next();
+    expect(reads).toHaveBeenCalledTimes(2);
+    expect(queries).toHaveLength(2);
+    expect(queries[1].media).toContain("2dppx");
+    expect(queries[0].listeners.size).toBe(0);
+    unmount();expect(queries[1].listeners.size).toBe(0);
+    match.mockClear();
+    render(<TextTruncate mode="middle" text="plain-long-file.pdf" />);
+    next();expect(match).not.toHaveBeenCalled();
+  });
+});

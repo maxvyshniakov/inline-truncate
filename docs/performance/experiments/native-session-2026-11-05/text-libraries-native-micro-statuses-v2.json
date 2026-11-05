@@ -1,0 +1,14 @@
+[
+  {
+    "combined": false,
+    "output": "artifacts/perf/pooled-candidate-isolated.chromium.json",
+    "status": 0,
+    "signal": null
+  },
+  {
+    "combined": true,
+    "output": "artifacts/perf/pooled-candidate-combined.chromium.json",
+    "status": 0,
+    "signal": null
+  }
+]

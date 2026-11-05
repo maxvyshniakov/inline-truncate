@@ -1,0 +1,34 @@
+{
+  "variant": "lazy-box",
+  "productionBaseHash": "e917879917ed6dd867e9199f7ad38ca5a060cd758fadaee55f4352e354540f52",
+  "sourceHash": "ffe31ac3e6846af924dda77ae7dd04473c69607a1ca67c88218a6ed447e6bf56",
+  "inlineMeasureSource": "/Users/maxwish/inline-measure",
+  "productionFrozen": true,
+  "correctness": {
+    "chromium": {
+      "pass": true,
+      "browser": "chromium/156.0.8078.4",
+      "sourceHash": "ffe31ac3e6846af924dda77ae7dd04473c69607a1ca67c88218a6ed447e6bf56"
+    },
+    "firefox": {
+      "pass": true,
+      "browser": "firefox/159.0.1",
+      "sourceHash": "ffe31ac3e6846af924dda77ae7dd04473c69607a1ca67c88218a6ed447e6bf56"
+    },
+    "webkit": {
+      "pass": true,
+      "browser": "webkit/27.2",
+      "sourceHash": "ffe31ac3e6846af924dda77ae7dd04473c69607a1ca67c88218a6ed447e6bf56"
+    }
+  },
+  "nativeEquivalence": {
+    "comparisonsPerEngine": 1056,
+    "engines": [
+      "chromium",
+      "firefox",
+      "webkit"
+    ],
+    "differences": 0,
+    "evidence": "artifacts/perf/native-equivalence.json"
+  }
+}

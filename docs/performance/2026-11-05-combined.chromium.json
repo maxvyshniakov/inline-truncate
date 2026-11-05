@@ -1,0 +1,686 @@
+{
+  "schemaVersion": 1,
+  "package": "@maxvyshniakov/text-truncate",
+  "workload": "text-truncate-v2",
+  "methodHash": "f1a4dc2bf8c920d32de3da6e5378d872761aa802a1f77757b5f410c0c6ccee0f",
+  "implementation": {
+    "reference": "working-tree",
+    "sourceHash": "e917879917ed6dd867e9199f7ad38ca5a060cd758fadaee55f4352e354540f52"
+  },
+  "timerResolutionMs": 0.09999996423721313,
+  "frameDurationMs": 16.69999999999999,
+  "revision": "091a5ef3bac149175f058a0aa64e316d7fa65a55",
+  "inlineMeasure": {
+    "version": "0.3.0",
+    "source": "/Users/maxwish/inline-measure",
+    "sourceHash": "4a49c0796a58a5df0dce5160fd749add31670e40155bb4423a117c6677d778dd"
+  },
+  "browser": "chromium/156.0.8078.4",
+  "environment": {
+    "host": "wintermute.local",
+    "osRelease": "27.2.0",
+    "platform": "darwin",
+    "arch": "arm64",
+    "cpu": "Apple M2 Max",
+    "viewport": {
+      "width": 1280,
+      "height": 800
+    },
+    "dpr": 1,
+    "frameIntervalMs": 17
+  },
+  "scenarios": [
+    {
+      "id": "algorithm.middle.50",
+      "samplesMs": [
+        10.300000011920929,
+        10.100000023841858,
+        9.5,
+        10.399999976158142,
+        10.5
+      ],
+      "medianMs": 10.300000011920929,
+      "p95Ms": 10.5,
+      "counters": {
+        "measureText": 3853,
+        "measuredCodeUnits": 52090,
+        "domReads": 0,
+        "reactCommits": 0
+      },
+      "correctness": true
+    },
+    {
+      "id": "algorithm.end.50",
+      "samplesMs": [
+        1.699999988079071,
+        1.699999988079071,
+        1.699999988079071,
+        1.699999988079071,
+        1.600000023841858
+      ],
+      "medianMs": 1.699999988079071,
+      "p95Ms": 1.699999988079071,
+      "counters": {
+        "measureText": 400,
+        "measuredCodeUnits": 11640,
+        "domReads": 0,
+        "reactCommits": 0
+      },
+      "correctness": true
+    },
+    {
+      "id": "algorithm.middle.200",
+      "samplesMs": [
+        41.5,
+        41.30000001192093,
+        41.39999997615814,
+        45.39999997615814,
+        41.09999996423721
+      ],
+      "medianMs": 41.39999997615814,
+      "p95Ms": 45.39999997615814,
+      "counters": {
+        "measureText": 15456,
+        "measuredCodeUnits": 209520,
+        "domReads": 0,
+        "reactCommits": 0
+      },
+      "correctness": true
+    },
+    {
+      "id": "algorithm.end.200",
+      "samplesMs": [
+        6.800000011920929,
+        7,
+        6.300000011920929,
+        7,
+        6.5
+      ],
+      "medianMs": 6.800000011920929,
+      "p95Ms": 7,
+      "counters": {
+        "measureText": 1600,
+        "measuredCodeUnits": 46890,
+        "domReads": 0,
+        "reactCommits": 0
+      },
+      "correctness": true
+    },
+    {
+      "id": "algorithm.repeated-labels.middle.200",
+      "samplesMs": [
+        44.5,
+        38.69999998807907,
+        36.69999998807907,
+        38,
+        37.5
+      ],
+      "medianMs": 38,
+      "p95Ms": 44.5,
+      "counters": {
+        "measureText": 15400,
+        "measuredCodeUnits": 207800,
+        "domReads": 0,
+        "reactCommits": 0
+      },
+      "correctness": true
+    },
+    {
+      "id": "algorithm.middle.long.50",
+      "samplesMs": [
+        11.699999988079071,
+        11.600000023841858,
+        12.199999988079071,
+        11.800000011920929,
+        11.900000035762787
+      ],
+      "medianMs": 11.800000011920929,
+      "p95Ms": 12.199999988079071,
+      "counters": {
+        "measureText": 4000,
+        "measuredCodeUnits": 94040,
+        "domReads": 0,
+        "reactCommits": 0
+      },
+      "correctness": true
+    },
+    {
+      "id": "components.mount.middle.cold.200",
+      "samplesMs": [
+        92.30000001192093,
+        91.29999995231628,
+        95.19999998807907,
+        91.30000001192093,
+        88.39999997615814
+      ],
+      "medianMs": 91.30000001192093,
+      "p95Ms": 95.19999998807907,
+      "counters": {
+        "measureText": 21385,
+        "measuredCodeUnits": 373707,
+        "domReads": 400,
+        "reactCommits": 3
+      },
+      "correctness": true
+    },
+    {
+      "id": "components.mount.measured-end.cold.200",
+      "samplesMs": [
+        44,
+        43.19999998807907,
+        43.30000001192093,
+        41.700000047683716,
+        41.10000002384186
+      ],
+      "medianMs": 43.19999998807907,
+      "p95Ms": 44,
+      "counters": {
+        "measureText": 1700,
+        "measuredCodeUnits": 62490,
+        "domReads": 400,
+        "reactCommits": 3
+      },
+      "correctness": true
+    },
+    {
+      "id": "components.mount.css-end.cold.200",
+      "samplesMs": [
+        40.89999997615814,
+        41.5,
+        41.19999998807907,
+        43.19999998807907,
+        46.5
+      ],
+      "medianMs": 41.5,
+      "p95Ms": 46.5,
+      "counters": {
+        "measureText": 0,
+        "measuredCodeUnits": 0,
+        "domReads": 0,
+        "reactCommits": 1
+      },
+      "correctness": true
+    },
+    {
+      "id": "components.mount.css-start.cold.200",
+      "samplesMs": [
+        47.80000001192093,
+        47.89999997615814,
+        48,
+        48,
+        47.90000003576279
+      ],
+      "medianMs": 47.90000003576279,
+      "p95Ms": 48,
+      "counters": {
+        "measureText": 0,
+        "measuredCodeUnits": 0,
+        "domReads": 0,
+        "reactCommits": 1
+      },
+      "correctness": true
+    },
+    {
+      "id": "components.mount.middle.cold.50",
+      "samplesMs": [
+        47.5,
+        48.19999998807907,
+        48.40000003576279,
+        48.30000001192093,
+        48.30000001192093
+      ],
+      "medianMs": 48.30000001192093,
+      "p95Ms": 48.40000003576279,
+      "counters": {
+        "measureText": 5329,
+        "measuredCodeUnits": 92906,
+        "domReads": 100,
+        "reactCommits": 3
+      },
+      "correctness": true
+    },
+    {
+      "id": "components.mount.highlight-middle.cold.50",
+      "samplesMs": [
+        47.60000002384186,
+        47.700000047683716,
+        44.30000001192093,
+        48.10000002384186,
+        48.10000002384186
+      ],
+      "medianMs": 47.700000047683716,
+      "p95Ms": 48.10000002384186,
+      "counters": {
+        "measureText": 5329,
+        "measuredCodeUnits": 92906,
+        "domReads": 100,
+        "reactCommits": 3
+      },
+      "correctness": true
+    },
+    {
+      "id": "components.mount.emoji-middle.cold.50",
+      "samplesMs": [
+        47.60000002384186,
+        47.30000001192093,
+        47.19999998807907,
+        47.40000003576279,
+        47.40000003576279
+      ],
+      "medianMs": 47.40000003576279,
+      "p95Ms": 47.60000002384186,
+      "counters": {
+        "measureText": 5350,
+        "measuredCodeUnits": 92790,
+        "domReads": 150,
+        "reactCommits": 3
+      },
+      "correctness": true
+    },
+    {
+      "id": "components.notifications.middle.warm.200",
+      "samplesMs": [
+        237.19999998807907,
+        236.10000002384186,
+        235.80000001192093,
+        234.30000001192093,
+        237.4000000357628
+      ],
+      "medianMs": 236.10000002384186,
+      "p95Ms": 237.4000000357628,
+      "counters": {
+        "measureText": 0,
+        "measuredCodeUnits": 0,
+        "domReads": 1000,
+        "reactCommits": 0
+      },
+      "correctness": true
+    },
+    {
+      "id": "components.resize.middle.warm.200",
+      "samplesMs": [
+        234,
+        235.10000002384186,
+        236.5999999642372,
+        233.30000001192093,
+        233.5
+      ],
+      "medianMs": 234,
+      "p95Ms": 236.5999999642372,
+      "counters": {
+        "measureText": 7459,
+        "measuredCodeUnits": 273635,
+        "domReads": 1000,
+        "reactCommits": 5
+      },
+      "correctness": true
+    },
+    {
+      "id": "components.change-text.middle.50",
+      "samplesMs": [
+        50,
+        50,
+        50,
+        50,
+        50
+      ],
+      "medianMs": 50,
+      "p95Ms": 50,
+      "counters": {
+        "measureText": 5169,
+        "measuredCodeUnits": 88586,
+        "domReads": 50,
+        "reactCommits": 2
+      },
+      "correctness": true
+    },
+    {
+      "id": "components.change-style.middle.50",
+      "samplesMs": [
+        50,
+        50,
+        49.90000003576279,
+        50,
+        50.09999996423721
+      ],
+      "medianMs": 50,
+      "p95Ms": 50.09999996423721,
+      "counters": {
+        "measureText": 3736,
+        "measuredCodeUnits": 49430,
+        "domReads": 50,
+        "reactCommits": 2
+      },
+      "correctness": true
+    }
+  ],
+  "correctness": {
+    "pass": true,
+    "failures": []
+  },
+  "comparison": [
+    {
+      "id": "algorithm.middle.50",
+      "inlineMeasureChanged": true,
+      "timingFloorMs": 0.09999996423721313,
+      "beforeMs": 23.19999998807907,
+      "afterMs": 10.300000011920929,
+      "deltaPercent": -55.60344820166634,
+      "regression": false,
+      "beforeInterval": [
+        23.099999964237213,
+        24.600000023841858
+      ],
+      "afterInterval": [
+        9.5,
+        10.5
+      ],
+      "beforeCalls": 6880,
+      "afterCalls": 3853
+    },
+    {
+      "id": "algorithm.end.50",
+      "inlineMeasureChanged": true,
+      "timingFloorMs": 0.09999996423721313,
+      "beforeMs": 1.899999976158142,
+      "afterMs": 1.699999988079071,
+      "deltaPercent": -10.526315294144217,
+      "regression": false,
+      "beforeInterval": [
+        1.7999999523162842,
+        2.199999988079071
+      ],
+      "afterInterval": [
+        1.600000023841858,
+        1.699999988079071
+      ],
+      "beforeCalls": 400,
+      "afterCalls": 400
+    },
+    {
+      "id": "algorithm.middle.200",
+      "inlineMeasureChanged": true,
+      "timingFloorMs": 0.09999996423721313,
+      "beforeMs": 93.5,
+      "afterMs": 41.39999997615814,
+      "deltaPercent": -55.72192515918915,
+      "regression": false,
+      "beforeInterval": [
+        92.19999998807907,
+        97
+      ],
+      "afterInterval": [
+        41.09999996423721,
+        45.39999997615814
+      ],
+      "beforeCalls": 27780,
+      "afterCalls": 15456
+    },
+    {
+      "id": "algorithm.end.200",
+      "inlineMeasureChanged": true,
+      "timingFloorMs": 0.09999996423721313,
+      "beforeMs": 7.5,
+      "afterMs": 6.800000011920929,
+      "deltaPercent": -9.333333174387615,
+      "regression": false,
+      "beforeInterval": [
+        6.900000035762787,
+        7.900000035762787
+      ],
+      "afterInterval": [
+        6.300000011920929,
+        7
+      ],
+      "beforeCalls": 1600,
+      "afterCalls": 1600
+    },
+    {
+      "id": "algorithm.repeated-labels.middle.200",
+      "inlineMeasureChanged": true,
+      "timingFloorMs": 0.09999996423721313,
+      "beforeMs": 84,
+      "afterMs": 38,
+      "deltaPercent": -54.761904761904766,
+      "regression": false,
+      "beforeInterval": [
+        83.69999998807907,
+        93.30000001192093
+      ],
+      "afterInterval": [
+        36.69999998807907,
+        44.5
+      ],
+      "beforeCalls": 27200,
+      "afterCalls": 15400
+    },
+    {
+      "id": "algorithm.middle.long.50",
+      "inlineMeasureChanged": true,
+      "timingFloorMs": 0.09999996423721313,
+      "beforeMs": 2795.699999988079,
+      "afterMs": 11.800000011920929,
+      "deltaPercent": -99.57792323883208,
+      "regression": false,
+      "beforeInterval": [
+        2793.600000023842,
+        2837.599999964237
+      ],
+      "afterInterval": [
+        11.600000023841858,
+        12.199999988079071
+      ],
+      "beforeCalls": 83780,
+      "afterCalls": 4000
+    },
+    {
+      "id": "components.mount.middle.cold.200",
+      "inlineMeasureChanged": true,
+      "timingFloorMs": 16.69999999999999,
+      "beforeMs": 213.69999998807907,
+      "afterMs": 91.30000001192093,
+      "deltaPercent": -57.27655591155172,
+      "regression": false,
+      "beforeInterval": [
+        204,
+        219.79999995231628
+      ],
+      "afterInterval": [
+        88.39999997615814,
+        95.19999998807907
+      ],
+      "beforeCalls": 55560,
+      "afterCalls": 21385
+    },
+    {
+      "id": "components.mount.measured-end.cold.200",
+      "inlineMeasureChanged": true,
+      "timingFloorMs": 16.69999999999999,
+      "beforeMs": 44.90000003576279,
+      "afterMs": 43.19999998807907,
+      "deltaPercent": -3.786191639932446,
+      "regression": false,
+      "beforeInterval": [
+        42.80000001192093,
+        51.10000002384186
+      ],
+      "afterInterval": [
+        41.10000002384186,
+        44
+      ],
+      "beforeCalls": 3400,
+      "afterCalls": 1700
+    },
+    {
+      "id": "components.mount.css-end.cold.200",
+      "inlineMeasureChanged": true,
+      "timingFloorMs": 16.69999999999999,
+      "beforeMs": 47.10000002384186,
+      "afterMs": 41.5,
+      "deltaPercent": -11.889596647573587,
+      "regression": false,
+      "beforeInterval": [
+        46.80000001192093,
+        47.5
+      ],
+      "afterInterval": [
+        40.89999997615814,
+        46.5
+      ],
+      "beforeCalls": 0,
+      "afterCalls": 0
+    },
+    {
+      "id": "components.mount.css-start.cold.200",
+      "inlineMeasureChanged": true,
+      "timingFloorMs": 16.69999999999999,
+      "beforeMs": 47.19999998807907,
+      "afterMs": 47.90000003576279,
+      "deltaPercent": 1.483050948857012,
+      "regression": false,
+      "beforeInterval": [
+        46.69999998807907,
+        47.5
+      ],
+      "afterInterval": [
+        47.80000001192093,
+        48
+      ],
+      "beforeCalls": 0,
+      "afterCalls": 0
+    },
+    {
+      "id": "components.mount.middle.cold.50",
+      "inlineMeasureChanged": true,
+      "timingFloorMs": 16.69999999999999,
+      "beforeMs": 63.19999998807907,
+      "afterMs": 48.30000001192093,
+      "deltaPercent": -23.575949333811096,
+      "regression": false,
+      "beforeInterval": [
+        63,
+        65.59999996423721
+      ],
+      "afterInterval": [
+        47.5,
+        48.40000003576279
+      ],
+      "beforeCalls": 13760,
+      "afterCalls": 5329
+    },
+    {
+      "id": "components.mount.highlight-middle.cold.50",
+      "inlineMeasureChanged": true,
+      "timingFloorMs": 16.69999999999999,
+      "beforeMs": 64.39999997615814,
+      "afterMs": 47.700000047683716,
+      "deltaPercent": -25.931676917169288,
+      "regression": false,
+      "beforeInterval": [
+        59.09999996423721,
+        64.59999996423721
+      ],
+      "afterInterval": [
+        44.30000001192093,
+        48.10000002384186
+      ],
+      "beforeCalls": 13760,
+      "afterCalls": 5329
+    },
+    {
+      "id": "components.mount.emoji-middle.cold.50",
+      "inlineMeasureChanged": true,
+      "timingFloorMs": 16.69999999999999,
+      "beforeMs": 42.59999996423721,
+      "afterMs": 47.40000003576279,
+      "deltaPercent": 11.267605811162396,
+      "regression": false,
+      "beforeInterval": [
+        41.69999998807907,
+        45
+      ],
+      "afterInterval": [
+        47.19999998807907,
+        47.60000002384186
+      ],
+      "beforeCalls": 10760,
+      "afterCalls": 5350
+    },
+    {
+      "id": "components.notifications.middle.warm.200",
+      "inlineMeasureChanged": true,
+      "timingFloorMs": 16.69999999999999,
+      "beforeMs": 570.5,
+      "afterMs": 236.10000002384186,
+      "deltaPercent": -58.61524977671484,
+      "regression": false,
+      "beforeInterval": [
+        565.3000000119209,
+        581.3000000119209
+      ],
+      "afterInterval": [
+        234.30000001192093,
+        237.4000000357628
+      ],
+      "beforeCalls": 138900,
+      "afterCalls": 0
+    },
+    {
+      "id": "components.resize.middle.warm.200",
+      "inlineMeasureChanged": true,
+      "timingFloorMs": 16.69999999999999,
+      "beforeMs": 568.5,
+      "afterMs": 234,
+      "deltaPercent": -58.839050131926115,
+      "regression": false,
+      "beforeInterval": [
+        566,
+        585
+      ],
+      "afterInterval": [
+        233.30000001192093,
+        236.5999999642372
+      ],
+      "beforeCalls": 138900,
+      "afterCalls": 7459
+    },
+    {
+      "id": "components.change-text.middle.50",
+      "inlineMeasureChanged": true,
+      "timingFloorMs": 16.69999999999999,
+      "beforeMs": 46.30000001192093,
+      "afterMs": 50,
+      "deltaPercent": 7.991360663340008,
+      "regression": false,
+      "beforeInterval": [
+        33.69999998807907,
+        49
+      ],
+      "afterInterval": [
+        50,
+        50
+      ],
+      "beforeCalls": 7680,
+      "afterCalls": 5169
+    },
+    {
+      "id": "components.change-style.middle.50",
+      "inlineMeasureChanged": true,
+      "timingFloorMs": 16.69999999999999,
+      "beforeMs": 49.60000002384186,
+      "afterMs": 50,
+      "deltaPercent": 0.8064515644473191,
+      "regression": false,
+      "beforeInterval": [
+        34.5,
+        49.90000003576279
+      ],
+      "afterInterval": [
+        49.90000003576279,
+        50.09999996423721
+      ],
+      "beforeCalls": 6880,
+      "afterCalls": 3736
+    }
+  ]
+}

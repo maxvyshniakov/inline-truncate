@@ -1,0 +1,34 @@
+{
+  "variant": "pooled-root",
+  "productionBaseHash": "e917879917ed6dd867e9199f7ad38ca5a060cd758fadaee55f4352e354540f52",
+  "sourceHash": "f73d0ec94dfcbe5f1e9b9a8a220255af14e7ab908a7ebc778e53136df1eefe74",
+  "inlineMeasureSource": "/Users/maxwish/inline-measure",
+  "productionFrozen": true,
+  "correctness": {
+    "chromium": {
+      "pass": true,
+      "browser": "chromium/156.0.8078.4",
+      "sourceHash": "f73d0ec94dfcbe5f1e9b9a8a220255af14e7ab908a7ebc778e53136df1eefe74"
+    },
+    "firefox": {
+      "pass": true,
+      "browser": "firefox/159.0.1",
+      "sourceHash": "f73d0ec94dfcbe5f1e9b9a8a220255af14e7ab908a7ebc778e53136df1eefe74"
+    },
+    "webkit": {
+      "pass": true,
+      "browser": "webkit/27.2",
+      "sourceHash": "f73d0ec94dfcbe5f1e9b9a8a220255af14e7ab908a7ebc778e53136df1eefe74"
+    }
+  },
+  "nativeEquivalence": {
+    "comparisonsPerEngine": 1056,
+    "engines": [
+      "chromium",
+      "firefox",
+      "webkit"
+    ],
+    "differences": 0,
+    "evidence": "artifacts/perf/native-equivalence.json"
+  }
+}
