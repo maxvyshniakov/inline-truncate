@@ -283,7 +283,7 @@ export function TextTruncate({
         const signature = [computed.font, computed.fontFamily, computed.fontSize,
           computed.fontWeight, computed.fontStyle, computed.fontKerning, computed.fontStretch,
           computed.fontVariantCaps, computed.letterSpacing, computed.fontFeatureSettings,
-          computed.fontVariationSettings, computed.fontVariantNumeric, computed.wordSpacing,
+          computed.fontVariationSettings, computed.fontVariantNumeric, computed.fontOpticalSizing, computed.wordSpacing,
           computed.textTransform, computed.direction, String(window.devicePixelRatio)].join("\u001f");
         if (signature !== styleSignature) {
           invalidate();

@@ -4,6 +4,12 @@ Versions and release rules: [docs/VERSIONING.md](docs/VERSIONING.md).
 
 ## Unreleased
 
+### Fixed
+
+- Measured truncation uses a native text probe when optical sizing is disabled,
+  preserves that setting with Inline Measure 0.3.0, and invalidates cached widths
+  when optical sizing changes.
+
 ## 0.2.1 - 2026-11-05
 
 ### Changed

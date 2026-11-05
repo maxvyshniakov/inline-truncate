@@ -137,6 +137,12 @@ async function correctness() {
     await settle();
     if (!componentFits(10)) failures.push(`Inter/${variant}`);
   }
+  for (const mode of ["middle", "end"] as const) for (const width of [160, 220]) {
+    fixture.style.cssText = `width:${width}px;font:32px TruncateHarnessInter;font-optical-sizing:none`;
+    flushSync(() => root.render(<TextTruncate key={`${mode}-${width}`} mode={mode} strategy="measure" text="In progress / approved / final-materials.pdf" />));
+    await settle();
+    if (!componentFits(1)) failures.push(`optical-none/${mode}/${width}`);
+  }
   for (const width of [...Array.from({length:61},(_,i)=>120+i*4),289,315,332]) {
   fixture.style.cssText = `width:${width}px;font:14px/20px TruncateHarnessInter`;
   flushSync(() => root.render(<TextTruncate mode="middle" query="oak" text="oak-collection-🧑🏽‍🎨-spring-lookbook-2026-final-print-oak.pdf" />));

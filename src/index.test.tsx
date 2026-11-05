@@ -467,6 +467,26 @@ describe("TextTruncate deferred updates", () => {
 });
 
 describe("TextTruncate repeated measurement", () => {
+  it("invalidates cached widths when optical sizing changes on a resize update", () => {
+    let notify!: () => void;
+    globalThis.ResizeObserver = class { constructor(callback: () => void) { notify = callback; } observe() {} disconnect() {} } as unknown as typeof ResizeObserver;
+    const frames: FrameRequestCallback[] = [];
+    vi.spyOn(window, "requestAnimationFrame").mockImplementation(callback => { frames.push(callback); return frames.length; });
+    vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockReturnValue(12);
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue({ font: "", measureText: (value: string) => ({ width: value.length }) } as unknown as CanvasRenderingContext2D);
+    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (this: HTMLElement) {
+      return { width: (this.textContent?.length ?? 0) * (this.style.fontOpticalSizing === "none" ? 2 : 1) } as DOMRect;
+    });
+    const { container } = render(<TextTruncate mode="middle" text="abcdefghijkl" />);
+    const element = truncateRoot(container);
+    element.style.fontOpticalSizing = "none";
+    act(() => { frames.shift()!(0); });
+    expect(element.textContent).not.toBe("abcdefghijkl");
+    element.style.fontOpticalSizing = "auto";
+    act(() => { notify(); frames.shift()!(0); });
+    expect(element.textContent).toBe("abcdefghijkl");
+  });
+
   it("reuses text widths on resize and invalidates them when its class changes", () => {
     let notify!: () => void;
     globalThis.ResizeObserver = class { constructor(callback: () => void) {notify=callback;} observe() {} disconnect() {} } as unknown as typeof ResizeObserver;

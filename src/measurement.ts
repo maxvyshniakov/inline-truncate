@@ -28,6 +28,7 @@ export function createMeasurementSession(element: HTMLElement, computed: CSSStyl
   const needsDOM = nonDefault(computed.fontVariantNumeric)
     || nonDefault(computed.fontFeatureSettings)
     || nonDefault(computed.fontVariationSettings)
+    || nonDefault(computed.fontOpticalSizing, "auto")
     || (nonDefault(computed.wordSpacing) && computed.wordSpacing !== "0px")
     || nonDefault(computed.textTransform, "none");
   if (!needsDOM && !emojiText) return {measureText:createCanvasTextMeasurer(computed),dispose:()=>{}};
@@ -40,6 +41,9 @@ export function createMeasurementSession(element: HTMLElement, computed: CSSStyl
       root = createInlineMeasurementRoot(element.ownerDocument);
       probe = createInlineTextMeasurementNode({sourceElement:element,text:value});
       probe.style.wordSpacing = computed.wordSpacing;
+      // Keep this explicit while supporting Inline Measure 0.3.0, whose
+      // detached text-node helper does not yet copy optical sizing.
+      probe.style.fontOpticalSizing = computed.fontOpticalSizing;
       probe.style.direction = computed.direction;
       probe.lang = element.closest("[lang]")?.getAttribute("lang") ?? element.ownerDocument.documentElement.lang;
       root.append(probe); element.ownerDocument.body.append(root);
