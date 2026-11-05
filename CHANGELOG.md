@@ -4,6 +4,8 @@ Versions and release rules: [docs/VERSIONING.md](docs/VERSIONING.md).
 
 ## Unreleased
 
+## 0.2.2 - 2026-11-05
+
 ### Fixed
 
 - Measured truncation uses a native text probe when optical sizing is disabled,
