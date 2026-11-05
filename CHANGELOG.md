@@ -4,6 +4,8 @@ Versions and release rules: [docs/VERSIONING.md](docs/VERSIONING.md).
 
 ## Unreleased
 
+## 0.2.1 - 2026-11-05
+
 ### Changed
 
 - Middle truncation measures visible edges lazily and reuses bounded,
