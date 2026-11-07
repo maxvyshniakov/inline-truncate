@@ -4,6 +4,8 @@ Versions and release rules: [docs/VERSIONING.md](docs/VERSIONING.md).
 
 ## Unreleased
 
+## 0.2.3 - 2026-11-07
+
 ### Added
 
 - Standalone synchronous callback-throughput cases cover repeated same-width
