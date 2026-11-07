@@ -4,6 +4,18 @@ Versions and release rules: [docs/VERSIONING.md](docs/VERSIONING.md).
 
 ## Unreleased
 
+### Added
+
+- Standalone synchronous callback-throughput cases cover repeated same-width
+  ResizeObserver notifications for plain and emoji text, with computed-style
+  counts reported separately from frame-based resize journeys.
+
+### Fixed
+
+- Skip repeated measured truncation for resize notifications with unchanged
+  available width and typography, while preserving live style validation,
+  font/DPR invalidation and recovery after a hidden interval.
+
 ## 0.2.2 - 2026-11-05
 
 ### Fixed

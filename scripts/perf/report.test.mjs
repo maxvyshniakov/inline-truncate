@@ -11,6 +11,14 @@ test("timer resolution and sample uncertainty prevent noise becoming a regressio
   assert.equal(compare(report([10,20,30,40,50]),report([9,19,29,39,49]))[0].regression,false);
   assert.deepEqual(medianInterval([2,2,2]),[2,2]);
 });
+test("synchronous CPU-only notification batches do not depend on frame calibration",()=>{
+  const base={...report([10,10,10]),environment:{cpu:"test",frameIntervalMs:16}};
+  base.scenarios[0].id="notifications.same-width.middle.cpu.200";
+  const next={...base,environment:{cpu:"test",frameIntervalMs:17}};
+  assert.equal(compare(next,base)[0].regression,false);
+  base.scenarios[0].id="components.notifications.middle.warm.200";
+  assert.throws(()=>compare(next,base),/incompatible/);
+});
 test("different package, browser, method or scenario cannot produce a comparison",()=>{
   const base=report([1,2,3]);
   for(const changed of [{...base,package:"other"},{...base,browser:"webkit/1"},{...base,methodHash:"b"},{...base,scenarios:[]}]) assert.throws(()=>compare(changed,base),/incompatible/);

@@ -593,11 +593,55 @@ describe("TextTruncate native verification boundaries", () => {
     stubResizeObserver();
     const frames:FrameRequestCallback[]=[];
     vi.spyOn(window,"requestAnimationFrame").mockImplementation(callback=>{frames.push(callback);return frames.length;});
-    vi.spyOn(HTMLElement.prototype,"clientWidth","get").mockReturnValue(width);
+    const widthRead=vi.spyOn(HTMLElement.prototype,"clientWidth","get").mockReturnValue(width);
     vi.spyOn(HTMLCanvasElement.prototype,"getContext").mockReturnValue({font:"",measureText:(value:string)=>({width:canvas(value)})} as unknown as CanvasRenderingContext2D);
     const reads=vi.spyOn(HTMLElement.prototype,"getBoundingClientRect").mockImplementation(function(this:HTMLElement){return {width:native(this.textContent ?? ""),height:16} as DOMRect;});
-    return {reads,next:()=>act(()=>{frames.shift()!(0);})};
+    return {reads,widthRead,next:()=>act(()=>{frames.shift()!(0);})};
   }
+  it("validates styles once but skips the measurement session for unchanged-width RO", () => {
+    const {next,reads}=scene(12,value=>value.length,value=>value.length);
+    const {container}=render(<TextTruncate mode="middle" text="abc-🪑-long-filename.pdf" />);
+    next();
+    const output=container.textContent;
+    const styles=vi.spyOn(window,"getComputedStyle");
+    const element=container.querySelector("[data-truncate]")!;
+    for(let repeat=0;repeat<3;repeat++) {
+      styles.mockClear();reads.mockClear();
+      deliverResize(element);next();
+      expect(container.textContent).toBe(output);
+      expect(reads).not.toHaveBeenCalled();
+      expect(styles).toHaveBeenCalledTimes(1);
+    }
+  });
+  it("remeasures the same positive width after a hidden interval", () => {
+    const {next,widthRead,reads}=scene(12,value=>value.length,value=>value.length);
+    const text="abc-🪑-long-filename.pdf";
+    const {container}=render(<TextTruncate mode="middle" text={text} />);
+    next();const cut=container.textContent;
+    const element=container.querySelector("[data-truncate]")!;
+    let hidden=true;
+    reads.mockImplementation(function(this:HTMLElement){return {width:hidden && this === element ? 0 : (this.textContent ?? "").length,height:16} as DOMRect;});
+    widthRead.mockReturnValue(0);
+    deliverResize(element);next();expect(container.textContent).toBe(text);
+    widthRead.mockReturnValue(12);
+    hidden=false;
+    deliverResize(element);next();expect(container.textContent).toBe(cut);
+  });
+  it("remeasures unchanged box widths after live typography or padding changes", () => {
+    let scale=1;
+    const {next}=scene(20,value=>value.length*scale,value=>value.length*scale);
+    const text="abcdefghij-file.pdf";
+    const {container}=render(<TextTruncate mode="middle" text={text} />);
+    next();expect(container.textContent).toBe(text);
+    const element=container.querySelector<HTMLElement>("[data-truncate]")!;
+    element.style.fontSize="24px";scale=2;
+    deliverResize(element);next();
+    expect(container.textContent).not.toBe(text);
+    expect(container.textContent!.length*scale).toBeLessThanOrEqual(20);
+    element.style.paddingLeft="10px";
+    deliverResize(element);next();
+    expect(container.textContent!.length*scale).toBeLessThanOrEqual(10);
+  });
   it("uses exact selection when the measured discrepancy exhausts the Canvas budget", () => {
     const {next}=scene(30,value=>value.includes("🪑") ? 0 : value.length*2,value=>value.length*2);
     const {container}=render(<TextTruncate mode="middle" text="abc-🪑-long-file.pdf" />);

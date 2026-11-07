@@ -20,13 +20,16 @@ window.ResizeObserver = class extends NativeResizeObserver {
 let calls = 0;
 let units = 0;
 let domReads = 0;
+let styleReads = 0;
 let reactCommits = 0;
 let profileCommits = false;
 const nativeRect = Element.prototype.getBoundingClientRect;
 const nativeRangeRect = Range.prototype.getBoundingClientRect;
 const clientWidthDescriptor = Object.getOwnPropertyDescriptor(Element.prototype,"clientWidth")!;
 const nativeMeasure = CanvasRenderingContext2D.prototype.measureText;
+const nativeComputedStyle = window.getComputedStyle;
 function instrument(enabled: boolean) {
+  window.getComputedStyle = enabled ? function (...args) { styleReads += 1; return nativeComputedStyle.apply(window,args); } : nativeComputedStyle;
   Range.prototype.getBoundingClientRect = enabled ? function () { domReads += 1; return nativeRangeRect.call(this); } : nativeRangeRect;
   Element.prototype.getBoundingClientRect = enabled ? function () { domReads += 1; return nativeRect.call(this); } : nativeRect;
   Object.defineProperty(Element.prototype,"clientWidth",enabled ? {...clientWidthDescriptor,get(){domReads += 1;return clientWidthDescriptor.get!.call(this);}} : clientWidthDescriptor);
@@ -50,6 +53,7 @@ const cases: Scenario[] = [
   { id:"components.mount.highlight-middle.cold.50",kind:"mount",count:50,mode:"middle",query:"walnut" },
   { id:"components.mount.emoji-middle.cold.50",kind:"mount",count:50,mode:"middle",emoji:true },
   { id:"components.notifications.middle.warm.200",kind:"notifications",count:200,mode:"middle" },
+  ...[false,true].map(emoji=>({id:`notifications.same-width.${emoji ? "emoji-" : ""}middle.cpu.200`,kind:"same-width",count:200,mode:"middle",emoji})),
   { id: "components.resize.middle.warm.200", kind: "resize", count: 200, mode: "middle" },
   { id: "components.change-text.middle.50", kind: "change", count: 50, mode: "middle" },
   { id: "components.change-style.middle.50", kind: "style", count: 50, mode: "middle" },
@@ -70,7 +74,9 @@ function componentFits(expected: number, total = expected) {
   const nodes = [...fixture.querySelectorAll<HTMLElement>('[data-truncate-strategy="measure"]')];
   return nodes.length === expected && nodes.every(el => {
     const range = document.createRange(); range.selectNodeContents(el);
-    return range.getBoundingClientRect().width <= el.clientWidth + 0.5;
+    const style=getComputedStyle(el);
+    const contentWidth=el.clientWidth-(parseFloat(style.paddingLeft)||0)-(parseFloat(style.paddingRight)||0);
+    return range.getBoundingClientRect().width <= contentWidth + 0.5;
   });
 }
 function domFits(value: string, maxWidth: number, font?: string) {
@@ -87,7 +93,7 @@ async function sample(scenario: typeof cases[number], countWork = false) {
   if (scenario.kind !== "algorithm" && scenario.kind !== "mount") { render(scenario.count, scenario.mode,0,"",scenario.query,scenario.emoji); await settle(); }
   const outputs: string[] = [];
   let intermediateCorrect = true;
-  calls = 0; units = 0; domReads = 0; reactCommits = 0; instrument(countWork);
+  calls = 0; units = 0; domReads = 0; styleReads = 0; reactCommits = 0; instrument(countWork);
   const start = performance.now();
   if (scenario.kind === "algorithm") {
     const measure = createCanvasTextMeasurer(getComputedStyle(fixture));
@@ -96,6 +102,20 @@ async function sample(scenario: typeof cases[number], countWork = false) {
     }
   } else if (scenario.kind === "mount") {
     render(scenario.count, scenario.mode,0,"",scenario.query,scenario.emoji); await settle();
+  } else if (scenario.kind === "same-width") {
+    // CPU throughput, not frame latency: deliver the existing RO callbacks and
+    // synchronously drain their actual RAF work against live native geometry.
+    const raf=window.requestAnimationFrame, cancel=window.cancelAnimationFrame;
+    const pending=new Map<number,FrameRequestCallback>();let nextId=0;
+    window.requestAnimationFrame=callback=>{pending.set(++nextId,callback);return nextId;};
+    window.cancelAnimationFrame=id=>{pending.delete(id);};
+    try {
+      for(let repeat=0;repeat<20;repeat++) {
+        for(const notify of resizeNotifications)notify();
+        const callbacks=[...pending.values()];pending.clear();
+        for(const callback of callbacks)callback(performance.now());
+      }
+    } finally {window.requestAnimationFrame=raf;window.cancelAnimationFrame=cancel;}
   } else if (scenario.kind === "notifications") {
     for (let repeat=0;repeat<5;repeat++) {
       for (const notify of resizeNotifications) notify();
@@ -111,7 +131,7 @@ async function sample(scenario: typeof cases[number], countWork = false) {
     render(scenario.count, scenario.mode, scenario.kind === "change" ? 1 : 0, scenario.kind === "style" ? "large" : ""); await settle();
   }
   const ms = performance.now() - start;
-  const counters = {calls, units,domReads,reactCommits}; instrument(false); profileCommits = false;
+  const counters = {calls, units,domReads,styleReads,reactCommits}; instrument(false); profileCommits = false;
   const correct = scenario.kind === "algorithm"
     ? outputs.length === scenario.count && outputs.every(value => domFits(value,180))
     : intermediateCorrect && componentFits(scenario.mode.startsWith("css") ? 0 : scenario.count,scenario.count);
@@ -167,6 +187,21 @@ async function correctness() {
   await document.fonts.load('20px "TruncateHarnessLate"',text(0));
   await document.fonts.ready; await settle();
   if (!componentFits(10)) failures.push("late-font-load");
+  fixture.style.cssText="width:240px;font:14px TruncateHarnessInter";
+  render(1,"middle",0,"","",true);await settle();
+  const stable=fixture.textContent;
+  for(const notify of resizeNotifications)notify();await settle();
+  if(fixture.textContent !== stable)failures.push("same-width-output");
+  fixture.style.width="0px";await settle();
+  fixture.style.width="240px";await settle();
+  if(fixture.textContent !== stable || !componentFits(1))failures.push("hidden-restore");
+  fixture.style.fontSize="24px";
+  for(const notify of resizeNotifications)notify();await settle();
+  if(!componentFits(1))failures.push("same-width-live-font-style");
+  const padded=fixture.querySelector<HTMLElement>("[data-truncate]")!;
+  padded.style.boxSizing="border-box";padded.style.paddingLeft="40px";
+  for(const notify of resizeNotifications)notify();await settle();
+  if(!componentFits(1))failures.push("same-width-padding");
   return {pass: !failures.length, failures};
 }
 const benchmarkFont = new FontFace("TruncateHarnessInter",'url("/scripts/perf/fonts/InterVariable.woff2")');

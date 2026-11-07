@@ -48,6 +48,13 @@ style changes must cause a resize, font-load event, or a component class/text
 change to trigger a new measurement; arbitrary ancestor style mutations are
 not observed.
 
+Repeated resize notifications skip selection and measurement-session setup when
+the available content width and live typography signature match the last
+completed calculation. Width and computed style are still read to detect
+inherited changes. Font/DPR invalidation and component input changes force a
+fresh calculation; a zero-width interval clears completion so showing the
+element at its previous width truncates again.
+
 For `truncateText`, a nonpositive width returns the original text (useful before
 layout). If the width is smaller than `...`, the marker is still returned and
 may be clipped by the component. The marker remains three ASCII periods.

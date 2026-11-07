@@ -16,16 +16,22 @@ export function environment() {
   return { host:os.hostname(), osRelease:os.release(), platform:os.platform(), arch:os.arch(), cpu:os.cpus()[0]?.model, viewport:{width:1280,height:800},dpr:1 };
 }
 export function compare(current, baseline, {allowInlineMeasureChange = false} = {}) {
+  const cpuOnly=[current,baseline].every(report=>report.scenarios.length > 0 && report.scenarios.every(s=>/^notifications\.same-width\..*\.cpu\.\d+$/.test(s.id)));
+  // These batches drain callbacks synchronously and never wait for a frame.
+  // Preserve raw calibration; it remains part of every frame-based comparison.
+  const comparableEnvironment=report=>cpuOnly
+    ? Object.fromEntries(Object.entries(report.environment).filter(([key])=>key !== "frameIntervalMs"))
+    : report.environment;
   const inlineMeasureChanged = current.inlineMeasure?.version !== baseline.inlineMeasure?.version
     || current.inlineMeasure?.sourceHash !== baseline.inlineMeasure?.sourceHash;
   if (inlineMeasureChanged && !allowInlineMeasureChange) throw new Error("Inline Measure changed; use --allow-inline-measure-change for an explicitly combined experiment");
-  if (JSON.stringify(current.environment) !== JSON.stringify(baseline.environment) || current.browser !== baseline.browser || current.schemaVersion !== baseline.schemaVersion || current.package !== baseline.package || current.methodHash !== baseline.methodHash || current.workload !== baseline.workload || current.scenarios.map(s => s.id).join() !== baseline.scenarios.map(s=>s.id).join()) throw new Error("Baseline has incompatible browser, workload or environment");
+  if (JSON.stringify(comparableEnvironment(current)) !== JSON.stringify(comparableEnvironment(baseline)) || current.browser !== baseline.browser || current.schemaVersion !== baseline.schemaVersion || current.package !== baseline.package || current.methodHash !== baseline.methodHash || current.workload !== baseline.workload || current.scenarios.map(s => s.id).join() !== baseline.scenarios.map(s=>s.id).join()) throw new Error("Baseline has incompatible browser, workload or environment");
   return current.scenarios.map((scenario, index) => {
     const old = baseline.scenarios[index];
     const before = medianInterval(old.samplesMs), after = medianInterval(scenario.samplesMs);
     const timingFloorMs = Math.max(current.timerResolutionMs,baseline.timerResolutionMs,
       scenario.id.startsWith("components.") ? Math.max(current.frameDurationMs ?? 0,baseline.frameDurationMs ?? 0) : 0);
-    return { id:scenario.id, inlineMeasureChanged,timingFloorMs, beforeMs:old.medianMs, afterMs:scenario.medianMs, deltaPercent:100*(scenario.medianMs/old.medianMs-1), regression:after[0] > before[1] + timingFloorMs, beforeInterval:before, afterInterval:after, beforeCalls:old.counters.measureText, afterCalls:scenario.counters.measureText };
+    return { id:scenario.id, inlineMeasureChanged,timingKind:cpuOnly ? "synchronous-cpu" : "wall-time",timingFloorMs, beforeMs:old.medianMs, afterMs:scenario.medianMs, deltaPercent:100*(scenario.medianMs/old.medianMs-1), regression:after[0] > before[1] + timingFloorMs, beforeInterval:before, afterInterval:after, beforeCalls:old.counters.measureText, afterCalls:scenario.counters.measureText };
   });
 }
 export function markdown(report) {
@@ -38,5 +44,5 @@ export function markdown(report) {
 
 export function summarizeScenario(id,samples,counterSample) {
   const samplesMs=samples.map(sample=>sample.ms);
-  return {id,samplesMs,medianMs:percentile(samplesMs,.5),p95Ms:percentile(samplesMs,.95),counters:{measureText:counterSample.calls,measuredCodeUnits:counterSample.units,domReads:counterSample.domReads,reactCommits:counterSample.reactCommits},correctness:samples.every(sample=>sample.correct) && counterSample.correct};
+  return {id,samplesMs,medianMs:percentile(samplesMs,.5),p95Ms:percentile(samplesMs,.95),counters:{measureText:counterSample.calls,measuredCodeUnits:counterSample.units,domReads:counterSample.domReads,computedStyle:counterSample.styleReads ?? 0,reactCommits:counterSample.reactCommits},correctness:samples.every(sample=>sample.correct) && counterSample.correct};
 }

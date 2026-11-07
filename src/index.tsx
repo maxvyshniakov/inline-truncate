@@ -257,11 +257,13 @@ export function TextTruncate({
     let active = true;
     let graphemes: string[] | undefined;
     let styleSignature = "";
+    let completedWidth: number | undefined;
     const widths = new Map<string, number>();
     const verifiedWidths = new Map<string,number>();
     let cachedUnits = 0;
     let verifiedUnits = 0;
     const invalidate = () => {
+      completedWidth = undefined;
       styleSignature = ""; widths.clear(); cachedUnits = 0;
       verifiedWidths.clear(); verifiedUnits = 0;
     };
@@ -272,23 +274,30 @@ export function TextTruncate({
       rafId = window.requestAnimationFrame(() => {
         let width = element.clientWidth || element.getBoundingClientRect().width;
         if (width <= 0) {
+          completedWidth = undefined;
           setTruncatedText(text);
           return;
         }
 
         const computed = window.getComputedStyle(element);
         width -= (Number.parseFloat(computed.paddingLeft) || 0) + (Number.parseFloat(computed.paddingRight) || 0);
-        if (width <= 0) {setTruncatedText(text);return;}
-        const session = createMeasurementSession(element,computed,query);
+        if (width <= 0) {completedWidth = undefined;setTruncatedText(text);return;}
         const signature = [computed.font, computed.fontFamily, computed.fontSize,
           computed.fontWeight, computed.fontStyle, computed.fontKerning, computed.fontStretch,
           computed.fontVariantCaps, computed.letterSpacing, computed.fontFeatureSettings,
           computed.fontVariationSettings, computed.fontVariantNumeric, computed.fontOpticalSizing, computed.wordSpacing,
-          computed.textTransform, computed.direction, String(window.devicePixelRatio)].join("\u001f");
+          computed.textTransform, computed.direction,
+          element.closest("[lang]")?.getAttribute("lang") ?? element.ownerDocument.documentElement.lang,
+          String(window.devicePixelRatio)].join("\u001f");
         if (signature !== styleSignature) {
           invalidate();
           styleSignature = signature;
         }
+        // RO may report only height changes, including our own cut. Validate
+        // live typography first; font/DPR events invalidate completion too.
+        if (completedWidth === width) return;
+        const session = createMeasurementSession(element,computed,query);
+        const commit = (value: string) => {completedWidth = width;setTruncatedText(value);};
         const measureText = (value: string) => {
           const cached = widths.get(value);
           if (cached !== undefined) return cached;
@@ -305,7 +314,7 @@ export function TextTruncate({
           if (!session.verifyText) {
             const next=truncatePrepared({text,maxWidth:width,mode,measureText},
               () => graphemes ??= splitTextGraphemes(text));
-            setTruncatedText(next.text);
+            commit(next.text);
             return;
           }
           const select = (budget:number,measure=measureText) => truncatePrepared({text,maxWidth:budget,mode,measureText:measure},
@@ -339,7 +348,7 @@ export function TextTruncate({
             }
             next=select(budget);
           }
-          setTruncatedText(next.text);
+          commit(next.text);
         } finally { session.dispose(); }
       });
     };

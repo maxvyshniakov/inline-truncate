@@ -1,6 +1,7 @@
 # Text Truncate measurements
 
 [Recorded results and accuracy cost, 2026-11-05](2026-11-05-results.md).
+[Same-width RO repair and matched results, 2026-11-07](2026-11-07-same-width-ro.md).
 
 This harness imports Text Truncate and Inline Measure directly into a small Vite
 page. It does not import Data Grid, its fixtures, or Storybook. The checked-in
@@ -77,6 +78,34 @@ snapshot, including helpers and their relative imports, without modifying the ch
 the identical current browser harness measures that source. This supports a fair
 baseline after the harness itself is enhanced. Vite watching/HMR is disabled
 while captures run so fixture edits cannot reload an in-progress page.
+
+## Same-width notification throughput
+
+Workload v3 adds `notifications.same-width.middle.cpu.200` and its emoji variant.
+Each retains 200 measured components with warm caches, delivers their existing
+RO callbacks 20 times, and synchronously drains the real scheduled RAF work
+against native DOM geometry. This measures wall time spent executing that
+batch, including width/style reads, rather than frame latency. It excludes
+frame settlement, scheduling and paint. It does not establish how frequently
+an application sends redundant notifications or predict Data Grid frame gains.
+The existing frame-based notification and changing-width journeys remain.
+
+Counter replays separately record computed-style reads, native geometry reads,
+Canvas work and React commits. A fully cached baseline can still repeat the
+selection algorithm and session setup without a single new Canvas measurement.
+The same-width guard retains width/style validation and skips the remaining
+work; it is not a cross-component read/write scheduler or RO-delivery filter.
+
+CPU-only report comparisons retain raw frame calibration but exclude its
+rounded interval from environment compatibility, since these two workloads
+never wait for a frame. All other environment/method/dependency checks and
+bootstrap criteria remain. Frame-based and mixed comparisons still require
+matching frame calibration and retain their one-frame noise floor. Reports
+captured before v3 are incompatible with the new method.
+
+The native oracle also covers same-width notifications, zero-width recovery,
+live font-size and border-box padding changes. Measured content is checked
+against available content width after horizontal padding.
 
 ## Commands
 
