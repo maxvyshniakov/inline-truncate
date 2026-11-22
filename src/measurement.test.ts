@@ -22,3 +22,24 @@ it("measures disabled optical sizing with a native probe that preserves it", () 
     source.remove();
   }
 });
+
+it("avoids an extra getComputedStyle read when creating an emoji session", () => {
+  const source = document.createElement("span");
+  source.dataset.truncateOriginal = "abc-🪑-file.pdf";
+  document.body.append(source);
+  const computed = getComputedStyle(source);
+  const styleSpy = vi.spyOn(window, "getComputedStyle");
+  vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue({
+    font: "",
+    measureText: (text: string) => ({ width: text.length }),
+  } as unknown as CanvasRenderingContext2D);
+  const session = createMeasurementSession(source, computed);
+  try {
+    expect(styleSpy).not.toHaveBeenCalled();
+    expect(session.measureText("abc")).toBe(3);
+    expect(styleSpy).not.toHaveBeenCalled();
+  } finally {
+    session.dispose();
+    source.remove();
+  }
+});

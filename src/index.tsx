@@ -1,8 +1,14 @@
 "use client";
 
 import React from "react";
-import { createMeasurementSession, hasEmoji } from "./measurement.js";
-import {highlightedTextParts,HIGHLIGHT_CLASS_NAME} from "./highlight.js";
+import {
+  createCanvasMeasurerFromStyle,
+  createMeasurementSession,
+  hasEmoji,
+  needsDomMeasurement,
+  type StyleSnapshot,
+} from "./measurement.js";
+import { highlightedTextParts, HIGHLIGHT_CLASS_NAME } from "./highlight.js";
 import { cn } from "cn";
 
 export type TextTruncateMode = "middle" | "end";
@@ -12,15 +18,80 @@ export type TextTruncateEllipsis = "end" | "start";
 const TRUNCATION_MARKER = "...";
 const MAX_CACHED_WIDTHS = 256;
 const MAX_CACHED_CODE_UNITS = 32_768;
+const MAX_CLASSNAME_CACHE = 64;
 
+const BASE_CSS_END_CLASS = "block w-full min-w-0 truncate";
+const BASE_CSS_START_CLASS = "block w-full min-w-0 truncate [direction:rtl]";
+const BASE_MEASURE_CLASS = "block w-full min-w-0 overflow-hidden whitespace-nowrap";
+
+// In 7-bit ASCII (0x00..0x7F), only CRLF (\r\n) forms a multi-code-unit
+// grapheme cluster under UAX #29; all other ASCII characters are 1:1 graphemes.
+const NON_ASCII_OR_CR = /[\r\u0080-\uffff]/;
+
+let cachedSegmenterCtor: typeof Intl.Segmenter | undefined;
+let cachedSegmenter: Intl.Segmenter | undefined;
+
+function getGraphemeSegmenter(): Intl.Segmenter | null {
+  if (typeof Intl === "undefined" || typeof Intl.Segmenter !== "function") return null;
+  if (cachedSegmenterCtor !== Intl.Segmenter || !cachedSegmenter) {
+    cachedSegmenterCtor = Intl.Segmenter;
+    cachedSegmenter = new Intl.Segmenter(undefined, { granularity: "grapheme" });
+  }
+  return cachedSegmenter;
+}
 
 export function splitTextGraphemes(text: string): string[] {
-  if (typeof Intl !== "undefined" && "Segmenter" in Intl) {
-    const segmenter = new Intl.Segmenter(undefined, { granularity: "grapheme" });
-    return Array.from(segmenter.segment(text), (segment) => segment.segment);
+  if (!text) return [];
+  if (!NON_ASCII_OR_CR.test(text)) return text.split("");
+  const segmenter = getGraphemeSegmenter();
+  if (segmenter) {
+    const result: string[] = [];
+    for (const segment of segmenter.segment(text)) {
+      result.push(segment.segment);
+    }
+    return result;
   }
-
   return Array.from(text);
+}
+
+interface IndexedText {
+  readonly length: number;
+  readonly offsets: number[] | null;
+  readonly text: string;
+}
+
+function indexTextGraphemes(text: string): IndexedText {
+  if (!NON_ASCII_OR_CR.test(text)) {
+    return { text, length: text.length, offsets: null };
+  }
+  const offsets: number[] = [];
+  const segmenter = getGraphemeSegmenter();
+  if (segmenter) {
+    for (const segment of segmenter.segment(text)) {
+      offsets.push(segment.index);
+    }
+  } else {
+    let i = 0;
+    while (i < text.length) {
+      offsets.push(i);
+      const code = text.codePointAt(i)!;
+      i += code > 0xffff ? 2 : 1;
+    }
+  }
+  offsets.push(text.length);
+  return { text, length: offsets.length - 1, offsets };
+}
+
+function slicePrefix(indexed: IndexedText, count: number): string {
+  if (count <= 0) return "";
+  if (count >= indexed.length) return indexed.text;
+  return indexed.text.slice(0, indexed.offsets ? indexed.offsets[count] : count);
+}
+
+function sliceSuffix(indexed: IndexedText, count: number): string {
+  if (count <= 0) return "";
+  if (count >= indexed.length) return indexed.text;
+  return indexed.text.slice(indexed.offsets ? indexed.offsets[indexed.length - count] : indexed.length - count);
 }
 
 type TruncateInput = {
@@ -30,29 +101,38 @@ type TruncateInput = {
   text: string;
 };
 
-export function truncateText(input: TruncateInput): {text:string;truncated:boolean} {
-  return truncatePrepared(input, () => splitTextGraphemes(input.text));
-}
-
-function truncatePrepared({
-  maxWidth,
-  measureText: measureInput,
-  mode,
-  text,
-}: TruncateInput, getGraphemes: () => string[]): { text: string; truncated: boolean } {
+export function truncateText(input: TruncateInput): { text: string; truncated: boolean } {
   const widths = new Map<string, number>();
   let cachedUnits = 0;
   const measureText = (value: string) => {
     const cached = widths.get(value);
     if (cached !== undefined) return cached;
-    const width = measureInput(value);
+    const width = input.measureText(value);
     if (widths.size >= MAX_CACHED_WIDTHS || cachedUnits + value.length > MAX_CACHED_CODE_UNITS) {
-      widths.clear(); cachedUnits = 0;
+      widths.clear();
+      cachedUnits = 0;
     }
-    if (value.length <= MAX_CACHED_CODE_UNITS) { widths.set(value, width); cachedUnits += value.length; }
+    if (value.length <= MAX_CACHED_CODE_UNITS) {
+      widths.set(value, width);
+      cachedUnits += value.length;
+    }
     return width;
   };
-  if (!text || maxWidth <= 0 || measureText(text) <= maxWidth) {
+  return truncatePrepared(
+    { maxWidth: input.maxWidth, measureText, mode: input.mode, text: input.text },
+    () => indexTextGraphemes(input.text),
+  );
+}
+
+function truncatePrepared(
+  { maxWidth, measureText, mode, text }: TruncateInput,
+  getIndexed: () => IndexedText,
+): { text: string; truncated: boolean } {
+  if (!text || maxWidth <= 0) {
+    return { text, truncated: false };
+  }
+  const fullWidth = measureText(text);
+  if (fullWidth <= maxWidth) {
     return { text, truncated: false };
   }
 
@@ -61,47 +141,170 @@ function truncatePrepared({
     return { text: TRUNCATION_MARKER, truncated: true };
   }
 
-  const graphemes = getGraphemes();
+  const indexed = getIndexed();
   if (mode === "end") {
-    const prefix = takePrefixThatFits({
-      graphemes,
+    const prefixCount = takePrefixThatFits({
+      fullWidth,
+      indexed,
+      markerWidth,
       maxWidth,
       measureText,
     });
     return {
-      text: `${prefix}${TRUNCATION_MARKER}`,
+      text: `${slicePrefix(indexed, prefixCount)}${TRUNCATION_MARKER}`,
       truncated: true,
     };
   }
 
   return measuredMiddleTruncate({
-    graphemes,
+    fullWidth,
+    indexed,
+    markerWidth,
     maxWidth,
     measureText,
   });
 }
 
+// Finds the largest count in [0, maxCount] where measureCount(count) <= targetBudget.
+// Uses an interpolated initial probe + one secant refinement + galloping bracket
+// before binary search, converging in 2-3 calls for typical fonts while remaining
+// O(log k) and never probing long prefixes on narrow containers.
+function findMaxFittingCount(
+  maxCount: number,
+  targetBudget: number,
+  initialGuess: number,
+  baseOffset: number,
+  measureCount: (count: number) => number,
+): number {
+  if (maxCount <= 0 || targetBudget <= baseOffset) return 0;
+
+  let low = 0;
+  let high = maxCount;
+  const probe = Math.max(1, Math.min(maxCount, initialGuess));
+  const width = measureCount(probe);
+
+  if (width <= targetBudget) {
+    low = probe;
+    if (low === high) return low;
+
+    const delta = width - baseOffset;
+    if (delta > 0) {
+      const scaled = Math.floor(probe * ((targetBudget - baseOffset) / delta));
+      if (scaled > low + 1 && scaled <= high) {
+        if (measureCount(scaled) <= targetBudget) {
+          low = scaled;
+          if (low === high) return low;
+        } else {
+          high = scaled - 1;
+        }
+      }
+    }
+
+    let step = 1;
+    while (low < high) {
+      const next = Math.min(high, low + step);
+      if (measureCount(next) <= targetBudget) {
+        low = next;
+        step *= 2;
+      } else {
+        high = next - 1;
+        break;
+      }
+    }
+  } else {
+    high = probe - 1;
+    if (high <= 0) return 0;
+
+    const delta = width - baseOffset;
+    const scaled = delta > 0
+      ? Math.max(1, Math.min(high, Math.floor(probe * ((targetBudget - baseOffset) / delta))))
+      : Math.max(1, high >>> 1);
+    if (measureCount(scaled) <= targetBudget) {
+      low = scaled;
+      let step = 1;
+      while (low < high) {
+        const next = Math.min(high, low + step);
+        if (measureCount(next) <= targetBudget) {
+          low = next;
+          step *= 2;
+        } else {
+          high = next - 1;
+          break;
+        }
+      }
+    } else {
+      high = scaled - 1;
+      let step = 1;
+      while (high > low && step < high) {
+        const next = Math.max(1, high - step + 1);
+        if (next <= low) break;
+        if (measureCount(next) <= targetBudget) {
+          low = next;
+          break;
+        }
+        high = next - 1;
+        step *= 2;
+      }
+    }
+  }
+
+  while (low < high) {
+    const mid = (low + high + 1) >>> 1;
+    if (measureCount(mid) <= targetBudget) {
+      low = mid;
+    } else {
+      high = mid - 1;
+    }
+  }
+
+  return low;
+}
+
 function measuredMiddleTruncate({
-  graphemes,
+  fullWidth,
+  indexed,
+  markerWidth,
   maxWidth,
   measureText,
 }: {
-  graphemes: string[];
+  fullWidth: number;
+  indexed: IndexedText;
+  markerWidth: number;
   maxWidth: number;
   measureText: (value: string) => number;
 }) {
-  let prefixCount = 0;
-  let suffixCount = 0;
-  const prefixWidths = createEdgeWidths(graphemes, measureText, false);
-  const suffixWidths = createEdgeWidths(graphemes, measureText, true);
+  const maxEdge = indexed.length - 1;
+  if (maxEdge <= 0) {
+    return { text: TRUNCATION_MARKER, truncated: true };
+  }
 
-  const hasHiddenGrapheme = (nextPrefixCount: number, nextSuffixCount: number) =>
-    nextPrefixCount + nextSuffixCount < graphemes.length;
+  const prefixWidths = createEdgeWidths(indexed, measureText, false);
+  const suffixWidths = createEdgeWidths(indexed, measureText, true);
+
+  const halfBudget = (maxWidth - markerWidth) / 2;
+  const initialGuess = fullWidth > 0 ? Math.floor((halfBudget / fullWidth) * indexed.length) : 1;
+
+  let prefixCount = findMaxFittingCount(maxEdge, halfBudget, initialGuess, 0, prefixWidths);
+  let suffixCount = findMaxFittingCount(maxEdge, halfBudget, initialGuess, 0, suffixWidths);
 
   const fits = (nextPrefixCount: number, nextSuffixCount: number) =>
-    hasHiddenGrapheme(nextPrefixCount, nextSuffixCount) &&
-    measureText(graphemes.slice(0, nextPrefixCount).join("") + TRUNCATION_MARKER
-      + (nextSuffixCount ? graphemes.slice(graphemes.length - nextSuffixCount).join("") : "")) <= maxWidth;
+    nextPrefixCount + nextSuffixCount < indexed.length
+    && measureText(
+      slicePrefix(indexed, nextPrefixCount)
+        + TRUNCATION_MARKER
+        + sliceSuffix(indexed, nextSuffixCount),
+    ) <= maxWidth;
+
+  // Shrink if combined edges + marker exceed maxWidth (e.g. shaping/kerning at
+  // the marker boundary) or leave no hidden grapheme. On ties, shrink prefix so
+  // suffix keeps the extra grapheme just like the balanced growth tie-breaker.
+  while (!fits(prefixCount, suffixCount) && (prefixCount > 0 || suffixCount > 0)) {
+    if (prefixCount > 0 && (suffixCount === 0 || prefixWidths(prefixCount) >= suffixWidths(suffixCount))) {
+      prefixCount -= 1;
+    } else {
+      suffixCount -= 1;
+    }
+  }
 
   while (true) {
     const canGrowPrefix = fits(prefixCount + 1, suffixCount);
@@ -133,9 +336,7 @@ function measuredMiddleTruncate({
   }
 
   return {
-    text: `${graphemes.slice(0, prefixCount).join("")}${TRUNCATION_MARKER}${graphemes
-      .slice(graphemes.length - suffixCount)
-      .join("")}`,
+    text: `${slicePrefix(indexed, prefixCount)}${TRUNCATION_MARKER}${sliceSuffix(indexed, suffixCount)}`,
     truncated: true,
   };
 }
@@ -143,7 +344,7 @@ function measuredMiddleTruncate({
 // Only the visible edges need measuring. Eagerly preparing every prefix and
 // suffix makes a narrow filename cost quadratic text work in its full length.
 function createEdgeWidths(
-  graphemes: string[],
+  indexed: IndexedText,
   measureText: (value: string) => number,
   fromEnd: boolean,
 ) {
@@ -151,9 +352,7 @@ function createEdgeWidths(
   return (count: number) => {
     const cached = widths.get(count);
     if (cached !== undefined) return cached;
-    const value = fromEnd
-      ? graphemes.slice(graphemes.length - count).join("")
-      : graphemes.slice(0, count).join("");
+    const value = fromEnd ? sliceSuffix(indexed, count) : slicePrefix(indexed, count);
     const width = measureText(value);
     widths.set(count, width);
     return width;
@@ -161,25 +360,26 @@ function createEdgeWidths(
 }
 
 function takePrefixThatFits({
-  graphemes,
+  fullWidth,
+  indexed,
+  markerWidth,
   maxWidth,
   measureText,
 }: {
-  graphemes: string[];
+  fullWidth: number;
+  indexed: IndexedText;
+  markerWidth: number;
   maxWidth: number;
   measureText: (value: string) => number;
 }) {
-  let low = 0;
-  let high = graphemes.length;
-  while (low < high) {
-    const mid = Math.ceil((low + high) / 2);
-    if (measureText(graphemes.slice(0, mid).join("") + TRUNCATION_MARKER) <= maxWidth) {
-      low = mid;
-    } else {
-      high = mid - 1;
-    }
-  }
-  return graphemes.slice(0, low).join("");
+  const initialGuess = fullWidth > 0 ? Math.floor(((maxWidth - markerWidth) / fullWidth) * indexed.length) : 1;
+  return findMaxFittingCount(
+    indexed.length,
+    maxWidth,
+    initialGuess,
+    markerWidth,
+    (count) => measureText(slicePrefix(indexed, count) + TRUNCATION_MARKER),
+  );
 }
 
 function resolveTextTruncateStrategy({
@@ -193,6 +393,17 @@ function resolveTextTruncateStrategy({
   return mode === "middle" ? "measure" : "css";
 }
 
+const rootClassCache = new Map<string, string>();
+function mergeRootClassName(baseClass: string, className: string): string {
+  const key = `${baseClass}\0${className}`;
+  const cached = rootClassCache.get(key);
+  if (cached !== undefined) return cached;
+  const merged = cn(baseClass, className);
+  if (rootClassCache.size >= MAX_CLASSNAME_CACHE) rootClassCache.clear();
+  rootClassCache.set(key, merged);
+  return merged;
+}
+
 export function HighlightedMatchText({
   query,
   text,
@@ -200,42 +411,496 @@ export function HighlightedMatchText({
   query?: string;
   text: string;
 }) {
-  const parts = highlightedTextParts(text,query);
+  const parts = highlightedTextParts(text, query);
   if (parts.length === 1 && !parts[0].matched) return text;
-  return <>{parts.map(part => part.matched
-    ? <span key={part.start} data-slot="highlighted-match" className={HIGHLIGHT_CLASS_NAME}>{part.text}</span>
-    : part.text)}</>;
-
+  return (
+    <>
+      {parts.map((part) =>
+        part.matched ? (
+          <span key={part.start} data-slot="highlighted-match" className={HIGHLIGHT_CLASS_NAME}>
+            {part.text}
+          </span>
+        ) : (
+          part.text
+        ),
+      )}
+    </>
+  );
 }
 
-// Reading `document.fonts.ready` is surprisingly expensive — it can flush font
-// and layout work — and `TextTruncate` mounts once per virtualized row, so a
-// fast scroll hits this getter hundreds of times. Once the document's fonts are
-// loaded there is nothing left to wait for, so skip the access entirely; while
-// they are still loading, share a single promise across every instance.
-let pendingFontsReady: Promise<unknown> | null | undefined;
-function getPendingFontsReady(): Promise<unknown> | null {
-  if (typeof document === "undefined" || !document.fonts) return null;
-  if (document.fonts.status === "loaded") return null;
-  if (pendingFontsReady === undefined) {
-    pendingFontsReady = document.fonts.ready;
-    // Reset after this load cycle so a later font load can be awaited again.
-    void pendingFontsReady.then(() => {
-      pendingFontsReady = undefined;
+// --- Shared document.fonts listener hub ---
+// Reading `document.fonts.ready` is expensive and attaching per-instance event
+// listeners across hundreds of virtualized rows creates unnecessary churn.
+// Share one listener pair per FontFaceSet and one pending `ready` promise.
+let boundFontSet: FontFaceSet | undefined;
+let pendingFontsPromise: Promise<unknown> | null | undefined;
+const fontSubscribers = new Set<() => void>();
+
+function notifyFontSubscribers() {
+  for (const subscriber of fontSubscribers) subscriber();
+}
+
+function watchPendingFontsReady() {
+  if (typeof document === "undefined" || !document.fonts) return;
+  if (document.fonts.status === "loaded") return;
+  if (pendingFontsPromise === undefined) {
+    const currentFonts = document.fonts;
+    const ready = currentFonts.ready;
+    pendingFontsPromise = ready;
+    void ready.then(() => {
+      if (pendingFontsPromise === ready) pendingFontsPromise = undefined;
+      if (boundFontSet === currentFonts) notifyFontSubscribers();
     });
   }
-  return pendingFontsReady ?? null;
 }
 
-export function TextTruncate({
-  className,
-  ellipsis = "end",
-  measureExtra,
-  mode,
-  query,
-  strategy = "auto",
-  text,
-}: {
+function subscribeFonts(onFontsChanged: () => void): () => void {
+  const fonts = typeof document === "undefined" ? undefined : document.fonts;
+  if (!fonts) return () => {};
+  if (boundFontSet !== fonts) {
+    boundFontSet?.removeEventListener?.("loading", watchPendingFontsReady);
+    boundFontSet?.removeEventListener?.("loadingdone", notifyFontSubscribers);
+    pendingFontsPromise = undefined;
+    boundFontSet = fonts;
+    boundFontSet.addEventListener?.("loading", watchPendingFontsReady);
+    boundFontSet.addEventListener?.("loadingdone", notifyFontSubscribers);
+  }
+  fontSubscribers.add(onFontsChanged);
+  watchPendingFontsReady();
+  return () => {
+    fontSubscribers.delete(onFontsChanged);
+    if (fontSubscribers.size === 0 && boundFontSet) {
+      boundFontSet.removeEventListener?.("loading", watchPendingFontsReady);
+      boundFontSet.removeEventListener?.("loadingdone", notifyFontSubscribers);
+      boundFontSet = undefined;
+      pendingFontsPromise = undefined;
+    }
+  };
+}
+
+// --- Shared ResizeObserver hub ---
+let sharedRoCtor: typeof ResizeObserver | undefined;
+let sharedRo: ResizeObserver | null = null;
+const observedElements = new Map<Element, () => void>();
+
+function observeResize(element: Element, onResize: () => void): () => void {
+  const Ctor = typeof ResizeObserver === "undefined" ? undefined : ResizeObserver;
+  if (!Ctor) return () => {};
+  if (sharedRoCtor !== Ctor || !sharedRo) {
+    sharedRo?.disconnect();
+    sharedRoCtor = Ctor;
+    sharedRo = new Ctor((entries) => {
+      if (!entries || entries.length === 0) {
+        for (const cb of observedElements.values()) cb();
+        return;
+      }
+      for (let i = 0; i < entries.length; i++) {
+        const cb = observedElements.get(entries[i].target);
+        if (cb) cb();
+      }
+    });
+    for (const el of observedElements.keys()) sharedRo.observe(el);
+  }
+  observedElements.set(element, onResize);
+  sharedRo.observe(element);
+  return () => {
+    if (observedElements.get(element) === onResize) {
+      observedElements.delete(element);
+      sharedRo?.unobserve?.(element);
+      if (observedElements.size === 0 && sharedRo) {
+        sharedRo.disconnect();
+        sharedRo = null;
+        sharedRoCtor = undefined;
+      }
+    }
+  };
+}
+
+// --- Shared two-phase batched RAF scheduler ---
+// Phase 1 reads all layout geometry and computed styles before any DOM probe
+// mutations or React state updates run in Phase 2, preventing N-way layout
+// thrashing and coalescing 200 component updates into a single animation frame.
+interface FlushContext {
+  dpr: number;
+  docLang: string | undefined;
+  langCache: Map<Element, string> | undefined;
+  canvasMeasurers: Map<string, (value: string) => number> | undefined;
+  canvasWidths: Map<string, Map<string, number>> | undefined;
+}
+
+interface MeasureWorkItem {
+  job: MeasureJob;
+  width: number;
+  computed: CSSStyleDeclaration | null;
+  style: StyleSnapshot | null;
+}
+
+interface MeasureJob {
+  active: boolean;
+  initialized: boolean;
+  element: HTMLElement;
+  text: string;
+  mode: TextTruncateMode;
+  query: string | undefined;
+  className: string | undefined;
+  emojiText: boolean;
+  indexedText: IndexedText | undefined;
+  lastStyle: StyleSnapshot | undefined;
+  lastNeedsDOM: boolean;
+  completedWidth: number | undefined;
+  widths: Map<string, number>;
+  cachedUnits: number;
+  verifiedWidths: Map<string, number>;
+  verifiedUnits: number;
+  setTruncatedText: React.Dispatch<React.SetStateAction<string>>;
+  invalidate: () => void;
+}
+
+function resolveLang(element: Element, flush: FlushContext): string {
+  const ownLang = element.getAttribute("lang");
+  if (ownLang !== null) return ownLang;
+
+  const parent = element.parentElement;
+  if (!parent) {
+    return (flush.docLang ??= element.ownerDocument.documentElement.lang);
+  }
+
+  const langCache = flush.langCache;
+  if (langCache) {
+    const parentCached = langCache.get(parent);
+    if (parentCached !== undefined) return parentCached;
+  }
+
+  const chain: Element[] | null = langCache ? [parent] : null;
+  let curr: Element | null = parent;
+  let result: string | undefined;
+  while (curr) {
+    if (langCache) {
+      const hit = langCache.get(curr);
+      if (hit !== undefined) {
+        result = hit;
+        chain!.pop();
+        break;
+      }
+    }
+    const attr = curr.getAttribute("lang");
+    if (attr !== null) {
+      result = attr;
+      break;
+    }
+    curr = curr.parentElement;
+    if (curr && chain) chain.push(curr);
+  }
+  if (result === undefined) {
+    result = (flush.docLang ??= element.ownerDocument.documentElement.lang);
+  }
+  if (langCache && chain) {
+    for (let i = 0; i < chain.length; i++) {
+      langCache.set(chain[i], result);
+    }
+  }
+  return result;
+}
+
+function isSameStyle(prev: StyleSnapshot, computed: CSSStyleDeclaration, lang: string, dpr: number): boolean {
+  return prev.dpr === dpr
+    && prev.lang === lang
+    && prev.fontSize === computed.fontSize
+    && prev.fontFamily === computed.fontFamily
+    && prev.fontWeight === computed.fontWeight
+    && prev.fontStyle === computed.fontStyle
+    && prev.fontKerning === computed.fontKerning
+    && prev.fontStretch === computed.fontStretch
+    && prev.fontVariantCaps === computed.fontVariantCaps
+    && prev.letterSpacing === computed.letterSpacing
+    && prev.fontFeatureSettings === computed.fontFeatureSettings
+    && prev.fontVariationSettings === computed.fontVariationSettings
+    && prev.fontVariantNumeric === computed.fontVariantNumeric
+    && prev.fontOpticalSizing === computed.fontOpticalSizing
+    && prev.wordSpacing === computed.wordSpacing
+    && prev.textTransform === computed.textTransform
+    && prev.direction === computed.direction
+    // Avoid reading the expensive `font` shorthand serializer on every hit
+    // when longhand font properties are already populated by the engine.
+    && (prev.fontFamily !== "" || prev.font === computed.font);
+}
+
+function captureStyle(
+  target: StyleSnapshot | undefined,
+  computed: CSSStyleDeclaration,
+  lang: string,
+  dpr: number,
+): StyleSnapshot {
+  if (target) {
+    target.font = computed.font;
+    target.fontFamily = computed.fontFamily;
+    target.fontSize = computed.fontSize;
+    target.fontWeight = computed.fontWeight;
+    target.fontStyle = computed.fontStyle;
+    target.fontKerning = computed.fontKerning;
+    target.fontStretch = computed.fontStretch;
+    target.fontVariantCaps = computed.fontVariantCaps;
+    target.letterSpacing = computed.letterSpacing;
+    target.fontFeatureSettings = computed.fontFeatureSettings;
+    target.fontVariationSettings = computed.fontVariationSettings;
+    target.fontVariantNumeric = computed.fontVariantNumeric;
+    target.fontOpticalSizing = computed.fontOpticalSizing;
+    target.wordSpacing = computed.wordSpacing;
+    target.textTransform = computed.textTransform;
+    target.direction = computed.direction;
+    target.lang = lang;
+    target.dpr = dpr;
+    return target;
+  }
+  return {
+    font: computed.font,
+    fontFamily: computed.fontFamily,
+    fontSize: computed.fontSize,
+    fontWeight: computed.fontWeight,
+    fontStyle: computed.fontStyle,
+    fontKerning: computed.fontKerning,
+    fontStretch: computed.fontStretch,
+    fontVariantCaps: computed.fontVariantCaps,
+    letterSpacing: computed.letterSpacing,
+    fontFeatureSettings: computed.fontFeatureSettings,
+    fontVariationSettings: computed.fontVariationSettings,
+    fontVariantNumeric: computed.fontVariantNumeric,
+    fontOpticalSizing: computed.fontOpticalSizing,
+    wordSpacing: computed.wordSpacing,
+    textTransform: computed.textTransform,
+    direction: computed.direction,
+    lang,
+    dpr,
+  };
+}
+
+function canvasStyleKey(style: StyleSnapshot): string {
+  return `${style.font}\u001f${style.fontFamily}\u001f${style.fontSize}\u001f${style.fontWeight}\u001f${style.fontStyle}\u001f${style.fontKerning}\u001f${style.fontStretch}\u001f${style.fontVariantCaps}\u001f${style.letterSpacing}\u001f${style.dpr}`;
+}
+
+const pendingJobs = new Set<MeasureJob>();
+let batchScheduled = false;
+let batchRafId = 0;
+let scheduledRafFn: typeof window.requestAnimationFrame | null = null;
+let scheduledCancelFn: typeof window.cancelAnimationFrame | null = null;
+
+function flushJobs() {
+  batchScheduled = false;
+  batchRafId = 0;
+  scheduledRafFn = null;
+  scheduledCancelFn = null;
+  if (pendingJobs.size === 0) return;
+
+  const batch = Array.from(pendingJobs);
+  pendingJobs.clear();
+
+  const multi = batch.length > 1;
+  const flush: FlushContext = {
+    dpr: window.devicePixelRatio,
+    docLang: undefined,
+    langCache: multi ? new Map() : undefined,
+    canvasMeasurers: multi ? new Map() : undefined,
+    canvasWidths: multi ? new Map() : undefined,
+  };
+
+  // Phase 1: layout & computed-style reads only
+  const work: MeasureWorkItem[] = [];
+  for (let i = 0; i < batch.length; i++) {
+    const job = batch[i];
+    if (!job.active) continue;
+    const element = job.element;
+    let width = element.clientWidth || element.getBoundingClientRect().width;
+    if (width <= 0) {
+      work.push({ job, width: 0, computed: null, style: null });
+      continue;
+    }
+
+    const computed = window.getComputedStyle(element);
+    const padL = computed.paddingLeft;
+    const padR = computed.paddingRight;
+    if (padL && padL !== "0px") width -= Number.parseFloat(padL) || 0;
+    if (padR && padR !== "0px") width -= Number.parseFloat(padR) || 0;
+    if (width <= 0) {
+      work.push({ job, width: 0, computed: null, style: null });
+      continue;
+    }
+
+    const lang = resolveLang(element, flush);
+    let style: StyleSnapshot;
+    if (!job.lastStyle || !isSameStyle(job.lastStyle, computed, lang, flush.dpr)) {
+      job.invalidate();
+      style = captureStyle(job.lastStyle, computed, lang, flush.dpr);
+      job.lastStyle = style;
+    } else {
+      style = job.lastStyle;
+    }
+
+    // RO may report only height changes, including our own cut. Validate
+    // live typography first; font/DPR events invalidate completion too.
+    if (job.completedWidth === width) continue;
+    work.push({ job, width, computed, style });
+  }
+
+  // Phase 2: measure, verify, and commit React updates
+  for (let i = 0; i < work.length; i++) {
+    const item = work[i];
+    const { job, width, computed, style } = item;
+    if (!job.active) continue;
+    if (width <= 0 || !computed || !style) {
+      job.completedWidth = undefined;
+      job.setTruncatedText(job.text);
+      continue;
+    }
+
+    const needsDOM = needsDomMeasurement(style);
+    job.lastNeedsDOM = needsDOM;
+
+    let sharedCanvasMeasure: ((value: string) => number) | undefined;
+    let flushWidthMap: Map<string, number> | undefined;
+    if (!needsDOM && flush.canvasMeasurers && flush.canvasWidths) {
+      const key = canvasStyleKey(style);
+      sharedCanvasMeasure = flush.canvasMeasurers.get(key);
+      if (!sharedCanvasMeasure) {
+        sharedCanvasMeasure = createCanvasMeasurerFromStyle(computed, style);
+        flush.canvasMeasurers.set(key, sharedCanvasMeasure);
+      }
+      flushWidthMap = flush.canvasWidths.get(key);
+      if (!flushWidthMap) {
+        flushWidthMap = new Map();
+        flush.canvasWidths.set(key, flushWidthMap);
+      }
+    }
+
+    const session = createMeasurementSession(job.element, computed, job.query, {
+      emojiText: job.emojiText,
+      lang: style.lang,
+      needsDOM,
+      originalText: job.text,
+      sharedCanvasMeasure,
+      style,
+    });
+
+    const commit = (value: string) => {
+      job.completedWidth = width;
+      job.setTruncatedText(value);
+    };
+
+    const measureText = (value: string) => {
+      const cached = job.widths.get(value);
+      if (cached !== undefined) return cached;
+      if (flushWidthMap) {
+        const flushHit = flushWidthMap.get(value);
+        if (flushHit !== undefined) {
+          if (job.widths.size >= MAX_CACHED_WIDTHS || job.cachedUnits + value.length > MAX_CACHED_CODE_UNITS) {
+            job.widths.clear();
+            job.cachedUnits = 0;
+          }
+          if (value.length <= MAX_CACHED_CODE_UNITS) {
+            job.widths.set(value, flushHit);
+            job.cachedUnits += value.length;
+          }
+          return flushHit;
+        }
+      }
+      const measured = session.measureText(value);
+      if (flushWidthMap && value.length <= MAX_CACHED_CODE_UNITS) {
+        flushWidthMap.set(value, measured);
+      }
+      // Component-local, bounded by both entries and retained text size.
+      // Evict between measurements; no global strings survive unmount.
+      if (job.widths.size >= MAX_CACHED_WIDTHS || job.cachedUnits + value.length > MAX_CACHED_CODE_UNITS) {
+        job.widths.clear();
+        job.cachedUnits = 0;
+      }
+      if (value.length <= MAX_CACHED_CODE_UNITS) {
+        job.widths.set(value, measured);
+        job.cachedUnits += value.length;
+      }
+      return measured;
+    };
+
+    const getIndexed = () => (job.indexedText ??= indexTextGraphemes(job.text));
+
+    try {
+      if (!session.verifyText) {
+        const next = truncatePrepared({ text: job.text, maxWidth: width, mode: job.mode, measureText }, getIndexed);
+        commit(next.text);
+        continue;
+      }
+
+      const select = (budget: number, measure = measureText) =>
+        truncatePrepared({ text: job.text, maxWidth: budget, mode: job.mode, measureText: measure }, getIndexed);
+      const verify = (value: string) => {
+        const cached = job.verifiedWidths.get(value);
+        if (cached !== undefined) return cached;
+        const actual = session.verifyText?.(value);
+        if (actual === undefined) return undefined;
+        if (job.verifiedWidths.size >= MAX_CACHED_WIDTHS || job.verifiedUnits + value.length > MAX_CACHED_CODE_UNITS) {
+          job.verifiedWidths.clear();
+          job.verifiedUnits = 0;
+        }
+        if (value.length <= MAX_CACHED_CODE_UNITS) {
+          job.verifiedWidths.set(value, actual);
+          job.verifiedUnits += value.length;
+        }
+        return actual;
+      };
+
+      let next = select(width);
+      let budget = width;
+      for (let refinement = 0; ; refinement++) {
+        const actual = verify(next.text);
+        if (next.text === TRUNCATION_MARKER || actual === undefined || actual <= width) break;
+        if (refinement >= 2) {
+          next = select(width, session.measureExact!);
+          verify(next.text);
+          break;
+        }
+        budget = Math.min(budget, width - (actual - measureText(next.text)));
+        if (budget <= 0) {
+          next = select(width, session.measureExact!);
+          verify(next.text);
+          break;
+        }
+        next = select(budget);
+      }
+      commit(next.text);
+    } finally {
+      session.dispose();
+    }
+  }
+}
+
+function scheduleJob(job: MeasureJob, forceReschedule = false) {
+  if (!job.active) return;
+  const alreadyPending = pendingJobs.has(job);
+  pendingJobs.add(job);
+  const currentRaf = window.requestAnimationFrame;
+  if (!batchScheduled) {
+    batchScheduled = true;
+    scheduledRafFn = currentRaf;
+    scheduledCancelFn = window.cancelAnimationFrame;
+    batchRafId = window.requestAnimationFrame(flushJobs);
+  } else if (scheduledRafFn !== currentRaf || (forceReschedule && alreadyPending)) {
+    scheduledCancelFn?.call(window, batchRafId);
+    scheduledRafFn = currentRaf;
+    scheduledCancelFn = window.cancelAnimationFrame;
+    batchRafId = window.requestAnimationFrame(flushJobs);
+  }
+}
+
+function cancelJob(job: MeasureJob) {
+  pendingJobs.delete(job);
+  if (pendingJobs.size === 0 && batchScheduled) {
+    batchScheduled = false;
+    scheduledCancelFn?.call(window, batchRafId);
+    batchRafId = 0;
+    scheduledRafFn = null;
+    scheduledCancelFn = null;
+  }
+}
+
+export interface TextTruncateProps {
   className?: string;
   ellipsis?: TextTruncateEllipsis;
   measureExtra?: string | number;
@@ -243,165 +908,189 @@ export function TextTruncate({
   query?: string;
   strategy?: TextTruncateStrategy;
   text: string;
-}) {
+}
+
+export const TextTruncate = React.memo(function TextTruncate({
+  className,
+  ellipsis = "end",
+  measureExtra,
+  mode,
+  query,
+  strategy = "auto",
+  text,
+}: TextTruncateProps) {
   const textRef = React.useRef<HTMLSpanElement | null>(null);
+  const jobRef = React.useRef<{
+    job: MeasureJob;
+    syncResolution: (needsResolution: boolean) => void;
+  } | null>(null);
   const [truncatedText, setTruncatedText] = React.useState(text);
   const resolvedStrategy = resolveTextTruncateStrategy({ mode, strategy });
 
+  // Persistent lifecycle effect: keeps ResizeObserver and document.fonts
+  // subscriptions attached across text, className, query, and mode updates.
   React.useLayoutEffect(() => {
     if (resolvedStrategy !== "measure") return undefined;
-
     const element = textRef.current;
     if (!element) return undefined;
-    let rafId = 0;
-    let active = true;
-    let graphemes: string[] | undefined;
-    let styleSignature = "";
-    let completedWidth: number | undefined;
-    const widths = new Map<string, number>();
-    const verifiedWidths = new Map<string,number>();
-    let cachedUnits = 0;
-    let verifiedUnits = 0;
-    const invalidate = () => {
-      completedWidth = undefined;
-      styleSignature = ""; widths.clear(); cachedUnits = 0;
-      verifiedWidths.clear(); verifiedUnits = 0;
+
+    const job: MeasureJob = {
+      active: true,
+      initialized: false,
+      element,
+      text: "",
+      mode: "middle",
+      query: undefined,
+      className: undefined,
+      emojiText: false,
+      indexedText: undefined,
+      lastStyle: undefined,
+      lastNeedsDOM: false,
+      completedWidth: undefined,
+      widths: new Map(),
+      cachedUnits: 0,
+      verifiedWidths: new Map(),
+      verifiedUnits: 0,
+      setTruncatedText,
+      invalidate() {
+        job.completedWidth = undefined;
+        job.lastStyle = undefined;
+        job.widths.clear();
+        job.cachedUnits = 0;
+        job.verifiedWidths.clear();
+        job.verifiedUnits = 0;
+      },
     };
 
-    const update = () => {
-      if (!active) return;
-      window.cancelAnimationFrame(rafId);
-      rafId = window.requestAnimationFrame(() => {
-        let width = element.clientWidth || element.getBoundingClientRect().width;
-        if (width <= 0) {
-          completedWidth = undefined;
-          setTruncatedText(text);
-          return;
-        }
-
-        const computed = window.getComputedStyle(element);
-        width -= (Number.parseFloat(computed.paddingLeft) || 0) + (Number.parseFloat(computed.paddingRight) || 0);
-        if (width <= 0) {completedWidth = undefined;setTruncatedText(text);return;}
-        const signature = [computed.font, computed.fontFamily, computed.fontSize,
-          computed.fontWeight, computed.fontStyle, computed.fontKerning, computed.fontStretch,
-          computed.fontVariantCaps, computed.letterSpacing, computed.fontFeatureSettings,
-          computed.fontVariationSettings, computed.fontVariantNumeric, computed.fontOpticalSizing, computed.wordSpacing,
-          computed.textTransform, computed.direction,
-          element.closest("[lang]")?.getAttribute("lang") ?? element.ownerDocument.documentElement.lang,
-          String(window.devicePixelRatio)].join("\u001f");
-        if (signature !== styleSignature) {
-          invalidate();
-          styleSignature = signature;
-        }
-        // RO may report only height changes, including our own cut. Validate
-        // live typography first; font/DPR events invalidate completion too.
-        if (completedWidth === width) return;
-        const session = createMeasurementSession(element,computed,query);
-        const commit = (value: string) => {completedWidth = width;setTruncatedText(value);};
-        const measureText = (value: string) => {
-          const cached = widths.get(value);
-          if (cached !== undefined) return cached;
-          const width = session.measureText(value);
-          // Component-local, bounded by both entries and retained text size.
-          // Evict between measurements; no global strings survive unmount.
-          if (widths.size >= MAX_CACHED_WIDTHS || cachedUnits + value.length > MAX_CACHED_CODE_UNITS) {
-            widths.clear(); cachedUnits = 0;
-          }
-          if (value.length <= MAX_CACHED_CODE_UNITS) { widths.set(value, width); cachedUnits += value.length; }
-          return width;
-        };
-        try {
-          if (!session.verifyText) {
-            const next=truncatePrepared({text,maxWidth:width,mode,measureText},
-              () => graphemes ??= splitTextGraphemes(text));
-            commit(next.text);
-            return;
-          }
-          const select = (budget:number,measure=measureText) => truncatePrepared({text,maxWidth:budget,mode,measureText:measure},
-            () => graphemes ??= splitTextGraphemes(text));
-          const verify = (value:string) => {
-            const cached=verifiedWidths.get(value);
-            if (cached !== undefined) return cached;
-            const actual=session.verifyText?.(value);
-            if (actual === undefined) return undefined;
-            if (verifiedWidths.size >= MAX_CACHED_WIDTHS || verifiedUnits + value.length > MAX_CACHED_CODE_UNITS) {
-              verifiedWidths.clear(); verifiedUnits=0;
-            }
-            if (value.length <= MAX_CACHED_CODE_UNITS) {verifiedWidths.set(value,actual);verifiedUnits+=value.length;}
-            return actual;
-          };
-          let next=select(width);
-          let budget=width;
-          for (let refinement=0;;refinement++) {
-            const actual=verify(next.text);
-            if (next.text === TRUNCATION_MARKER || actual === undefined || actual <= width) break;
-            if (refinement >= 2) {
-              next=select(width,session.measureExact!);
-              verify(next.text);
-              break;
-            }
-            budget=Math.min(budget,width-(actual-measureText(next.text)));
-            if (budget <= 0) {
-              next=select(width,session.measureExact!);
-              verify(next.text);
-              break;
-            }
-            next=select(budget);
-          }
-          commit(next.text);
-        } finally { session.dispose(); }
-      });
+    const schedule = () => scheduleJob(job);
+    const onFontsChanged = () => {
+      job.invalidate();
+      scheduleJob(job, true);
     };
-
-    update();
-
-    const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(update);
-    observer?.observe(element);
-
-    const fontsChanged = () => { invalidate(); update(); };
-    const fontsLoading = () => { getPendingFontsReady()?.then(fontsChanged); };
-    fontsLoading();
-    document.fonts?.addEventListener?.("loading", fontsLoading);
-    document.fonts?.addEventListener?.("loadingdone", fontsChanged);
 
     let resolutionQuery: MediaQueryList | undefined;
     const resolutionChanged = () => {
-      if (!active) return;
-      invalidate(); update(); bindResolution();
+      if (!job.active) return;
+      job.invalidate();
+      scheduleJob(job, true);
+      bindResolution();
+    };
+    const unbindResolution = () => {
+      resolutionQuery?.removeEventListener?.("change", resolutionChanged);
+      resolutionQuery = undefined;
     };
     const bindResolution = () => {
-      resolutionQuery?.removeEventListener?.("change",resolutionChanged);
-      resolutionQuery=window.matchMedia?.(`(resolution: ${window.devicePixelRatio}dppx)`);
-      resolutionQuery?.addEventListener?.("change",resolutionChanged);
+      unbindResolution();
+      resolutionQuery = window.matchMedia?.(`(resolution: ${window.devicePixelRatio}dppx)`);
+      resolutionQuery?.addEventListener?.("change", resolutionChanged);
     };
-    if (hasEmoji(text)) bindResolution();
+    const syncResolution = (needsResolution: boolean) => {
+      if (needsResolution && !resolutionQuery) {
+        bindResolution();
+      } else if (!needsResolution && resolutionQuery) {
+        unbindResolution();
+      }
+    };
+
+    jobRef.current = { job, syncResolution };
+
+    const unobserve = observeResize(element, schedule);
+    const unsubscribe = subscribeFonts(onFontsChanged);
 
     return () => {
-      active = false;
-      window.cancelAnimationFrame(rafId);
-      observer?.disconnect();
-      document.fonts?.removeEventListener?.("loading", fontsLoading);
-      document.fonts?.removeEventListener?.("loadingdone", fontsChanged);
-      resolutionQuery?.removeEventListener?.("change",resolutionChanged);
+      job.active = false;
+      jobRef.current = null;
+      cancelJob(job);
+      unobserve();
+      unsubscribe();
+      unbindResolution();
     };
+  }, [resolvedStrategy]);
+
+  // Prop synchronization effect: updates job inputs and schedules a batched
+  // measurement without tearing down observers or font listeners.
+  React.useLayoutEffect(() => {
+    if (resolvedStrategy !== "measure") return undefined;
+    const entry = jobRef.current;
+    if (!entry) return undefined;
+    const { job, syncResolution } = entry;
+
+    if (!job.initialized) {
+      job.initialized = true;
+      job.text = text;
+      job.mode = mode;
+      job.query = query;
+      job.className = className;
+      job.emojiText = hasEmoji(text);
+      syncResolution(job.emojiText);
+      scheduleJob(job);
+      return undefined;
+    }
+
+    const textChanged = job.text !== text;
+    const classChanged = job.className !== className;
+    const modeChanged = job.mode !== mode;
+    const queryChanged = job.query !== query;
+
+    if (textChanged) {
+      job.text = text;
+      job.indexedText = undefined;
+      job.emojiText = hasEmoji(text);
+      job.completedWidth = undefined;
+      job.widths.clear();
+      job.cachedUnits = 0;
+      job.verifiedWidths.clear();
+      job.verifiedUnits = 0;
+      syncResolution(job.emojiText);
+    }
+    if (classChanged) {
+      job.className = className;
+      job.invalidate();
+    }
+    if (modeChanged) {
+      job.mode = mode;
+      job.completedWidth = undefined;
+    }
+    if (queryChanged) {
+      job.query = query;
+      if (job.emojiText || job.lastNeedsDOM) {
+        job.completedWidth = undefined;
+        job.verifiedWidths.clear();
+        job.verifiedUnits = 0;
+      }
+    }
+
+    scheduleJob(job);
+    return undefined;
   }, [className, mode, query, resolvedStrategy, text]);
 
   const renderedText = resolvedStrategy === "measure" ? truncatedText : text;
   const isTruncated = resolvedStrategy === "measure" && truncatedText !== text;
+  const trimmedQuery = query?.trim();
   // Recreate decorated text when it changes. Reusing positioned inline spans
   // can retain stale shaping across a resize even with identical font styles.
-  const content = <HighlightedMatchText key={query?.trim() ? JSON.stringify([query,renderedText]) : undefined} text={renderedText} query={query} />;
+  const content = trimmedQuery ? (
+    <HighlightedMatchText
+      key={`${query!.length}:${query}:${renderedText}`}
+      text={renderedText}
+      query={query}
+    />
+  ) : (
+    renderedText
+  );
   const shouldUseStartEllipsis = resolvedStrategy === "css" && ellipsis === "start";
+  const baseClass =
+    resolvedStrategy === "css"
+      ? shouldUseStartEllipsis
+        ? BASE_CSS_START_CLASS
+        : BASE_CSS_END_CLASS
+      : BASE_MEASURE_CLASS;
+  const rootClassName = className ? mergeRootClassName(baseClass, className) : baseClass;
 
   return (
     <span
       ref={textRef}
-      className={cn(
-        resolvedStrategy === "css"
-          ? cn("block w-full min-w-0 truncate", shouldUseStartEllipsis && "[direction:rtl]")
-          : "block w-full min-w-0 overflow-hidden whitespace-nowrap",
-        className,
-      )}
+      className={rootClassName}
       data-tip-align={shouldUseStartEllipsis ? "end" : undefined}
       data-truncate=""
       data-truncate-measure-extra={measureExtra}
@@ -414,4 +1103,4 @@ export function TextTruncate({
       {shouldUseStartEllipsis ? <bdi>{content}</bdi> : content}
     </span>
   );
-}
+});

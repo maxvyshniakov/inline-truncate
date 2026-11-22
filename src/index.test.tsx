@@ -124,6 +124,8 @@ describe("splitTextGraphemes", () => {
     // Skin-tone emoji, a letter plus a combining acute accent, a flag made of two
     // regional indicators, and a family joined with zero-width joiners.
     expect(splitTextGraphemes("a👍🏽e\u0301🇺🇦👨‍👩‍👧")).toEqual(["a", "👍🏽", "e\u0301", "🇺🇦", "👨‍👩‍👧"]);
+    expect(splitTextGraphemes("abc")).toEqual(["a", "b", "c"]);
+    expect(splitTextGraphemes("a\r\nb")).toEqual(["a", "\r\n", "b"]);
     expect(splitTextGraphemes("")).toEqual([]);
   });
 
@@ -678,5 +680,101 @@ describe("TextTruncate native verification boundaries", () => {
     match.mockClear();
     render(<TextTruncate mode="middle" text="plain-long-file.pdf" />);
     next();expect(match).not.toHaveBeenCalled();
+  });
+});
+
+describe("truncateText Wave A algorithmic invariants", () => {
+  it("converges in logarithmic calls for long middle and end truncations", () => {
+    const middleMeasure = vi.fn((value: string) => value.length);
+    expect(truncateText({ text: "a".repeat(10_000), maxWidth: 30, mode: "middle", measureText: middleMeasure }).text)
+      .toBe("aaaaaaaaaaaaa...aaaaaaaaaaaaaa");
+    expect(middleMeasure.mock.calls.length).toBeLessThan(20);
+
+    const endMeasure = vi.fn((value: string) => value.length);
+    expect(truncateText({ text: "a".repeat(10_000), maxWidth: 30, mode: "end", measureText: endMeasure }).text)
+      .toBe(`${"a".repeat(27)}...`);
+    expect(endMeasure.mock.calls.length).toBeLessThan(10);
+  });
+
+  it("handles non-uniform proportional character widths without overflowing", () => {
+    const widthOf = (value: string) => {
+      let total = 0;
+      for (const ch of value) total += ch === "W" ? 16 : ch === "i" ? 4 : 8;
+      return total;
+    };
+    const texts = [
+      `${"i".repeat(40)}${"W".repeat(40)}`,
+      `${"W".repeat(40)}${"i".repeat(40)}`,
+      "a\r\nbc\r\ndefghij",
+      "👨‍👩‍👧‍👦",
+    ];
+    for (const text of texts) {
+      for (const mode of ["middle", "end"] as const) {
+        for (const maxWidth of [12, 30, 60, 120, 240, 480]) {
+          const result = truncateText({ text, maxWidth, mode, measureText: widthOf });
+          if (result.truncated && result.text !== "...") {
+            expect(widthOf(result.text)).toBeLessThanOrEqual(maxWidth);
+          }
+        }
+      }
+    }
+  });
+});
+
+describe("TextTruncate shared observers and batched RAF", () => {
+  it("shares one ResizeObserver, one RAF batch, and one document.fonts listener pair across instances", () => {
+    const roInstances: FakeResizeObserver[] = [];
+    class CountingRO extends FakeResizeObserver {
+      constructor(cb: ResizeObserverCallback) {
+        super(cb);
+        roInstances.push(this);
+      }
+    }
+    globalThis.ResizeObserver = CountingRO as unknown as typeof ResizeObserver;
+    const fonts = Object.assign(new EventTarget(), { status: "loaded" });
+    const addListener = vi.spyOn(fonts, "addEventListener");
+    const removeListener = vi.spyOn(fonts, "removeEventListener");
+    Object.defineProperty(document, "fonts", { configurable: true, value: fonts });
+
+    const frames: FrameRequestCallback[] = [];
+    const raf = vi.spyOn(window, "requestAnimationFrame").mockImplementation((cb) => {
+      frames.push(cb);
+      return frames.length;
+    });
+    vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockReturnValue(12);
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue({
+      font: "",
+      measureText: (value: string) => ({ width: value.length }),
+    } as unknown as CanvasRenderingContext2D);
+
+    const { rerender, unmount } = render(
+      <>
+        {Array.from({ length: 10 }, (_, i) => (
+          <TextTruncate key={i} mode="middle" text={`item-${i}-long-filename.pdf`} />
+        ))}
+      </>,
+    );
+
+    expect(roInstances).toHaveLength(1);
+    expect(raf).toHaveBeenCalledTimes(1);
+    expect(addListener).toHaveBeenCalledTimes(2);
+
+    act(() => { frames.shift()!(0); });
+
+    // Prop updates reuse the shared observer without recreating it.
+    rerender(
+      <>
+        {Array.from({ length: 10 }, (_, i) => (
+          <TextTruncate key={i} mode="middle" className="text-sm" text={`updated-${i}-long-filename.pdf`} />
+        ))}
+      </>,
+    );
+    expect(roInstances).toHaveLength(1);
+    expect(raf).toHaveBeenCalledTimes(2);
+    act(() => { frames.shift()!(0); });
+
+    unmount();
+    expect(removeListener).toHaveBeenCalledTimes(2);
+    expect(liveResizeObservers.size).toBe(0);
   });
 });

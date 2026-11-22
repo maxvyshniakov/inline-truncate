@@ -4,6 +4,20 @@ Versions and release rules: [docs/VERSIONING.md](docs/VERSIONING.md).
 
 ## Unreleased
 
+### Changed
+
+- Replaced linear middle truncation and unguided binary end truncation with
+  interpolated/galloping O(log k) search and an ASCII grapheme fast path,
+  reducing measurement calls by ~85% on middle truncation and ~37% on end
+  truncation while preserving grapheme boundaries and kerning checks.
+- Shared a single `ResizeObserver`, `document.fonts` listener pair, and
+  two-phase batched `requestAnimationFrame` scheduler across mounted
+  `TextTruncate` instances, reading all layout geometry and typography before
+  DOM probe or state writes and avoiding redundant `getComputedStyle` /
+  `closest("[lang]")` / `cn()` / empty-query highlight overhead.
+- Memoized `TextTruncate` with `React.memo` and retained observers across
+  prop updates.
+
 ## 0.2.3 - 2026-11-07
 
 ### Added
