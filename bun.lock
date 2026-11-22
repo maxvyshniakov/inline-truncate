@@ -5,7 +5,7 @@
     "": {
       "name": "@maxvyshniakov/text-truncate",
       "dependencies": {
-        "@maxvyshniakov/inline-measure": "^0.3.0",
+        "@maxvyshniakov/inline-measure": "^0.4.0",
         "cn": "^0.4.0",
       },
       "devDependencies": {
@@ -46,7 +46,7 @@
 
     "@jridgewell/trace-mapping": ["@jridgewell/trace-mapping@0.3.31", "", { "dependencies": { "@jridgewell/resolve-uri": "^3.1.0", "@jridgewell/sourcemap-codec": "^1.4.14" } }, "sha512-zzNR+SdQSDJzc8joaeP8QQoCQr8NuYx2dIIytl1QeBEZHJ9uW6hebsrYgbz8hJwUQao3TWCMtmfV8Nu1twOLAw=="],
 
-    "@maxvyshniakov/inline-measure": ["@maxvyshniakov/inline-measure@0.3.0", "https://npm.pkg.github.com/download/@maxvyshniakov/inline-measure/0.3.0/dbf01448c1c45921bdb4d63e10a1411880fea940", { "dependencies": { "linebreak": "^1.1.0" } }, "sha512-L2jYybIzR8ED/GrLhrDp03Hb1s5HQo/oOdAA1SFbfK8tf6Gfmr32wC/Xly7mrf1TCTJnEUalNPAtj50Ur4/dmA=="],
+    "@maxvyshniakov/inline-measure": ["@maxvyshniakov/inline-measure@0.4.0", "https://npm.pkg.github.com/download/@maxvyshniakov/inline-measure/0.4.0/678bbd2c770905d7d7ea6d2d30b5d3ced3292332", { "dependencies": { "linebreak": "^1.1.0" } }, "sha512-YNk2KbNOmQszQg+FQuc2SQtJcq7T+2pzggINGjH5u87Axl08GGw6fmAmdErvr5SCqV6bbN4qdtaM4bmfuTE3rA=="],
 
     "@maxvyshniakov/repo-kit": ["@maxvyshniakov/repo-kit@0.3.0", "https://npm.pkg.github.com/download/@maxvyshniakov/repo-kit/0.3.0/7549dd3345cc40010a33f13af95cab4bf76a0308", { "bin": { "repo-kit": "src/cli.mjs" } }, "sha512-Gl81lH+bO8BpfRtiVsz8KF/xJRz53KsIfT2wYCUvyuTAQ/qZlh08FKaskwhrVOM5lvIuP16osrLUsNS5eiLagw=="],
 

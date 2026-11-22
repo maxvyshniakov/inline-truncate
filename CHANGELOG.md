@@ -4,6 +4,8 @@ Versions and release rules: [docs/VERSIONING.md](docs/VERSIONING.md).
 
 ## Unreleased
 
+## 0.3.0 - 2026-11-22
+
 ### Changed
 
 - Replaced linear middle truncation and unguided binary end truncation with

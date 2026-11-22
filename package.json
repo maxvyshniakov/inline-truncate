@@ -1,6 +1,6 @@
 {
   "name": "@maxvyshniakov/text-truncate",
-  "version": "0.2.3",
+  "version": "0.3.0",
   "type": "module",
   "packageManager": "bun@1.4.4",
   "description": "React text truncation and search highlighting, measured with Inline Measure.",
@@ -34,7 +34,7 @@
     "check:browser": "repo-kit heavy 1 node scripts/perf/run.mjs --check"
   },
   "dependencies": {
-    "@maxvyshniakov/inline-measure": "^0.3.0",
+    "@maxvyshniakov/inline-measure": "^0.4.0",
     "cn": "^0.4.0"
   },
   "peerDependencies": {
