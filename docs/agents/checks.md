@@ -16,7 +16,10 @@
   `package-kit pre-push`). Wrap any new heavy script as `package-kit heavy <slots> <command>`.
 
 ## Browser and visual
-- None: the package has no Storybook. Tests run in happy-dom.
+- No Storybook. Unit tests run in happy-dom.
+- `bun run check:a11y`: accessible text, copy and find in Chromium, Firefox (the installed stable, over WebDriver BiDi)
+  and WebKit, one engine at a time, behind one heavy slot. Run it for changes to the rendered DOM. Reports land in
+  `artifacts/a11y/`.
 
 ## Pins
 - `@maxvyshniakov/package-kit` exact (from npmjs.org): each commit's gate is the kit its lockfile records. Raise it

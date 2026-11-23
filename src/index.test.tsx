@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { act, render, cleanup, screen } from "@testing-library/react";
-import { HighlightedMatchText, TextTruncate, splitTextGraphemes, truncateText } from "./index";
+import { HighlightedMatchText, TextTruncate, splitTextGraphemes, truncateText, type TextTruncateProps } from "./index";
 
 const originalFonts = Object.getOwnPropertyDescriptor(document, "fonts");
 const originalRO = globalThis.ResizeObserver;
@@ -113,6 +113,13 @@ function stubMeasuredLayout(width: number) {
   };
 }
 
+// What a sighted reader sees: the text without the visually hidden full-text copy.
+function visibleText(node: Element) {
+  const copy = node.cloneNode(true) as Element;
+  for (const hidden of copy.querySelectorAll("[data-truncate-full-text]")) hidden.remove();
+  return copy.textContent;
+}
+
 function truncateRoot(container: HTMLElement) {
   const root = container.querySelector<HTMLElement>("[data-truncate]");
   if (!root) throw new Error("TextTruncate root not rendered");
@@ -209,7 +216,7 @@ describe("HighlightedMatchText", () => {
   it("keeps text plain when query is empty", () => {
     const { container } = render(<HighlightedMatchText text="photo.jpg" query="" />);
 
-    expect(container.textContent).toBe("photo.jpg");
+    expect(visibleText(container)).toBe("photo.jpg");
     expect(container.querySelector("[data-slot='highlighted-match']")).toBeNull();
   });
 
@@ -218,13 +225,13 @@ describe("HighlightedMatchText", () => {
 
     const matches = container.querySelectorAll("[data-slot='highlighted-match']");
     expect(Array.from(matches, (match) => match.textContent)).toEqual(["Photo", "PHOTO"]);
-    expect(container.textContent).toBe("Photo-PHOTO.jpg");
+    expect(visibleText(container)).toBe("Photo-PHOTO.jpg");
   });
 
   it("keeps text plain when nothing matches", () => {
     const { container } = render(<HighlightedMatchText text="photo.jpg" query="video" />);
 
-    expect(container.textContent).toBe("photo.jpg");
+    expect(visibleText(container)).toBe("photo.jpg");
     expect(container.querySelector("[data-slot='highlighted-match']")).toBeNull();
   });
 });
@@ -282,7 +289,7 @@ describe("TextTruncate", () => {
     const { container } = render(<TextTruncate mode="end" strategy="measure" text={fileName} />);
 
     const root = truncateRoot(container);
-    expect(root.textContent).toBe("Quarter...");
+    expect(visibleText(root)).toBe("Quarter...");
     expect(root).toHaveAttribute("data-truncate-strategy", "measure");
     expect(root).toHaveAttribute("data-truncate-state", "truncated");
     expect(root).toHaveAttribute("data-truncate-original", fileName);
@@ -294,7 +301,7 @@ describe("TextTruncate", () => {
     const { container } = render(<TextTruncate mode="middle" strategy="measure" text={fileName} />);
 
     const root = truncateRoot(container);
-    expect(root.textContent).toBe(fileName);
+    expect(visibleText(root)).toBe(fileName);
     expect(root).not.toHaveAttribute("data-truncate-state");
   });
 
@@ -310,9 +317,9 @@ describe("TextTruncate", () => {
 
     const [middle, end] = container.querySelectorAll<HTMLElement>("[data-truncate]");
     expect(middle).toHaveAttribute("data-truncate-strategy", "measure");
-    expect(middle.textContent).toBe("Qua....pdf");
+    expect(visibleText(middle)).toBe("Qua....pdf");
     expect(end).toHaveAttribute("data-truncate-strategy", "css");
-    expect(end.textContent).toBe(fileName);
+    expect(visibleText(end)).toBe(fileName);
   });
 
   it("puts the ellipsis first with CSS, isolating the text, when ellipsis is start", () => {
@@ -335,7 +342,7 @@ describe("TextTruncate", () => {
     const { container } = render(<TextTruncate mode="middle" ellipsis="start" text={fileName} />);
 
     const root = truncateRoot(container);
-    expect(root.textContent).toBe("Qua....pdf");
+    expect(visibleText(root)).toBe("Qua....pdf");
     expect(root).not.toHaveClass("[direction:rtl]");
     expect(root).not.toHaveAttribute("data-tip-align");
     expect(root.querySelector("bdi")).toBeNull();
@@ -347,7 +354,7 @@ describe("TextTruncate", () => {
     const { container } = render(<TextTruncate mode="middle" text={fileName} query="PDF" />);
 
     const root = truncateRoot(container);
-    expect(root.textContent).toBe("Qua....pdf");
+    expect(visibleText(root)).toBe("Qua....pdf");
     const matches = root.querySelectorAll("[data-slot='highlighted-match']");
     expect(Array.from(matches, (match) => match.textContent)).toEqual(["pdf"]);
   });
@@ -358,7 +365,7 @@ describe("TextTruncate", () => {
     const { container } = render(<TextTruncate mode="middle" text={fileName} query="design" />);
 
     const root = truncateRoot(container);
-    expect(root.textContent).toBe("Qua....pdf");
+    expect(visibleText(root)).toBe("Qua....pdf");
     expect(root.querySelector("[data-slot='highlighted-match']")).toBeNull();
   });
 
@@ -375,7 +382,7 @@ describe("TextTruncate", () => {
     const [withExtra, without] = container.querySelectorAll<HTMLElement>("[data-truncate]");
     expect(withExtra).toHaveAttribute("data-truncate-measure-extra", "24");
     expect(without).not.toHaveAttribute("data-truncate-measure-extra");
-    expect(withExtra.textContent).toBe(without.textContent);
+    expect(visibleText(withExtra)).toBe(visibleText(without));
   });
 
   it("measures again when its container is resized", () => {
@@ -383,16 +390,16 @@ describe("TextTruncate", () => {
 
     const { container } = render(<TextTruncate mode="middle" text={fileName} />);
     const root = truncateRoot(container);
-    expect(root.textContent).toBe("Qua....pdf");
+    expect(visibleText(root)).toBe("Qua....pdf");
 
     setWidth(150);
-    expect(root.textContent).toBe("Qua....pdf");
+    expect(visibleText(root)).toBe("Qua....pdf");
     deliverResize(root);
-    expect(root.textContent).toBe("Quarte...ew.pdf");
+    expect(visibleText(root)).toBe("Quarte...ew.pdf");
 
     setWidth(400);
     deliverResize(root);
-    expect(root.textContent).toBe(fileName);
+    expect(visibleText(root)).toBe(fileName);
     expect(root).not.toHaveAttribute("data-truncate-state");
   });
 
@@ -406,16 +413,16 @@ describe("TextTruncate", () => {
 
     const { container } = render(<TextTruncate mode="middle" text={fileName} />);
     const root = truncateRoot(container);
-    expect(root.textContent).toBe("Qua....pdf");
+    expect(visibleText(root)).toBe("Qua....pdf");
 
     // The web font is narrower than the fallback the first measurement used.
     setCharacterWidth(5);
-    expect(root.textContent).toBe("Qua....pdf");
+    expect(visibleText(root)).toBe("Qua....pdf");
     await act(async () => {
       resolveFonts();
       await fontsReady;
     });
-    expect(root.textContent).toBe("Quarterl...eview.pdf");
+    expect(visibleText(root)).toBe("Quarterl...eview.pdf");
   });
 
   it("measures the new text when the text prop changes", () => {
@@ -423,15 +430,120 @@ describe("TextTruncate", () => {
 
     const { container, rerender } = render(<TextTruncate mode="middle" text={fileName} />);
     const root = truncateRoot(container);
-    expect(root.textContent).toBe("Qua....pdf");
+    expect(visibleText(root)).toBe("Qua....pdf");
 
     rerender(<TextTruncate mode="middle" text="Annual-budget-forecast-2027.xlsx" />);
-    expect(root.textContent).toBe("Ann...xlsx");
+    expect(visibleText(root)).toBe("Ann...xlsx");
     expect(root).toHaveAttribute("data-truncate-original", "Annual-budget-forecast-2027.xlsx");
 
     rerender(<TextTruncate mode="middle" text="notes.txt" />);
-    expect(root.textContent).toBe("notes.txt");
+    expect(visibleText(root)).toBe("notes.txt");
     expect(root).not.toHaveAttribute("data-truncate-state");
+  });
+});
+
+describe("TextTruncate accessible full text", () => {
+  const fileName = "Quarterly-design-review.pdf";
+
+  function cell(props: TextTruncateProps) {
+    const { container } = render(
+      <table>
+        <tbody>
+          <tr>
+            <td>
+              <TextTruncate {...props} />
+            </td>
+          </tr>
+        </tbody>
+      </table>,
+    );
+    return { cell: screen.getByRole("cell"), root: truncateRoot(container) };
+  }
+
+  function parts(root: HTMLElement) {
+    const visible = root.querySelector<HTMLElement>(":scope > [data-truncate-visible]");
+    const full = root.querySelector<HTMLElement>(":scope > [data-truncate-full-text]");
+    return { visible, full };
+  }
+
+  it.each([
+    ["middle", { mode: "middle" as const }, "Qua....pdf"],
+    ["end", { mode: "end" as const, strategy: "measure" as const }, "Quarter..."],
+  ])("hides the cut %s text from assistive technology and exposes the full text beside it", (_, props, cut) => {
+    stubMeasuredLayout(100);
+
+    const { cell: tableCell, root } = cell({ ...props, text: fileName });
+
+    expect(tableCell).toHaveAccessibleName(fileName);
+    const { visible, full } = parts(root);
+    expect(root.children).toHaveLength(2);
+    expect(visible).toHaveAttribute("aria-hidden", "true");
+    expect(visible!.textContent).toBe(cut);
+    expect(full).not.toHaveAttribute("aria-hidden");
+    expect(full!.textContent).toBe(fileName);
+    expect(full!.style.position).toBe("absolute");
+    expect(full!.style.clipPath).toBe("inset(50%)");
+    expect(full!.style.userSelect).toBe("none");
+  });
+
+  it("adds nothing when the measured text fits", () => {
+    stubMeasuredLayout(400);
+
+    const { cell: tableCell, root } = cell({ mode: "middle", text: fileName });
+
+    expect(tableCell).toHaveAccessibleName(fileName);
+    expect(root.childNodes).toHaveLength(1);
+    expect(root.firstChild!.nodeType).toBe(Node.TEXT_NODE);
+    expect(root.querySelector("[aria-hidden]")).toBeNull();
+  });
+
+  it("adds nothing under the CSS strategy, whose DOM already holds the full text", () => {
+    stubMeasuredLayout(100);
+
+    const { cell: tableCell, root } = cell({ mode: "end", text: fileName });
+
+    expect(tableCell).toHaveAccessibleName(fileName);
+    expect(root.childNodes).toHaveLength(1);
+    expect(root.querySelector("[aria-hidden]")).toBeNull();
+  });
+
+  it("adds the copy when a resize cuts the text and removes it when the text fits again", () => {
+    const { setWidth } = stubMeasuredLayout(400);
+    const { cell: tableCell, root } = cell({ mode: "middle", text: fileName });
+    expect(parts(root).full).toBeNull();
+
+    setWidth(100);
+    deliverResize(root);
+    expect(tableCell).toHaveAccessibleName(fileName);
+    expect(parts(root).full!.textContent).toBe(fileName);
+
+    setWidth(400);
+    deliverResize(root);
+    expect(tableCell).toHaveAccessibleName(fileName);
+    expect(parts(root).full).toBeNull();
+    expect(root.querySelector("[aria-hidden]")).toBeNull();
+    expect(root.textContent).toBe(fileName);
+  });
+
+  it("keeps highlighted matches in the visible text only", () => {
+    stubMeasuredLayout(100);
+
+    const { cell: tableCell, root } = cell({ mode: "middle", text: fileName, query: "pdf" });
+
+    expect(tableCell).toHaveAccessibleName(fileName);
+    const { visible, full } = parts(root);
+    expect(Array.from(visible!.querySelectorAll("[data-slot='highlighted-match']"), (m) => m.textContent)).toEqual(["pdf"]);
+    expect(full!.querySelector("[data-slot='highlighted-match']")).toBeNull();
+  });
+
+  it("follows a text change with the new full text", () => {
+    stubMeasuredLayout(100);
+    const { container, rerender } = render(<TextTruncate mode="middle" text={fileName} />);
+
+    rerender(<TextTruncate mode="middle" text="Annual-budget-forecast.xlsx" />);
+
+    const { full } = parts(truncateRoot(container));
+    expect(full!.textContent).toBe("Annual-budget-forecast.xlsx");
   });
 });
 
@@ -483,10 +595,10 @@ describe("TextTruncate repeated measurement", () => {
     const element = truncateRoot(container);
     element.style.fontOpticalSizing = "none";
     act(() => { frames.shift()!(0); });
-    expect(element.textContent).not.toBe("abcdefghijkl");
+    expect(visibleText(element)).not.toBe("abcdefghijkl");
     element.style.fontOpticalSizing = "auto";
     act(() => { notify(); frames.shift()!(0); });
-    expect(element.textContent).toBe("abcdefghijkl");
+    expect(visibleText(element)).toBe("abcdefghijkl");
   });
 
   it("reuses text widths on resize and invalidates them when its class changes", () => {
@@ -557,14 +669,18 @@ describe("TextTruncate decorated node lifetime", () => {
     expect(screen.getByText("abc")).not.toBe(cut);
     nextFrame();
   });
-  it("retains the ordinary text node when no query decorates the cut", () => {
-    const nextFrame=measurementFrames();
-    const {container}=render(<TextTruncate mode="middle" text="abc-long-filename.pdf" />);
-    const element=container.querySelector("[data-truncate]")!;
-    const original=element.firstChild;
-    nextFrame();
-    expect(element.textContent).toBe("abc-...e.pdf");
-    expect(element.firstChild).toBe(original);
+  it("retains the ordinary text node from one cut to the next when no query decorates it", () => {
+    const { setWidth } = stubMeasuredLayout(100);
+    const { container } = render(<TextTruncate mode="middle" text="Quarterly-design-review.pdf" />);
+    const root = truncateRoot(container);
+    const visible = root.querySelector("[data-truncate-visible]")!;
+    const original = visible.firstChild;
+    expect(visibleText(root)).toBe("Qua....pdf");
+    setWidth(150);
+    deliverResize(root);
+    expect(visibleText(root)).toBe("Quarte...ew.pdf");
+    expect(root.querySelector("[data-truncate-visible]")).toBe(visible);
+    expect(visible.firstChild).toBe(original);
   });
 });
 
@@ -581,7 +697,7 @@ describe("TextTruncate emoji verification work", () => {
     const native=vi.spyOn(HTMLElement.prototype,"getBoundingClientRect").mockImplementation(function(this:HTMLElement){return {width:this.textContent?.length ?? 0,height:16} as DOMRect;});
     const {container}=render(<TextTruncate mode="middle" text="abc-🪑-long-filename.pdf" />);
     act(()=>{frames.shift()!(0);});
-    expect(container.textContent).toBe("abc-...e.pdf");
+    expect(visibleText(container)).toBe("abc-...e.pdf");
     expect(native).toHaveBeenCalledTimes(1);
     act(()=>{notify();frames.shift()!(0);});
     expect(native).toHaveBeenCalledTimes(1);
@@ -604,13 +720,13 @@ describe("TextTruncate native verification boundaries", () => {
     const {next,reads}=scene(12,value=>value.length,value=>value.length);
     const {container}=render(<TextTruncate mode="middle" text="abc-🪑-long-filename.pdf" />);
     next();
-    const output=container.textContent;
+    const output=visibleText(container);
     const styles=vi.spyOn(window,"getComputedStyle");
     const element=container.querySelector("[data-truncate]")!;
     for(let repeat=0;repeat<3;repeat++) {
       styles.mockClear();reads.mockClear();
       deliverResize(element);next();
-      expect(container.textContent).toBe(output);
+      expect(visibleText(container)).toBe(output);
       expect(reads).not.toHaveBeenCalled();
       expect(styles).toHaveBeenCalledTimes(1);
     }
@@ -619,42 +735,42 @@ describe("TextTruncate native verification boundaries", () => {
     const {next,widthRead,reads}=scene(12,value=>value.length,value=>value.length);
     const text="abc-🪑-long-filename.pdf";
     const {container}=render(<TextTruncate mode="middle" text={text} />);
-    next();const cut=container.textContent;
+    next();const cut=visibleText(container);
     const element=container.querySelector("[data-truncate]")!;
     let hidden=true;
     reads.mockImplementation(function(this:HTMLElement){return {width:hidden && this === element ? 0 : (this.textContent ?? "").length,height:16} as DOMRect;});
     widthRead.mockReturnValue(0);
-    deliverResize(element);next();expect(container.textContent).toBe(text);
+    deliverResize(element);next();expect(visibleText(container)).toBe(text);
     widthRead.mockReturnValue(12);
     hidden=false;
-    deliverResize(element);next();expect(container.textContent).toBe(cut);
+    deliverResize(element);next();expect(visibleText(container)).toBe(cut);
   });
   it("remeasures unchanged box widths after live typography or padding changes", () => {
     let scale=1;
     const {next}=scene(20,value=>value.length*scale,value=>value.length*scale);
     const text="abcdefghij-file.pdf";
     const {container}=render(<TextTruncate mode="middle" text={text} />);
-    next();expect(container.textContent).toBe(text);
+    next();expect(visibleText(container)).toBe(text);
     const element=container.querySelector<HTMLElement>("[data-truncate]")!;
     element.style.fontSize="24px";scale=2;
     deliverResize(element);next();
-    expect(container.textContent).not.toBe(text);
-    expect(container.textContent!.length*scale).toBeLessThanOrEqual(20);
+    expect(visibleText(container)).not.toBe(text);
+    expect(visibleText(container)!.length*scale).toBeLessThanOrEqual(20);
     element.style.paddingLeft="10px";
     deliverResize(element);next();
-    expect(container.textContent!.length*scale).toBeLessThanOrEqual(10);
+    expect(visibleText(container)!.length*scale).toBeLessThanOrEqual(10);
   });
   it("uses exact selection when the measured discrepancy exhausts the Canvas budget", () => {
     const {next}=scene(30,value=>value.includes("🪑") ? 0 : value.length*2,value=>value.length*2);
     const {container}=render(<TextTruncate mode="middle" text="abc-🪑-long-file.pdf" />);
     next();
-    expect(container.textContent).toBe("abc-🪑...le.pdf");
+    expect(visibleText(container)).toBe("abc-🪑...le.pdf");
   });
   it("measures a marker-only final result while preserving unavoidable clipping", () => {
     const {next,reads}=scene(1,value=>value.length,value=>value.length);
     const {container}=render(<TextTruncate mode="middle" text="abc-🪑-long-file.pdf" />);
     next();
-    expect(container.textContent).toBe("...");
+    expect(visibleText(container)).toBe("...");
     expect(reads).toHaveBeenCalledTimes(1);
   });
   it("remeasures on DPR-only changes, rebinds the resolution query and cleans it up", () => {

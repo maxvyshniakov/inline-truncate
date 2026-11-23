@@ -4,6 +4,13 @@ Versions and release rules: [docs/VERSIONING.md](docs/VERSIONING.md).
 
 ## Unreleased
 
+### Changed
+
+- Measured truncation now exposes the full text to assistive technology. While the string is cut, the visible text sits
+  in an `aria-hidden` span (`data-truncate-visible`) and the full text in a visually hidden, unselectable span
+  (`data-truncate-full-text`); text that fits and the CSS strategy add no nodes. The root's `textContent` then holds
+  both strings, so read `data-truncate-original` for the full text, and in-page find also matches the hidden copy.
+
 ## 0.4.1 - 2026-11-23
 
 ### Changed

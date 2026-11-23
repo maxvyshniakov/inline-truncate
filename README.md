@@ -63,6 +63,26 @@ points. This package has no multiline truncation API. Use CSS `line-clamp` for
 multiline clipping; Inline Measure's multiline entrypoint solves a different
 problem, the minimum width for a requested number of lines.
 
+## Accessibility
+
+When measured truncation shortens the string, assistive technology gets the full
+text, not the cut one. The root then holds two children: the visible string in a
+`span` with `aria-hidden="true"` (`data-truncate-visible`), and the full text in a
+visually hidden `span` (`data-truncate-full-text`) styled inline, so it needs no
+host CSS. The hidden copy is `user-select: none`, so a copied selection holds the
+visible string once. Highlighted matches stay in the visible string. Text that
+fits, and the CSS strategy, whose DOM already holds the full text, render the
+text alone with no extra nodes; a re-measure that ends untruncated removes them.
+
+While the text is cut, the root's `textContent` is the visible string followed by
+the full text; read `data-truncate-original` for the full text. In-page find also
+sees the hidden copy: a word only the cut part holds is found, invisibly, and a
+word the visible string shows counts twice in Firefox and WebKit.
+
+`bun run check:a11y` records the accessible name, selection, clipboard and
+`window.find` results in Chromium, Firefox and WebKit and fails when a truncated
+element does not expose its full text.
+
 ## Install
 
 The package is published to npmjs.org; installing it needs no token or registry

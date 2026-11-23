@@ -17,6 +17,24 @@ const BASE_CSS_END_CLASS = "block w-full min-w-0 truncate";
 const BASE_CSS_START_CLASS = "block w-full min-w-0 truncate [direction:rtl]";
 const BASE_MEASURE_CLASS = "block w-full min-w-0 overflow-hidden whitespace-nowrap";
 
+// Holds the full text for assistive technology while the visible string is cut.
+// Inline, so it works without the host's CSS. Not selectable, so a copied
+// selection holds the visible string once and not the full text beside it.
+const FULL_TEXT_STYLE: React.CSSProperties = {
+  position: "absolute",
+  width: 1,
+  height: 1,
+  margin: -1,
+  padding: 0,
+  border: 0,
+  overflow: "hidden",
+  clip: "rect(0 0 0 0)",
+  clipPath: "inset(50%)",
+  whiteSpace: "nowrap",
+  userSelect: "none",
+  WebkitUserSelect: "none",
+};
+
 function resolveTextTruncateStrategy({
   mode,
   strategy,
@@ -239,7 +257,16 @@ export const TextTruncate = React.memo(function TextTruncate({
       data-truncate-state={isTruncated ? "truncated" : undefined}
       data-truncate-strategy={resolvedStrategy}
     >
-      {shouldUseStartEllipsis ? <bdi>{content}</bdi> : content}
+      {shouldUseStartEllipsis ? (
+        <bdi>{content}</bdi>
+      ) : isTruncated ? (
+        <>
+          <span aria-hidden="true" data-truncate-visible="">{content}</span>
+          <span data-truncate-full-text="" style={FULL_TEXT_STYLE}>{text}</span>
+        </>
+      ) : (
+        content
+      )}
     </span>
   );
 });
