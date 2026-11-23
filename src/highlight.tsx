@@ -19,3 +19,27 @@ export function highlightedTextParts(text: string, query?: string) {
   if (cursor < text.length) parts.push({ text: text.slice(cursor), matched: false, start: cursor });
   return parts;
 }
+
+export function HighlightedMatchText({
+  query,
+  text,
+}: {
+  query?: string;
+  text: string;
+}) {
+  const parts = highlightedTextParts(text, query);
+  if (parts.length === 1 && !parts[0].matched) return text;
+  return (
+    <>
+      {parts.map((part) =>
+        part.matched ? (
+          <span key={part.start} data-slot="highlighted-match" className={HIGHLIGHT_CLASS_NAME}>
+            {part.text}
+          </span>
+        ) : (
+          part.text
+        ),
+      )}
+    </>
+  );
+}

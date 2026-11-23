@@ -8,7 +8,7 @@ import {
   needsDomMeasurement,
   type StyleSnapshot,
 } from "./measurement.js";
-import { highlightedTextParts, HIGHLIGHT_CLASS_NAME } from "./highlight.js";
+import { HighlightedMatchText } from "./highlight.js";
 import { indexTextGraphemes, type IndexedText } from "./graphemes.js";
 import {
   MAX_CACHED_CODE_UNITS,
@@ -24,6 +24,7 @@ export type TextTruncateEllipsis = "end" | "start";
 
 export { splitTextGraphemes } from "./graphemes.js";
 export { truncateText, type TextTruncateMode } from "./truncation.js";
+export { HighlightedMatchText } from "./highlight.js";
 
 const MAX_CLASSNAME_CACHE = 64;
 
@@ -51,30 +52,6 @@ function mergeRootClassName(baseClass: string, className: string): string {
   if (rootClassCache.size >= MAX_CLASSNAME_CACHE) rootClassCache.clear();
   rootClassCache.set(key, merged);
   return merged;
-}
-
-export function HighlightedMatchText({
-  query,
-  text,
-}: {
-  query?: string;
-  text: string;
-}) {
-  const parts = highlightedTextParts(text, query);
-  if (parts.length === 1 && !parts[0].matched) return text;
-  return (
-    <>
-      {parts.map((part) =>
-        part.matched ? (
-          <span key={part.start} data-slot="highlighted-match" className={HIGHLIGHT_CLASS_NAME}>
-            {part.text}
-          </span>
-        ) : (
-          part.text
-        ),
-      )}
-    </>
-  );
 }
 
 // --- Shared document.fonts listener hub ---
