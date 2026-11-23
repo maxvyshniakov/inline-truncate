@@ -76,8 +76,9 @@ When measured truncation shortens the string, assistive technology gets the full
 text, not the cut one. The root then holds two children: the visible string in a
 `span` with `aria-hidden="true"` (`data-truncate-visible`), and the full text in a
 visually hidden `span` (`data-truncate-full-text`) styled inline, so it needs no
-host CSS. The hidden copy is `user-select: none`, so a copied selection holds the
-visible string once. Highlighted matches stay in the visible string. Text that
+host CSS. The hidden copy is `user-select: none` and `pointer-events: none`, so a
+copied selection holds the visible string once and clicks, hit tests and drags land
+on the visible string. Highlighted matches stay in the visible string. Text that
 fits, and the CSS strategy, whose DOM already holds the full text, render the
 text alone with no extra nodes; a re-measure that ends untruncated removes them.
 
@@ -96,7 +97,10 @@ inside the application, through `query`, has neither problem.
 
 `bun run check:a11y` records the accessible name, selection, clipboard and
 `window.find` results in Chromium, Firefox and WebKit and fails when a truncated
-element does not expose its full text.
+element does not expose its full text. On a table of truncated cells it also fails
+when the hidden copy is hit by `elementFromPoint` or a click, ends up in a
+double-click, triple-click, drag or select-all selection, adds scrollable overflow,
+or takes focus.
 
 ## Install
 

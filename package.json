@@ -31,7 +31,7 @@
     "perf:capture": "slotfather run -n all --priority batch -- package-kit heavy all node scripts/perf/run.mjs",
     "perf:test": "node --test scripts/perf/*.test.mjs",
     "check:browser": "package-kit heavy 1 node scripts/perf/run.mjs --check",
-    "check:a11y": "package-kit heavy 1 sh -c 'for browser in chromium firefox webkit; do node scripts/a11y/check.mjs --browser=$browser || exit 1; done'"
+    "check:a11y": "package-kit heavy 1 sh -c 'for browser in chromium firefox webkit; do node scripts/a11y/check.mjs --browser=$browser && node scripts/a11y/pointer.mjs --browser=$browser || exit 1; done'"
   },
   "dependencies": {
     "cn": "^0.4.0",

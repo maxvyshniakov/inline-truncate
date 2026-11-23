@@ -7,9 +7,9 @@ Versions and release rules: [docs/VERSIONING.md](docs/VERSIONING.md).
 ### Changed
 
 - Measured truncation now exposes the full text to assistive technology. While the string is cut, the visible text sits
-  in an `aria-hidden` span (`data-truncate-visible`) and the full text in a visually hidden, unselectable span
-  (`data-truncate-full-text`); text that fits and the CSS strategy add no nodes. The root's `textContent` then holds
-  both strings, so read `data-truncate-original` for the full text, and in-page find also matches the hidden copy.
+  in an `aria-hidden` span (`data-truncate-visible`) and the full text in a visually hidden span that takes no
+  selection or pointer events (`data-truncate-full-text`); text that fits and the CSS strategy add no nodes. The
+  root's `textContent` then holds both strings, so read `data-truncate-original` for the full text, and in-page find also matches the hidden copy.
 - `query` is matched against the full text instead of the visible cut string. A match the cut hides highlights the
   truncation marker (`data-slot="highlighted-match"` with `data-truncate-marker`), a match straddling the cut
   highlights its visible end and the marker, and text that exists only where the visible ends join no longer matches.

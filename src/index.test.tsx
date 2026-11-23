@@ -533,6 +533,7 @@ describe("TextTruncate accessible full text", () => {
     expect(full!.style.position).toBe("absolute");
     expect(full!.style.clipPath).toBe("inset(50%)");
     expect(full!.style.userSelect).toBe("none");
+    expect(full!.style.pointerEvents).toBe("none");
   });
 
   it("adds nothing when the measured text fits", () => {
