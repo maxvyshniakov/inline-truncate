@@ -4,6 +4,8 @@ Versions and release rules: [docs/VERSIONING.md](docs/VERSIONING.md).
 
 ## Unreleased
 
+## 0.4.0 - 2026-11-23
+
 ### Changed
 
 - Depends on the unscoped `inline-measure` `^0.5.0` from npmjs.org instead of
