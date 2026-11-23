@@ -393,6 +393,20 @@ describe("TextTruncate", () => {
     expect(truncateRoot(container).querySelector("[data-slot='highlighted-match']")).toBeNull();
   });
 
+  it("highlights on the cut the search made when the text has periods on both sides of it", () => {
+    stubMeasuredLayout(220);
+
+    // The visible string also reads as "release..." + marker + "final.txt"; the
+    // search kept ".final.txt", so ".f" is visible and nothing was cut from it.
+    const { container } = render(<TextTruncate mode="middle" text="release...notes...final.txt" query=".f" />);
+
+    const root = truncateRoot(container);
+    expect(visibleText(root)).toBe("release......final.txt");
+    const matches = root.querySelectorAll<HTMLElement>("[data-slot='highlighted-match']");
+    expect(Array.from(matches, (match) => match.textContent)).toEqual([".f"]);
+    expect(root.querySelector("[data-truncate-marker]")).toBeNull();
+  });
+
   it("leaves the marker plain when every match is visible", () => {
     stubMeasuredLayout(100);
 

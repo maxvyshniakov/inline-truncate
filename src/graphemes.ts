@@ -67,3 +67,17 @@ export function sliceSuffix(indexed: IndexedText, count: number): string {
   if (count >= indexed.length) return indexed.text;
   return indexed.text.slice(indexed.offsets ? indexed.offsets[indexed.length - count] : indexed.length - count);
 }
+
+/** UTF-16 offset where `slicePrefix(indexed, count)` ends. */
+export function prefixEndOffset(indexed: IndexedText, count: number): number {
+  if (count <= 0) return 0;
+  if (count >= indexed.length) return indexed.text.length;
+  return indexed.offsets ? indexed.offsets[count] : count;
+}
+
+/** UTF-16 offset where `sliceSuffix(indexed, count)` starts. */
+export function suffixStartOffset(indexed: IndexedText, count: number): number {
+  if (count <= 0) return indexed.text.length;
+  if (count >= indexed.length) return 0;
+  return indexed.offsets ? indexed.offsets[indexed.length - count] : indexed.length - count;
+}

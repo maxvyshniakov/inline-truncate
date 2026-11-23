@@ -1,10 +1,34 @@
-import { indexTextGraphemes, slicePrefix, sliceSuffix, type IndexedText } from "./graphemes.js";
+import {
+  indexTextGraphemes,
+  prefixEndOffset,
+  slicePrefix,
+  sliceSuffix,
+  suffixStartOffset,
+  type IndexedText,
+} from "./graphemes.js";
 
 export type TextTruncateMode = "middle" | "end";
 
 export const TRUNCATION_MARKER = "...";
 export const MAX_CACHED_WIDTHS = 256;
 export const MAX_CACHED_CODE_UNITS = 32_768;
+
+/**
+ * Where the search cut the full text: the visible string is
+ * `text.slice(0, prefixEnd) + TRUNCATION_MARKER + text.slice(suffixStart)`.
+ * Offsets are UTF-16 code units on grapheme boundaries.
+ */
+export interface TruncationCut {
+  prefixEnd: number;
+  suffixStart: number;
+}
+
+/** The search's result: the visible string and, when it is cut, the cut. */
+export interface TruncationResult {
+  text: string;
+  truncated: boolean;
+  cut: TruncationCut | null;
+}
 
 type TruncateInput = {
   maxWidth: number;
@@ -30,27 +54,28 @@ export function truncateText(input: TruncateInput): { text: string; truncated: b
     }
     return width;
   };
-  return truncatePrepared(
+  const { text, truncated } = truncatePrepared(
     { maxWidth: input.maxWidth, measureText, mode: input.mode, text: input.text },
     () => indexTextGraphemes(input.text),
   );
+  return { text, truncated };
 }
 
 export function truncatePrepared(
   { maxWidth, measureText, mode, text }: TruncateInput,
   getIndexed: () => IndexedText,
-): { text: string; truncated: boolean } {
+): TruncationResult {
   if (!text || maxWidth <= 0) {
-    return { text, truncated: false };
+    return { text, truncated: false, cut: null };
   }
   const fullWidth = measureText(text);
   if (fullWidth <= maxWidth) {
-    return { text, truncated: false };
+    return { text, truncated: false, cut: null };
   }
 
   const markerWidth = measureText(TRUNCATION_MARKER);
   if (markerWidth >= maxWidth) {
-    return { text: TRUNCATION_MARKER, truncated: true };
+    return { text: TRUNCATION_MARKER, truncated: true, cut: { prefixEnd: 0, suffixStart: text.length } };
   }
 
   const indexed = getIndexed();
@@ -65,6 +90,7 @@ export function truncatePrepared(
     return {
       text: `${slicePrefix(indexed, prefixCount)}${TRUNCATION_MARKER}`,
       truncated: true,
+      cut: { prefixEnd: prefixEndOffset(indexed, prefixCount), suffixStart: text.length },
     };
   }
 
@@ -184,10 +210,10 @@ function measuredMiddleTruncate({
   markerWidth: number;
   maxWidth: number;
   measureText: (value: string) => number;
-}) {
+}): TruncationResult {
   const maxEdge = indexed.length - 1;
   if (maxEdge <= 0) {
-    return { text: TRUNCATION_MARKER, truncated: true };
+    return { text: TRUNCATION_MARKER, truncated: true, cut: { prefixEnd: 0, suffixStart: indexed.text.length } };
   }
 
   const prefixWidths = createEdgeWidths(indexed, measureText, false);
@@ -250,6 +276,7 @@ function measuredMiddleTruncate({
   return {
     text: `${slicePrefix(indexed, prefixCount)}${TRUNCATION_MARKER}${sliceSuffix(indexed, suffixCount)}`,
     truncated: true,
+    cut: { prefixEnd: prefixEndOffset(indexed, prefixCount), suffixStart: suffixStartOffset(indexed, suffixCount) },
   };
 }
 

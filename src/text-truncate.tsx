@@ -4,7 +4,7 @@ import React from "react";
 import { hasEmoji } from "./measurement.js";
 import { CutHighlightedText, HighlightedMatchText } from "./highlight.js";
 import type { TextTruncateMode } from "./truncation.js";
-import { cancelJob, scheduleJob, type MeasureJob } from "./scheduler.js";
+import { cancelJob, fullTextState, scheduleJob, type MeasureJob } from "./scheduler.js";
 import { observeResize, subscribeFonts } from "./observers.js";
 import { cn } from "cn";
 
@@ -81,7 +81,7 @@ export const TextTruncate = React.memo(function TextTruncate({
     job: MeasureJob;
     syncResolution: (needsResolution: boolean) => void;
   } | null>(null);
-  const [truncatedText, setTruncatedText] = React.useState(text);
+  const [truncation, setTruncation] = React.useState(() => fullTextState(text));
   const resolvedStrategy = resolveTextTruncateStrategy({ mode, strategy });
 
   // Persistent lifecycle effect: keeps ResizeObserver and document.fonts
@@ -108,7 +108,7 @@ export const TextTruncate = React.memo(function TextTruncate({
       cachedUnits: 0,
       verifiedWidths: new Map(),
       verifiedUnits: 0,
-      setTruncatedText,
+      setTruncation,
       invalidate() {
         job.completedWidth = undefined;
         job.lastStyle = undefined;
@@ -221,18 +221,21 @@ export const TextTruncate = React.memo(function TextTruncate({
     return undefined;
   }, [className, mode, query, resolvedStrategy, text]);
 
-  const renderedText = resolvedStrategy === "measure" ? truncatedText : text;
-  const isTruncated = resolvedStrategy === "measure" && truncatedText !== text;
+  const renderedText = resolvedStrategy === "measure" ? truncation.text : text;
+  const isTruncated = resolvedStrategy === "measure" && truncation.text !== text;
+  // The search hands over where it cut. Until it has run for a new `text`, the
+  // previous visible string stays up and its cut does not apply.
+  const cut = isTruncated && truncation.source === text ? truncation.cut : null;
   const trimmedQuery = query?.trim();
   // Recreate decorated text when it changes. Reusing positioned inline spans
   // can retain stale shaping across a resize even with identical font styles.
   // Matches are found in the full text; a cut maps them onto the visible string.
   const content = trimmedQuery ? (
-    isTruncated ? (
+    cut ? (
       <CutHighlightedText
         key={`${query!.length}:${query}:${renderedText}`}
         text={text}
-        visible={renderedText}
+        cut={cut}
         query={query}
       />
     ) : (

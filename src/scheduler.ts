@@ -12,7 +12,33 @@ import {
   TRUNCATION_MARKER,
   truncatePrepared,
   type TextTruncateMode,
+  type TruncationCut,
+  type TruncationResult,
 } from "./truncation.js";
+
+/** What the component renders: the visible string of `source` and where it was cut. */
+export interface TruncationState {
+  source: string;
+  text: string;
+  cut: TruncationCut | null;
+}
+
+export function fullTextState(text: string): TruncationState {
+  return { source: text, text, cut: null };
+}
+
+// Keeps the previous state object when nothing changed, so React bails out of
+// the render as it did when the state was the visible string alone.
+function sameTruncation(a: TruncationState, b: TruncationState) {
+  return a.source === b.source
+    && a.text === b.text
+    && a.cut?.prefixEnd === b.cut?.prefixEnd
+    && a.cut?.suffixStart === b.cut?.suffixStart;
+}
+
+function setTruncation(job: MeasureJob, next: TruncationState) {
+  job.setTruncation((previous) => (sameTruncation(previous, next) ? previous : next));
+}
 
 // --- Shared two-phase batched RAF scheduler ---
 // Phase 1 reads all layout geometry and computed styles before any DOM probe
@@ -50,7 +76,7 @@ export interface MeasureJob {
   cachedUnits: number;
   verifiedWidths: Map<string, number>;
   verifiedUnits: number;
-  setTruncatedText: React.Dispatch<React.SetStateAction<string>>;
+  setTruncation: React.Dispatch<React.SetStateAction<TruncationState>>;
   invalidate: () => void;
 }
 
@@ -246,7 +272,7 @@ function flushJobs() {
     if (!job.active) continue;
     if (width <= 0 || !computed || !style) {
       job.completedWidth = undefined;
-      job.setTruncatedText(job.text);
+      setTruncation(job, fullTextState(job.text));
       continue;
     }
 
@@ -278,9 +304,9 @@ function flushJobs() {
       style,
     });
 
-    const commit = (value: string) => {
+    const commit = (result: TruncationResult) => {
       job.completedWidth = width;
-      job.setTruncatedText(value);
+      setTruncation(job, { source: job.text, text: result.text, cut: result.cut });
     };
 
     const measureText = (value: string) => {
@@ -322,7 +348,7 @@ function flushJobs() {
     try {
       if (!session.verifyText) {
         const next = truncatePrepared({ text: job.text, maxWidth: width, mode: job.mode, measureText }, getIndexed);
-        commit(next.text);
+        commit(next);
         continue;
       }
 
@@ -362,7 +388,7 @@ function flushJobs() {
         }
         next = select(budget);
       }
-      commit(next.text);
+      commit(next);
     } finally {
       session.dispose();
     }
