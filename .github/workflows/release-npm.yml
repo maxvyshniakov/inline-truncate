@@ -3,7 +3,7 @@
 # package-kit.config.mjs sets publish: { registry: "npm", access: "public" }.
 #
 # - Register this file once on npmjs.org as the package's trusted publisher:
-#   npm trust github @maxvyshniakov/text-truncate --file release-npm.yml --repo maxvyshniakov/text-truncate
+#   npm trust github inline-truncate --file release-npm.yml --repo maxvyshniakov/text-truncate
 #   The OIDC claims name this workflow file, so the job stays here and does not
 #   move into a reusable workflow.
 # - Inside Actions, `package-kit publish` skips the release gate's own wait: the

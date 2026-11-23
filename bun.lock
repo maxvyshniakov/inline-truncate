@@ -3,7 +3,7 @@
   "configVersion": 1,
   "workspaces": {
     "": {
-      "name": "@maxvyshniakov/text-truncate",
+      "name": "inline-truncate",
       "dependencies": {
         "cn": "^0.4.0",
         "inline-measure": "^0.5.0",

@@ -4,7 +4,7 @@ React text truncation and search highlighting. It depends on Inline Measure and
 must not require Sid-Kit or Data Grid CSS. Application labels, routes and
 fetching stay outside the package.
 
-The package is published to npmjs.org as `@maxvyshniakov/text-truncate` (public access, trusted
+The package is published to npmjs.org as `inline-truncate` (public access, trusted
 publishing from `.github/workflows/release-npm.yml`) as part of a release (docs/VERSIONING.md).
 Every dependency comes from npmjs.org, so installing needs no token. Changing the repository's
 visibility, a first publication to npmjs.org or enabling Pages needs explicit authorization.

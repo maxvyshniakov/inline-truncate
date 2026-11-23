@@ -1,5 +1,5 @@
 {
-  "name": "@maxvyshniakov/text-truncate",
+  "name": "inline-truncate",
   "version": "0.4.1",
   "type": "module",
   "packageManager": "bun@1.4.4",

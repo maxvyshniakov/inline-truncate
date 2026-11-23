@@ -1,9 +1,9 @@
-# @maxvyshniakov/text-truncate
+# inline-truncate
 
 React text truncation and search highlighting. Depends on Inline Measure, not Sid-Kit or Data Grid.
 
 ```tsx
-import { TextTruncate } from "@maxvyshniakov/text-truncate";
+import { TextTruncate } from "inline-truncate";
 
 <TextTruncate text="Quarterly-design-review.pdf" mode="middle" query="design" />
 ```
@@ -69,7 +69,7 @@ The package is published to npmjs.org; installing it needs no token or registry
 configuration:
 
 ```sh
-bun add @maxvyshniakov/text-truncate react@^19.2.8 react-dom@^19.2.8
+bun add inline-truncate react@^19.2.8 react-dom@^19.2.8
 ```
 
 It depends on [`inline-measure`](https://www.npmjs.com/package/inline-measure),
@@ -81,7 +81,7 @@ path relative to your stylesheet:
 
 ```css
 @import "tailwindcss";
-@source "../node_modules/@maxvyshniakov/text-truncate/dist";
+@source "../node_modules/inline-truncate/dist";
 ```
 
 ## Development

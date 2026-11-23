@@ -54,7 +54,7 @@ try {
   if (!cases.length) throw new Error("No matching scenarios");
   const timerResolutionMs = await page.evaluate(() => {let prior=performance.now(), resolution=Infinity;for(let i=0;i<10_000;i++){const now=performance.now();if(now>prior)resolution=Math.min(resolution,now-prior);prior=now;}return Number.isFinite(resolution)?resolution:1;});
   const frameDurationMs = await page.evaluate(async()=>{const timestamps=[];for(let i=0;i<9;i++)timestamps.push(await new Promise(resolve=>requestAnimationFrame(resolve)));const intervals=timestamps.slice(1).map((value,index)=>value-timestamps[index]).sort((a,b)=>a-b);return intervals[Math.floor(intervals.length/2)];});
-  const report = {schemaVersion:1,package:"@maxvyshniakov/text-truncate",workload:"text-truncate-v3",methodHash,implementation:{reference:reference ?? "working-tree",sourceHash},timerResolutionMs,frameDurationMs,revision:execFileSync("git",["rev-parse","HEAD"],{encoding:"utf8"}).trim(),inlineMeasure,browser:`${browserName}/${browser.version()}`,environment:{...environment(),frameIntervalMs:Math.round(frameDurationMs)},scenarios:[],correctness:null};
+  const report = {schemaVersion:1,package:"inline-truncate",workload:"text-truncate-v3",methodHash,implementation:{reference:reference ?? "working-tree",sourceHash},timerResolutionMs,frameDurationMs,revision:execFileSync("git",["rev-parse","HEAD"],{encoding:"utf8"}).trim(),inlineMeasure,browser:`${browserName}/${browser.version()}`,environment:{...environment(),frameIntervalMs:Math.round(frameDurationMs)},scenarios:[],correctness:null};
   for (const scenario of checkOnly ? [] : cases) {
     await page.evaluate(s=>window.truncatePerf.sample(s),scenario);
     const samples=[];

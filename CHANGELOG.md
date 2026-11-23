@@ -1,8 +1,16 @@
-# @maxvyshniakov/text-truncate Changelog
+# inline-truncate Changelog
 
 Versions and release rules: [docs/VERSIONING.md](docs/VERSIONING.md).
 
 ## Unreleased
+
+### Changed
+
+- Breaking: the package is renamed from `@maxvyshniakov/text-truncate` to the unscoped
+  `inline-truncate` on npmjs.org, next to `inline-measure`. Replace the old name in
+  `package.json`, imports and the Tailwind `@source` path; the API, the `--text-truncate-highlight-*`
+  CSS variables and the behavior are unchanged. The scoped package stays installable but
+  receives no further releases.
 
 ## 0.4.1 - 2026-11-23
 
