@@ -198,6 +198,8 @@ try {
   for (const row of rows) {
     const truncated = row.state === "truncated";
     if (row.expectTruncated !== truncated) failures.push(`${row.id}: expected truncated=${row.expectTruncated}, got state "${row.state}"`);
+    const engineReports = browserName === "chromium" || browserName === "firefox";
+    if (engineReports && row.engine === null) failures.push(`${row.id}: the engine reported no cell`);
     if (row.engine !== null && row.engine !== row.text) failures.push(`${row.id}: engine name "${row.engine}"`);
     if (row.aria !== row.text) failures.push(`${row.id}: ARIA snapshot name "${row.aria}"`);
     for (const [label, copied] of [["selection", row.selected], ["clipboard", row.clipboard]]) {

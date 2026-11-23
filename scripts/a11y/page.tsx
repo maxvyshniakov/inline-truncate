@@ -17,7 +17,13 @@ function Page() {
   return (
     <>
       {cases.map(({ id, props }) => (
+        // A header row makes it a data table; Chromium exposes a lone cell as a layout table.
         <table key={id} aria-label={id}>
+          <thead>
+            <tr>
+              <th>Name</th>
+            </tr>
+          </thead>
           <tbody>
             <tr>
               <td data-case={id}>

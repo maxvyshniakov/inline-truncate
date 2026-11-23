@@ -77,7 +77,7 @@ text alone with no extra nodes; a re-measure that ends untruncated removes them.
 While the text is cut, the root's `textContent` is the visible string followed by
 the full text; read `data-truncate-original` for the full text. In-page find also
 sees the hidden copy: a word only the cut part holds is found, invisibly, and a
-word the visible string shows counts twice in Firefox and WebKit.
+word the visible string shows counts twice (`window.find` in Chromium, Firefox and WebKit).
 
 `bun run check:a11y` records the accessible name, selection, clipboard and
 `window.find` results in Chromium, Firefox and WebKit and fails when a truncated
