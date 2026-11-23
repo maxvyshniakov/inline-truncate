@@ -1,6 +1,6 @@
 {
   "name": "@maxvyshniakov/text-truncate",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "type": "module",
   "packageManager": "bun@1.4.4",
   "description": "React text truncation and search highlighting, measured with Inline Measure.",
@@ -41,7 +41,7 @@
     "react-dom": "^19.2.8"
   },
   "devDependencies": {
-    "@maxvyshniakov/package-kit": "1.0.0",
+    "@maxvyshniakov/package-kit": "1.0.1",
     "@testing-library/dom": "10.4.2",
     "@testing-library/jest-dom": "7.0.1",
     "@testing-library/react": "16.3.3",

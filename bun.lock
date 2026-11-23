@@ -9,7 +9,7 @@
         "inline-measure": "^0.5.0",
       },
       "devDependencies": {
-        "@maxvyshniakov/package-kit": "1.0.0",
+        "@maxvyshniakov/package-kit": "1.0.1",
         "@testing-library/dom": "10.4.2",
         "@testing-library/jest-dom": "7.0.1",
         "@testing-library/react": "16.3.3",
@@ -46,7 +46,7 @@
 
     "@jridgewell/trace-mapping": ["@jridgewell/trace-mapping@0.3.31", "", { "dependencies": { "@jridgewell/resolve-uri": "^3.1.0", "@jridgewell/sourcemap-codec": "^1.4.14" } }, "sha512-zzNR+SdQSDJzc8joaeP8QQoCQr8NuYx2dIIytl1QeBEZHJ9uW6hebsrYgbz8hJwUQao3TWCMtmfV8Nu1twOLAw=="],
 
-    "@maxvyshniakov/package-kit": ["@maxvyshniakov/package-kit@1.0.0", "", { "peerDependencies": { "playwright": ">=1.50.0" }, "optionalPeers": ["playwright"], "bin": { "package-kit": "src/cli.mjs", "package-kit-lane": "src/lanefather.mjs" } }, "sha512-0kPv5MUPo4+oF4Ew6FA1bn4Upq/Cv49xluj7d5KTq/uAegK/u/3VwuRxp/x8TxXcTa8mIcYVLSMiVhkxbKfTWg=="],
+    "@maxvyshniakov/package-kit": ["@maxvyshniakov/package-kit@1.0.1", "", { "peerDependencies": { "playwright": ">=1.50.0" }, "optionalPeers": ["playwright"], "bin": { "package-kit": "src/cli.mjs", "package-kit-lane": "src/lanefather.mjs" } }, "sha512-EhWxxIsFS4j4p44LCUMjeEZyWJTB8llHNErE05MNbCTvyQym4wXLA9mRjpL4RSSaI51Mc4mLifj6A865X/rIGw=="],
 
     "@oxc-project/types": ["@oxc-project/types@0.152.0", "", {}, "sha512-oM/5rLBm2tPkg0iBgkH/FOeR3PCDpY19GTgAZjMFM8h9WI9VW7cLgzp6nwtarYKmovavIQZ+Fe/RKX/8C8O/Rw=="],
 

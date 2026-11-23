@@ -21,6 +21,6 @@ jobs:
   # docs/VERSIONING.md) for main and pull requests into main; dev and branches
   # run plain verify.
   check:
-    uses: maxvyshniakov/package-kit/.github/workflows/verify.yml@v1.0.0
+    uses: maxvyshniakov/package-kit/.github/workflows/verify.yml@v1.0.1
     with:
       timeout-minutes: 15

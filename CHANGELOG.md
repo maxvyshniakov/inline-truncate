@@ -4,6 +4,12 @@ Versions and release rules: [docs/VERSIONING.md](docs/VERSIONING.md).
 
 ## Unreleased
 
+## 0.4.1 - 2026-11-23
+
+### Changed
+
+- Updated release tooling to `@maxvyshniakov/package-kit` `1.0.1` and validated npmjs.org OIDC trusted publishing with provenance.
+
 ## 0.4.0 - 2026-11-23
 
 ### Changed
