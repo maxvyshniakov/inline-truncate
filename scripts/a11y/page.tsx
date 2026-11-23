@@ -4,11 +4,13 @@ import { TextTruncate, type TextTruncateProps } from "../../src/index";
 
 const LONG = "Quarterly revenue report for the northern region, final draft v3.pdf";
 
-export const cases: { id: string; expectTruncated: boolean; props: TextTruncateProps }[] = [
+// expectMarker: the query matches only the cut part, so the marker carries the highlight.
+export const cases: { id: string; expectTruncated: boolean; expectMarker?: boolean; props: TextTruncateProps }[] = [
   { id: "middle", expectTruncated: true, props: { mode: "middle", text: LONG } },
   { id: "end-measure", expectTruncated: true, props: { mode: "end", strategy: "measure", text: LONG } },
   { id: "end-css", expectTruncated: false, props: { mode: "end", text: LONG } },
   { id: "middle-highlight", expectTruncated: true, props: { mode: "middle", text: LONG, query: "draft" } },
+  { id: "middle-cut-match", expectTruncated: true, expectMarker: true, props: { mode: "middle", text: LONG, query: "northern" } },
   { id: "middle-short", expectTruncated: false, props: { mode: "middle", text: "Short.pdf" } },
   { id: "middle-regrow", expectTruncated: true, props: { mode: "middle", text: LONG } },
 ];
@@ -38,4 +40,4 @@ function Page() {
 }
 
 createRoot(document.querySelector("#fixture")!).render(<Page />);
-Object.assign(window, { a11yCases: cases.map(({ id, expectTruncated, props }) => ({ id, expectTruncated, text: props.text })) });
+Object.assign(window, { a11yCases: cases.map(({ id, expectTruncated, expectMarker, props }) => ({ id, expectTruncated, expectMarker: expectMarker ?? false, text: props.text })) });

@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { act, render, cleanup, screen } from "@testing-library/react";
 import { HighlightedMatchText, TextTruncate, splitTextGraphemes, truncateText, type TextTruncateProps } from "./index";
+import { HIGHLIGHT_CLASS_NAME } from "./highlight";
 
 const originalFonts = Object.getOwnPropertyDescriptor(document, "fonts");
 const originalRO = globalThis.ResizeObserver;
@@ -359,14 +360,48 @@ describe("TextTruncate", () => {
     expect(Array.from(matches, (match) => match.textContent)).toEqual(["pdf"]);
   });
 
-  it("does not highlight a query match that truncation hid", () => {
+  it("highlights the marker for a query match that truncation hid", () => {
     stubMeasuredLayout(100);
 
     const { container } = render(<TextTruncate mode="middle" text={fileName} query="design" />);
 
     const root = truncateRoot(container);
     expect(visibleText(root)).toBe("Qua....pdf");
-    expect(root.querySelector("[data-slot='highlighted-match']")).toBeNull();
+    const matches = root.querySelectorAll<HTMLElement>("[data-slot='highlighted-match']");
+    expect(Array.from(matches, (match) => match.textContent)).toEqual(["..."]);
+    expect(matches[0]).toHaveAttribute("data-truncate-marker");
+    expect(matches[0].className).toBe(HIGHLIGHT_CLASS_NAME);
+  });
+
+  it("highlights the visible end and the marker for a match straddling the cut", () => {
+    stubMeasuredLayout(100);
+
+    const { container } = render(<TextTruncate mode="middle" text={fileName} query="quarterly" />);
+
+    const root = truncateRoot(container);
+    expect(visibleText(root)).toBe("Qua....pdf");
+    const matches = root.querySelectorAll("[data-slot='highlighted-match']");
+    expect(Array.from(matches, (match) => match.textContent)).toEqual(["Qua", "..."]);
+  });
+
+  it("does not highlight a match that exists only where the visible ends join", () => {
+    stubMeasuredLayout(100);
+
+    const { container } = render(<TextTruncate mode="middle" text={fileName} query="a...." />);
+
+    expect(visibleText(truncateRoot(container))).toBe("Qua....pdf");
+    expect(truncateRoot(container).querySelector("[data-slot='highlighted-match']")).toBeNull();
+  });
+
+  it("leaves the marker plain when every match is visible", () => {
+    stubMeasuredLayout(100);
+
+    const { container } = render(<TextTruncate mode="end" strategy="measure" text={fileName} query="qua" />);
+
+    const root = truncateRoot(container);
+    expect(visibleText(root).endsWith("...")).toBe(true);
+    const matches = root.querySelectorAll("[data-slot='highlighted-match']");
+    expect(Array.from(matches, (match) => match.textContent)).toEqual(["Qua"]);
   });
 
   it("publishes measureExtra for host measurement without changing its own truncation", () => {

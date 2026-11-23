@@ -17,7 +17,7 @@ container a constrained width.
 | `mode` | required | `"end"` keeps the start of the text; `"middle"` keeps both ends. |
 | `strategy` | `"auto"` | `"css"` truncates with CSS `text-overflow`. `"measure"` measures the text with Inline Measure and shortens the string, again after a resize or once fonts load. `"auto"` measures for `middle` and uses CSS for `end`. |
 | `ellipsis` | `"end"` | `"start"` puts the ellipsis first and keeps the end of the text visible. CSS strategy only. |
-| `query` | none | Highlights every case-insensitive match. |
+| `query` | none | Highlights every case-insensitive match in the full text. When measured truncation cuts the string, a match's visible part is highlighted in place and a match in the cut part highlights the marker. |
 | `className` | none | Merged onto the root `span`. |
 | `measureExtra` | none | Written to `data-truncate-measure-extra` for hosts that measure the cell, such as Data Grid auto-fit. |
 
@@ -25,6 +25,13 @@ Measured truncation never splits a grapheme cluster such as an emoji or a letter
 combining mark. The package also exports `truncateText`, which truncates with
 any `measureText` callback, `HighlightedMatchText`, which highlights without
 truncating, and `splitTextGraphemes`.
+
+Matches are found once, in the full text; the cut string only renders them. A
+match that straddles the cut highlights its visible end and the marker, and the
+query never matches text that exists only where the two visible ends join. The
+highlighted marker is a `span` with `data-slot="highlighted-match"` and
+`data-truncate-marker`, styled like any match. Highlighting does not take part in
+measurement: the cut is the same with or without a query.
 
 Highlight colors use `--text-truncate-highlight-background` and
 `--text-truncate-highlight-foreground`, with amber and current-text defaults.
@@ -78,6 +85,14 @@ While the text is cut, the root's `textContent` is the visible string followed b
 the full text; read `data-truncate-original` for the full text. In-page find also
 sees the hidden copy: a word only the cut part holds is found, invisibly, and a
 word the visible string shows counts twice (`window.find` in Chromium, Firefox and WebKit).
+
+This is a known limit of the browser's own find-in-page (Cmd+F, Ctrl+F): a page
+cannot tell it which copy to count or where to paint, so it counts a visible word
+twice and paints a hit in the cut part inside the hidden copy, where it cannot be
+seen. The ways to stop that cost more than they give: hiding either copy from find
+(`inert`) hides it from assistive technology too, and drawing the visible string as
+CSS generated content takes away selection, copy and highlighted matches. Search
+inside the application, through `query`, has neither problem.
 
 `bun run check:a11y` records the accessible name, selection, clipboard and
 `window.find` results in Chromium, Firefox and WebKit and fails when a truncated

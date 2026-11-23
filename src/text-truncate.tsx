@@ -2,7 +2,7 @@
 
 import React from "react";
 import { hasEmoji } from "./measurement.js";
-import { HighlightedMatchText } from "./highlight.js";
+import { CutHighlightedText, HighlightedMatchText } from "./highlight.js";
 import type { TextTruncateMode } from "./truncation.js";
 import { cancelJob, scheduleJob, type MeasureJob } from "./scheduler.js";
 import { observeResize, subscribeFonts } from "./observers.js";
@@ -226,12 +226,22 @@ export const TextTruncate = React.memo(function TextTruncate({
   const trimmedQuery = query?.trim();
   // Recreate decorated text when it changes. Reusing positioned inline spans
   // can retain stale shaping across a resize even with identical font styles.
+  // Matches are found in the full text; a cut maps them onto the visible string.
   const content = trimmedQuery ? (
-    <HighlightedMatchText
-      key={`${query!.length}:${query}:${renderedText}`}
-      text={renderedText}
-      query={query}
-    />
+    isTruncated ? (
+      <CutHighlightedText
+        key={`${query!.length}:${query}:${renderedText}`}
+        text={text}
+        visible={renderedText}
+        query={query}
+      />
+    ) : (
+      <HighlightedMatchText
+        key={`${query!.length}:${query}:${renderedText}`}
+        text={renderedText}
+        query={query}
+      />
+    )
   ) : (
     renderedText
   );

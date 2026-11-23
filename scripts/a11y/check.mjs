@@ -161,6 +161,10 @@ try {
         textContent: root.textContent,
         visibleText: root.querySelector(":scope > [aria-hidden='true']")?.textContent ?? root.textContent,
         elementsInside: root.querySelectorAll("*").length,
+        // What is painted as a match; "marker:" when the truncation marker carries it.
+        highlights: Array.from(root.querySelectorAll("[data-slot='highlighted-match']"), (match) =>
+          `${match.hasAttribute("data-truncate-marker") ? "marker:" : ""}${match.textContent}`),
+        overflow: root.scrollWidth - root.clientWidth,
         selected,
         found,
         visibleWordMatches,
@@ -178,7 +182,7 @@ try {
       clipboard = await page.evaluate(() => navigator.clipboard.readText());
       await page.evaluate(() => getSelection().removeAllRanges());
     }
-    rows.push({ id: testCase.id, text: testCase.text, expectTruncated: testCase.expectTruncated, engine: engineNames[testCase.id] ?? null, aria, clipboard, ...dom });
+    rows.push({ id: testCase.id, text: testCase.text, expectTruncated: testCase.expectTruncated, expectMarker: testCase.expectMarker, engine: engineNames[testCase.id] ?? null, aria, clipboard, ...dom });
   }
 
   // A re-measure that ends untruncated must remove the hidden copy.
@@ -206,6 +210,8 @@ try {
       if (copied !== null && copied.split(row.text).length > 2) failures.push(`${row.id}: ${label} holds the full text twice`);
       if (copied !== null && truncated && copied.includes(row.text) && copied.includes(row.visibleText)) failures.push(`${row.id}: ${label} holds both strings`);
     }
+    if (row.expectMarker && !row.highlights.some((match) => match.startsWith("marker:"))) failures.push(`${row.id}: the marker is not highlighted for a cut match (${JSON.stringify(row.highlights)})`);
+    if (truncated && row.overflow > 0) failures.push(`${row.id}: the visible string overflows by ${row.overflow}px`);
     if (!truncated && row.elementsInside !== 0 && !row.id.includes("highlight")) failures.push(`${row.id}: ${row.elementsInside} extra elements while not truncated`);
   }
   if (regrown.elementsInside !== 0) failures.push(`middle-regrow: ${regrown.elementsInside} elements left after the text fits`);
@@ -215,7 +221,7 @@ try {
   fs.writeFileSync(output, `${JSON.stringify(report, null, 2)}\n`);
   console.log(report.browser);
   for (const row of rows) {
-    console.log(`${row.id} [${row.state || "fits"}] visible="${row.visibleText}" engine=${JSON.stringify(row.engine)} aria="${row.aria}" selection="${row.selected}" clipboard=${JSON.stringify(row.clipboard)} find(${CUT_WORD})=${row.found} find(draft)=${row.visibleWordMatches} elements=${row.elementsInside}`);
+    console.log(`${row.id} [${row.state || "fits"}] visible="${row.visibleText}" engine=${JSON.stringify(row.engine)} aria="${row.aria}" selection="${row.selected}" clipboard=${JSON.stringify(row.clipboard)} find(${CUT_WORD})=${row.found} find(draft)=${row.visibleWordMatches} elements=${row.elementsInside} highlights=${JSON.stringify(row.highlights)} overflow=${row.overflow}`);
   }
   console.log(`middle-regrow after fit: elements=${regrown.elementsInside}`);
   console.log(failures.length ? `FAIL\n- ${failures.join("\n- ")}` : "PASS");
