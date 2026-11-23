@@ -1,0 +1,41 @@
+# Publishes the released version to npmjs.org with npm trusted publishing (OIDC)
+# and, from a public repository, provenance (package-kit docs/templates/release-npm.yml).
+# package-kit.config.mjs sets publish: { registry: "npm", access: "public" }.
+#
+# - Register this file once on npmjs.org as the package's trusted publisher:
+#   npm trust github @maxvyshniakov/text-truncate --file release-npm.yml --repo maxvyshniakov/text-truncate
+#   The OIDC claims name this workflow file, so the job stays here and does not
+#   move into a reusable workflow.
+# - Inside Actions, `package-kit publish` skips the release gate's own wait: the
+#   check job below gates the publication.
+# - Only the publish job, after check, gets id-token: write and contents: write (the tag).
+name: Release to npm
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+  packages: read
+concurrency:
+  group: release-npm
+  cancel-in-progress: false
+jobs:
+  check:
+    uses: maxvyshniakov/package-kit/.github/workflows/verify.yml@v1.0.0
+    permissions:
+      contents: read
+      packages: read
+  publish:
+    needs: check
+    if: ${{ github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write
+      id-token: write
+      packages: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+      - uses: maxvyshniakov/package-kit/actions/setup-bun@v1.0.0
+      - uses: maxvyshniakov/package-kit/actions/npm-publish@v1.0.0

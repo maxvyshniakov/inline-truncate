@@ -3,7 +3,7 @@ import {
   createInlineMeasurementRoot,
   createInlineTextMeasurementNode,
   parseCssPixelValue,
-} from "@maxvyshniakov/inline-measure";
+} from "inline-measure";
 import { highlightedTextParts, HIGHLIGHT_CLASS_NAME } from "./highlight.js";
 
 const NON_ASCII = /[\u0080-\uffff]/;

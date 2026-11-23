@@ -15,34 +15,33 @@
     }
   },
   "scripts": {
-    "prepare": "repo-kit hooks install",
+    "prepare": "package-kit hooks install",
     "build": "rm -rf dist && tsc -p tsconfig.build.json",
     "prepack": "bun run build",
-    "verify": "repo-kit verify",
-    "release": "repo-kit release",
-    "release:publish": "repo-kit publish",
-    "check:changelogs": "repo-kit check-changelogs",
-    "check:kit": "repo-kit check",
-    "check:consumer": "repo-kit packed-consumer",
-    "security:tls": "repo-kit tls",
-    "lint": "oxlint --config .oxlintrc.json --max-warnings=0 src scripts/perf repo-kit.config.mjs",
+    "verify": "package-kit verify",
+    "release": "package-kit release",
+    "release:publish": "package-kit publish",
+    "check:changelogs": "package-kit check-changelogs",
+    "check:kit": "package-kit check",
+    "check:consumer": "package-kit packed-consumer",
+    "lint": "oxlint --config .oxlintrc.json --max-warnings=0 src scripts/perf package-kit.config.mjs",
     "test": "node --test scripts/perf/*.test.mjs && vitest --config vitest.config.ts run",
     "typecheck": "tsc --noEmit -p tsconfig.build.json && tsc --noEmit -p tsconfig.test.json",
     "typecheck:fast": "tsc --noEmit -p tsconfig.build.json",
-    "perf:capture": "slotfather run -n all --priority batch -- repo-kit heavy all node scripts/perf/run.mjs",
+    "perf:capture": "slotfather run -n all --priority batch -- package-kit heavy all node scripts/perf/run.mjs",
     "perf:test": "node --test scripts/perf/*.test.mjs",
-    "check:browser": "repo-kit heavy 1 node scripts/perf/run.mjs --check"
+    "check:browser": "package-kit heavy 1 node scripts/perf/run.mjs --check"
   },
   "dependencies": {
-    "@maxvyshniakov/inline-measure": "^0.4.0",
-    "cn": "^0.4.0"
+    "cn": "^0.4.0",
+    "inline-measure": "^0.5.0"
   },
   "peerDependencies": {
     "react": "^19.2.8",
     "react-dom": "^19.2.8"
   },
   "devDependencies": {
-    "@maxvyshniakov/repo-kit": "0.3.0",
+    "@maxvyshniakov/package-kit": "1.0.0",
     "@testing-library/dom": "10.4.2",
     "@testing-library/jest-dom": "7.0.1",
     "@testing-library/react": "16.3.3",
@@ -62,8 +61,5 @@
   "repository": {
     "type": "git",
     "url": "git+https://github.com/maxvyshniakov/text-truncate.git"
-  },
-  "publishConfig": {
-    "registry": "https://npm.pkg.github.com/"
   }
 }

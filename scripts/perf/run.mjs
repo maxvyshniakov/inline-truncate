@@ -30,14 +30,14 @@ if (reference) {
 }
 const digest = value => createHash("sha256").update(value).digest("hex");
 const methodHash = digest(["scripts/perf/page.tsx","scripts/perf/index.html","scripts/perf/run.mjs","scripts/perf/report.mjs","scripts/perf/source.mjs","scripts/perf/options.mjs","scripts/perf/fonts/InterVariable.woff2"].map(file=>file+digest(fs.readFileSync(file))).join("\n"));
-const inlineDirectory = inlineSource ? path.resolve(inlineSource,"src") : path.dirname(fileURLToPath(import.meta.resolve("@maxvyshniakov/inline-measure")));
+const inlineDirectory = inlineSource ? path.resolve(inlineSource,"src") : path.dirname(fileURLToPath(import.meta.resolve("inline-measure")));
 const inlinePackage = JSON.parse(fs.readFileSync(path.resolve(inlineDirectory,"../package.json"),"utf8"));
 const inlineMeasure = {version:inlinePackage.version,source:inlineSource ?? "registry",sourceHash:digest(fs.readdirSync(inlineDirectory).filter(file=>/\.(js|ts)$/.test(file) && !file.includes(".test.") && !file.endsWith(".d.ts")).sort().map(file=>file+digest(fs.readFileSync(path.join(inlineDirectory,file)))).join("\n"))};
 const sourceHash = digest([...production].map(([file,content])=>file+digest(content)).join("\n"));
 const server = await createServer({ configFile:false, root:process.cwd(), server:{port:0,host:"127.0.0.1",hmr:false,watch:null,fs:{allow:[process.cwd(),fs.realpathSync("node_modules"),...(inlineSource ? [path.resolve(inlineSource),fs.realpathSync(path.resolve(inlineSource,"node_modules"))] : [])]}}, plugins:[{name:"deferred-font-fixture",configureServer(server){server.middlewares.use((request,_response,next)=>{if(request.url?.includes("late=1"))setTimeout(next,150);else next();});}},...(reference ? [{name:"reference-source",enforce:"pre",async resolveId(id,importer){
   const target=referenceModulePath(id,importer,path.resolve("src"),path.join(referenceDirectory,"src"));
   if (target) return this.resolve(target,importer,{skipSelf:true});
-}}] : [])], resolve: inlineSource ? {alias:{"@maxvyshniakov/inline-measure":path.resolve(inlineSource,"src/index.ts")}} : undefined });
+}}] : [])], resolve: inlineSource ? {alias:{"inline-measure":path.resolve(inlineSource,"src/index.ts")}} : undefined });
 let browser;
 try {
   await server.listen();

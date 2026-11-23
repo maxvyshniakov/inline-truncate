@@ -1,7 +1,7 @@
 # Versions, changelog and publishing
 
-The package owns its version and its `CHANGELOG.md`, and is published to the
-private GitHub Packages registry as `@maxvyshniakov/<name>`.
+The package owns its version and its `CHANGELOG.md`, and is published to
+npmjs.org as `@maxvyshniakov/text-truncate`, with public access.
 
 ## Rules
 
@@ -26,7 +26,7 @@ private GitHub Packages registry as `@maxvyshniakov/<name>`.
    - **patch** for fixes and compatible additions.
 
    After `1.0.0`, breaking changes take a major version.
-4. Depend on other `@maxvyshniakov` packages with `^x.y.z` ranges, so applications
+4. Depend on sibling packages (`inline-measure`, `cn`) with `^x.y.z` ranges, so applications
    install one copy of each. Raise the floor when this package starts to need a
    newer version, and release this package with an entry saying so.
 5. Keep entries consumer-facing: what changed for users of the package and what
@@ -37,29 +37,25 @@ private GitHub Packages registry as `@maxvyshniakov/<name>`.
 After the release commit is on `origin/main`:
 
 ```sh
-git fetch origin && bunx repo-kit release-gate origin/main
-bun run release:publish
+gh workflow run release-npm.yml --ref main
 ```
 
-`repo-kit release-gate` is the local release gate (repo-kit's README, "Release gate"): it runs
-`bun run verify -- --release` in a clean temporary worktree of the commit and, on a pass, records the commit
-status `Library checks (local, macOS)`.
+`.github/workflows/release-npm.yml` publishes from GitHub Actions with npm trusted
+publishing (an OIDC token, no stored npm token) and, from a public repository, a
+provenance attestation. `package-kit.config.mjs` sets
+`publish: { registry: "npm", access: "public" }`. The workflow:
 
-`release:publish` is `repo-kit publish` (`@maxvyshniakov/repo-kit`). In order, it:
+1. runs package-kit's `verify.yml` (`bun run verify -- --release`) as its `check` job;
+2. in its `publish` job, the only one granted `id-token: write`, runs `bun run release:publish`
+   (`package-kit publish`), which checks that HEAD is `origin/main` by SHA, the tree is clean,
+   `## Unreleased` is empty and the tag is new; packs one archive and runs the packed-consumer check on it;
+   publishes it with `npm publish --access public --provenance`; waits until npmjs.org serves the version with
+   the archive's integrity; and pushes a `v<version>` tag.
 
-1. runs the Bun TLS gate;
-2. checks that HEAD is `origin/main` by SHA (a worktree or a detached HEAD is fine), the tree is clean,
-   `## Unreleased` is empty and the tag is new;
-3. requires the release gate's passed status on that commit, and refuses without one, naming the command to run;
-4. runs `bun publish` (which builds first) and checks that the registry serves the version;
-5. pushes a `v<version>` tag.
-
-It uses `GITHUB_TOKEN`, or `gh auth token` when that is unset; the token needs `write:packages`
-(`gh auth refresh -h github.com -s read:packages,write:packages`).
-If the tag push fails after publication, it prints the recovery; `bun run release:publish -- --resume` finishes it.
-
-Library checks in CI are advisory. One line in `repo-kit.config.mjs`, `release: { gate: "ci" }`, switches back:
-step 3 then waits for Library checks on the commit and refuses when they fail.
+`bun run release:publish` outside Actions refuses and names the workflow. If the tag push fails
+after publication, rerun the workflow; `package-kit publish --resume` finishes it without
+republishing. npmjs.org trusts the workflow file once, the owner's step:
+`npm trust github @maxvyshniakov/text-truncate --file release-npm.yml --repo maxvyshniakov/text-truncate`.
 
 After publication and tag creation, the same command requests Data Grid's
 **Update catalog dependencies** workflow. Its catalog and package dependencies
@@ -67,13 +63,12 @@ advance together only after Data Grid tests and every Storybook render/axe check
 pass. Stable incompatible versions are included; Data Grid cuts and publishes
 its own release when adopting them.
 
-The publishing token needs access to Data Grid with Actions write permission
-for the immediate notification. No additional cross-repository secret is stored.
-If notification fails (including a repository-scoped Actions token), publication
-still succeeds and Data Grid's daily registry check discovers the release.
-Retry only the notification with `bun run repo-kit notify`; do not
-republish an existing version. Failed Data Grid checks leave its main and live
-catalog unchanged and appear in its workflow log.
+The workflow token cannot dispatch another repository's workflow, so the
+notification usually warns from Actions. Publication still succeeds and Data
+Grid's daily registry check discovers the release. Retry only the notification
+locally with `bunx package-kit notify`; do not republish an existing version.
+Failed Data Grid checks leave its main and live catalog unchanged and appear in
+its workflow log.
 
 ## Format
 

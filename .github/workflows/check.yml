@@ -6,19 +6,21 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
+  # package-kit's verify.yml declares packages: read; a called job never gets more
+  # than its caller grants, so the caller grants it too. Every dependency comes
+  # from npmjs.org, so nothing reads GitHub Packages.
   packages: read
-# Jobs run on the self-hosted homelab runner (maxvyshniakov/proxmox
-# docs/ci-runner.md). Pushes to dev run only the local pre-push hook.
 concurrency:
   group: checks-${{ github.ref }}
   # A newer push to a pull request supersedes its older run; every main commit
-  # keeps its own result (release:publish waits for it under release.gate "ci").
+  # keeps its own result.
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
-  # The same gate as the pre-push hook, behind repo-kit's Bun TLS gate. It adds
-  # --release (no unreleased changelog entries, docs/VERSIONING.md) for main and
-  # pull requests into main; dev and branches run plain verify.
+  # The same gate as the pre-push hook, on a GitHub-hosted runner (verify.yml's
+  # default, ubuntu-latest). It adds --release (no unreleased changelog entries,
+  # docs/VERSIONING.md) for main and pull requests into main; dev and branches
+  # run plain verify.
   check:
-    uses: maxvyshniakov/repo-kit/.github/workflows/verify.yml@v0.3.0
+    uses: maxvyshniakov/package-kit/.github/workflows/verify.yml@v1.0.0
     with:
       timeout-minutes: 15

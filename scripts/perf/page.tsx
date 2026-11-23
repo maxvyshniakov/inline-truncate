@@ -2,7 +2,7 @@ import React from "react";
 import { createRoot } from "react-dom/client";
 import { flushSync } from "react-dom";
 import { TextTruncate, truncateText } from "../../src/index";
-import { createCanvasTextMeasurer } from "@maxvyshniakov/inline-measure";
+import { createCanvasTextMeasurer } from "inline-measure";
 
 const fixture = document.querySelector<HTMLDivElement>("#fixture")!;
 const root = createRoot(fixture);

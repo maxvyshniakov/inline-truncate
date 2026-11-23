@@ -6,48 +6,46 @@
 - Base branch for cleanup: `dev`.
 
 ## Gate
-- The pre-push hook (`.githooks/pre-push`, written by `repo-kit hooks sync`) runs `bun run verify` on each pushed
+- The pre-push hook (`.githooks/pre-push`, written by `package-kit hooks sync`) runs `bun run verify` on each pushed
   commit in a clean temporary worktree, `bun run verify -- --release` for `main`. Do not run it by hand first.
-- The hook installs from the private registry: `export GITHUB_TOKEN=$(gh auth token)` (read:packages). It falls back to
-  `gh auth token` itself when `GITHUB_TOKEN` is unset.
+- Every dependency comes from npmjs.org, so the hook's installs need no token.
 - The hook holds one slotfather slot for the installs and every verification.
 
 ## Push
-- `dev`: `sha=$(git rev-parse HEAD)`, then `~/straylight/tools/lane promote "$sha"`. Push a SHA, never `HEAD` or a
-  branch by name.
-- `dev` and `main`: `STRAYLIGHT_LANE_REVIEW_START=manual ~/straylight/tools/lane promote "$sha" --ship`.
+- `dev`: `sha=$(git rev-parse HEAD)`, then `lanefather promote "$sha"`. Push a SHA, never `HEAD` or a branch by name.
+- `dev` and `main`: `lanefather promote "$sha" --ship`.
 - promote takes the landing lock that `.githooks/reference-transaction` requires of agent sessions, pushes the SHA and
   fast-forwards the local branches. Never use a bare `git push` to `dev` or `main`, and never force-push.
 - Landing a task branch: rebase onto `origin/dev`, push the tip.
 
 ## CI
-- `.github/workflows/check.yml` ("Library checks") runs on `main` pushes, pull requests and `workflow_dispatch`, on the
-  self-hosted homelab runner (maxvyshniakov/proxmox `docs/ci-runner.md`). Nothing runs for `dev`.
-- It calls repo-kit's reusable `verify.yml`: job `check / verify`, `bun run verify` behind the TLS gate, with `--release`
-  for `main` and pull requests into `main`. A manual run on `dev` or a branch runs without it, so Unreleased entries pass.
-- Find the run: `gh run list --workflow check.yml --commit <sha>`. A run queued for minutes means the runner is offline.
+- `.github/workflows/check.yml` ("Library checks") runs on `main` pushes, pull requests and `workflow_dispatch`, on a
+  GitHub-hosted `ubuntu-latest` runner. Nothing runs for `dev`. Never name a self-hosted runner in a workflow: the
+  repository is meant to be public, where a pull request from a fork chooses the code a runner executes.
+- It calls package-kit's reusable `verify.yml`: job `check / verify`, `bun run verify`, with `--release` for `main` and
+  pull requests into `main`. A manual run on `dev` or a branch runs without it, so Unreleased entries pass.
+- Find the run: `gh run list --workflow check.yml --commit <sha>`.
 - A push to `dev` is finished when the hook passed and `git ls-remote origin dev` shows the SHA. A push to `main` is
   finished when Library checks has a final result on it.
 
 ## Release
 - Rules: [docs/VERSIONING.md](../VERSIONING.md). Cut right before pushing to `main`: `bun run release -- <patch|minor|major>`.
-- Publish from a clean checkout whose HEAD is `origin/main` by SHA (a worktree or detached HEAD is fine):
-  `bunx repo-kit release-gate origin/main`, then `bun run release:publish`.
-- `repo-kit release-gate` is the local release gate: `verify --release` in a clean temporary worktree of the commit,
-  under a slotfather lease; a pass records the commit status `Library checks (local, macOS)`.
-- `release:publish` runs the TLS gate, refuses a commit without the release gate's passed status, publishes, tags
-  `v<version>`, then requests Data Grid's catalog dependency workflow.
-- Library checks in CI are advisory. One line in `repo-kit.config.mjs`, `release: { gate: "ci" }`, switches back:
-  publish then waits for Library checks on the commit instead.
-- The token needs `write:packages` (`gh auth refresh -s write:packages`).
+- Publish from GitHub Actions, after the release commit is on `origin/main`:
+  `gh workflow run release-npm.yml --ref main`. Its `check` job runs `verify --release`; its `publish` job (the only
+  one with `id-token: write`) publishes to npmjs.org with trusted publishing and provenance, tags `v<version>`, then
+  requests Data Grid's catalog dependency workflow.
+- `bun run release:publish` outside Actions refuses and names that command.
+- npmjs.org trusts `release-npm.yml` once, the owner's step:
+  `npm trust github @maxvyshniakov/text-truncate --file release-npm.yml --repo maxvyshniakov/text-truncate`.
 - Data Grid adopts the release through its catalog dependency workflow, under the standing approval to release Data Grid
   when every check passes (maxvyshniakov/data-grid docs/CATALOG-DEPENDENCIES.md).
 
 ## After publish
-- `gh api /user/packages/npm/text-truncate/versions --jq '.[0].name'` names the new version; `git ls-remote --tags
-  origin v<version>` shows the tag.
-- The Data Grid request only warns on failure; retry it with `bun run repo-kit notify`.
+- `npm view @maxvyshniakov/text-truncate version` names the new version; `git ls-remote --tags origin v<version>` shows
+  the tag.
+- The Data Grid request only warns on failure (the workflow token cannot dispatch another repository's workflow); retry
+  it locally with `bunx package-kit notify`.
 
 ## Report
-- The pushed SHA per branch; for `main`, the Library checks run link and result; for a release, the published version
-  and tag.
+- The pushed SHA per branch; for `main`, the Library checks run link and result; for a release, the published version,
+  the tag and the release-npm run link.

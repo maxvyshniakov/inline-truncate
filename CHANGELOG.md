@@ -4,6 +4,18 @@ Versions and release rules: [docs/VERSIONING.md](docs/VERSIONING.md).
 
 ## Unreleased
 
+### Changed
+
+- Depends on the unscoped `inline-measure` `^0.5.0` from npmjs.org instead of
+  `@maxvyshniakov/inline-measure` from GitHub Packages. Applications that install
+  `@maxvyshniakov/inline-measure` themselves should move to `inline-measure`
+  so they keep one copy.
+- `@maxvyshniakov/text-truncate` is published to npmjs.org with public access
+  (through `@maxvyshniakov/package-kit`, with trusted publishing and provenance)
+  instead of GitHub Packages. Installing it needs no `GITHUB_TOKEN` and no
+  `bunfig.toml` scope mapping; remove the `@maxvyshniakov` mapping to GitHub
+  Packages unless another package still needs it.
+
 ## 0.3.0 - 2026-11-22
 
 ### Changed

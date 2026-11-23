@@ -65,22 +65,15 @@ problem, the minimum width for a requested number of lines.
 
 ## Install
 
-The package is private and lives in GitHub Packages. Point bun at the registry
-for the `@maxvyshniakov` scope:
-
-```toml
-# bunfig.toml
-[install.scopes]
-maxvyshniakov = { url = "https://npm.pkg.github.com/", token = "$GITHUB_TOKEN" }
-```
-
-Then install with a token that has `read:packages`
-(`gh auth refresh -h github.com -s read:packages` adds the scope):
+The package is published to npmjs.org; installing it needs no token or registry
+configuration:
 
 ```sh
-export GITHUB_TOKEN=$(gh auth token)
 bun add @maxvyshniakov/text-truncate react@^19.2.8 react-dom@^19.2.8
 ```
+
+It depends on [`inline-measure`](https://www.npmjs.com/package/inline-measure),
+also from npmjs.org.
 
 The class names are Tailwind utilities, so Tailwind CSS 4 must compile them;
 the package needs no design system. Scan only the package's `dist`, with a
@@ -94,15 +87,15 @@ path relative to your stylesheet:
 ## Development
 
 ```sh
-export GITHUB_TOKEN=$(gh auth token)   # Inline Measure comes from the registry
 bun install
 bun run verify
 ```
 
 `bun run verify` is the push gate and the command CI runs: changelog, build,
 packed-consumer check, lint, tests and types. `bun install` points Git at
-`.githooks`, whose pre-push hook runs it on each pushed commit. Releases and
-publishing follow [docs/VERSIONING.md](docs/VERSIONING.md).
+`.githooks`, whose pre-push hook runs it on each pushed commit. The gate, hooks, release and
+publishing come from [`@maxvyshniakov/package-kit`](https://www.npmjs.com/package/@maxvyshniakov/package-kit);
+releases and publishing follow [docs/VERSIONING.md](docs/VERSIONING.md).
 
 Live examples are in the Data Grid Storybook, which renders Inline Measure and
 Text Truncate demos alongside the grid.
@@ -123,7 +116,7 @@ The scripts reserve machine slots (`all` for timings, one for correctness).
 Install browser engines with `bunx playwright install chromium webkit`; Firefox
 uses the installed `moz-firefox` channel. A filtered run accepts
 `--scenario=algorithm.middle`. Set `INLINE_MEASURE_SOURCE=/path/to/inline-measure`
-to test its source explicitly; the default uses the installed registry package.
+to test its source explicitly; the default uses the installed `inline-measure` package.
 Comparing different Inline Measure versions or source digests also requires
 `--allow-inline-measure-change`; the report labels this as a combined experiment.
 `--ref=<commit>` measures this package's committed production source with the

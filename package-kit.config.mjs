@@ -1,5 +1,5 @@
 // The gate (bun run verify), the pre-push hook, release and publish:
-// @maxvyshniakov/repo-kit (README.md there).
+// @maxvyshniakov/package-kit (README.md there).
 export default {
   verify: {
     steps: ({ release }) => [
@@ -13,6 +13,9 @@ export default {
     ],
   },
   publish: {
+    // npmjs.org with trusted publishing, from .github/workflows/release-npm.yml.
+    registry: "npm",
+    access: "public",
     // Data Grid adopts the release through its catalog dependency workflow.
     notify: [{ repository: "maxvyshniakov/data-grid", workflow: "update-catalog-dependencies.yml", ref: "main" }],
   },
