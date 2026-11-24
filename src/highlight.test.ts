@@ -239,3 +239,18 @@ describe("the matching rule", () => {
     expect(matched("a$b^c", "$B^")).toEqual([[1, "$b^"]]);
   });
 });
+
+describe("every cut hides at least one grapheme", () => {
+  // A measurer need not be monotonic (shaping can make a longer string
+  // narrower), so the search may not lean on it to keep a cut non-empty.
+  for (const mode of ["end", "middle"] as const) it(`in ${mode} mode`, () => {
+    for (let length = 2; length <= 40; length++) for (let maxWidth = 4; maxWidth <= length + 2; maxWidth++) {
+      const text = "abcdefghijklmnopqrstuvwxyz0123456789ABCD".slice(0, length);
+      // The text alone overflows; the text with the marker reads as fitting.
+      const measureText = (value: string) => (value === text ? maxWidth + 1 : value === `${text}${M}` ? 1 : value.length);
+      const { cut } = truncatePrepared({ text, maxWidth, mode, measureText }, () => indexTextGraphemes(text));
+      expect(cut, `${length}/${maxWidth}`).not.toBeNull();
+      expect(cut!.suffixStart - cut!.prefixEnd, `${length}/${maxWidth}`).toBeGreaterThan(0);
+    }
+  });
+});

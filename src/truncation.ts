@@ -321,8 +321,9 @@ function takePrefixThatFits({
   measureText: CandidateMeasure;
 }) {
   const initialGuess = fullWidth > 0 ? Math.floor(((maxWidth - markerWidth) / fullWidth) * indexed.length) : 1;
+  // At most every grapheme but one: a cut hides at least one, as in middle mode.
   return findMaxFittingCount(
-    indexed.length,
+    indexed.length - 1,
     maxWidth,
     initialGuess,
     markerWidth,
