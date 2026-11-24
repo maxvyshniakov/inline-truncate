@@ -24,7 +24,7 @@
     "check:changelogs": "package-kit check-changelogs",
     "check:kit": "package-kit check",
     "check:consumer": "package-kit packed-consumer",
-    "lint": "oxlint --config .oxlintrc.json --max-warnings=0 src scripts/perf scripts/a11y package-kit.config.mjs",
+    "lint": "oxlint --config .oxlintrc.json --max-warnings=0 src scripts/perf scripts/a11y scripts/packed-consumer-probes.mjs package-kit.config.mjs",
     "test": "node --test scripts/perf/*.test.mjs && vitest --config vitest.config.ts run",
     "typecheck": "tsc --noEmit -p tsconfig.build.json && tsc --noEmit -p tsconfig.test.json",
     "typecheck:fast": "tsc --noEmit -p tsconfig.build.json",
