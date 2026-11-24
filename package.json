@@ -39,7 +39,7 @@
     "check:a11y": "package-kit heavy 1 node scripts/a11y/all.mjs"
   },
   "dependencies": {
-    "cn": "^0.4.0",
+    "cn": "^0.5.2",
     "inline-measure": "^0.5.1"
   },
   "peerDependencies": {
