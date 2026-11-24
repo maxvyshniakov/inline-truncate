@@ -77,6 +77,8 @@ export interface MeasureJob {
   verifiedWidths: Map<string, number>;
   verifiedUnits: number;
   setTruncation: React.Dispatch<React.SetStateAction<TruncationState>>;
+  /** Called when whether the style needs the DOM changes (lastNeedsDOM). */
+  resolutionNeedChanged?: () => void;
 }
 
 /**
@@ -320,7 +322,10 @@ function flushJobs() {
     }
 
     const needsDOM = needsDomMeasurement(style);
-    job.lastNeedsDOM = needsDOM;
+    if (job.lastNeedsDOM !== needsDOM) {
+      job.lastNeedsDOM = needsDOM;
+      job.resolutionNeedChanged?.();
+    }
 
     let sharedCanvasMeasure: ((value: string) => number) | undefined;
     let flushWidthMap: Map<string, number> | undefined;

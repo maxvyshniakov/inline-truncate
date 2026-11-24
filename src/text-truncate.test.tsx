@@ -109,6 +109,21 @@ describe("the device pixel ratio", () => {
     expect(dpr.live()).toHaveLength(1);
   });
 
+  it("remeasures plain text measured in the DOM (a style Canvas cannot express)", () => {
+    const flush = queuedFrames(16);
+    const reads = vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (this: HTMLElement) {
+      return { width: this.textContent?.length ?? 0, height: 16 } as DOMRect;
+    });
+    const dpr = resolution();
+    const { container } = render(<TextTruncate mode="middle" text="plain-long-file-name.pdf" />);
+    container.querySelector<HTMLElement>("[data-truncate]")!.style.fontOpticalSizing = "none";
+    flush();
+    expect(dpr.live()).toHaveLength(1);
+    reads.mockClear();
+    dpr.change(2);
+    flush();
+    expect(reads).toHaveBeenCalled();
+  });
 });
 
 describe("the truncated state", () => {

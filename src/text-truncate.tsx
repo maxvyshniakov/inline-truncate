@@ -81,7 +81,7 @@ export const TextTruncate = React.memo(function TextTruncate({
   const textRef = React.useRef<HTMLSpanElement | null>(null);
   const jobRef = React.useRef<{
     job: MeasureJob;
-    syncResolution: (needsResolution: boolean) => void;
+    syncResolutionNeed: () => void;
   } | null>(null);
   const [truncation, setTruncation] = React.useState(() => fullTextState(text));
   const resolvedStrategy = resolveTextTruncateStrategy({ mode, strategy });
@@ -143,7 +143,12 @@ export const TextTruncate = React.memo(function TextTruncate({
       }
     };
 
-    jobRef.current = { job, syncResolution };
+    // DOM-measured widths follow the device pixel ratio: emoji text, text
+    // whose style needs the DOM, and text whose highlight is verified there.
+    const syncResolutionNeed = () =>
+      syncResolution(job.emojiText || job.lastNeedsDOM || findMatchRanges(job.text, job.query).length > 0);
+    job.resolutionNeedChanged = syncResolutionNeed;
+    jobRef.current = { job, syncResolutionNeed };
 
     const unobserve = observeResize(element, schedule);
     const unsubscribe = subscribeFonts(onFontsChanged);
@@ -167,11 +172,7 @@ export const TextTruncate = React.memo(function TextTruncate({
     if (resolvedStrategy !== "measure") return undefined;
     const entry = jobRef.current;
     if (!entry) return undefined;
-    const { job, syncResolution } = entry;
-    // DOM-verified widths follow the device pixel ratio: emoji text, and text
-    // whose highlight is verified in the DOM.
-    const syncResolutionNeed = () =>
-      syncResolution(job.emojiText || findMatchRanges(job.text, job.query).length > 0);
+    const { job, syncResolutionNeed } = entry;
 
     if (!job.initialized) {
       job.initialized = true;
