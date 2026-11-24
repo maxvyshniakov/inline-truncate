@@ -119,3 +119,23 @@ describe("the truncated state", () => {
     expect(root.dataset.truncateState).toBe("truncated");
   });
 });
+
+describe("highlight spans of a cut", () => {
+  // Positioned inline spans can keep stale shaping when React reuses them, so
+  // a different cut or source recreates them even if the visible string is
+  // the same.
+  it("are recreated when a new text keeps the same visible string", () => {
+    const flush = queuedFrames(10);
+    const { container, rerender } = render(<TextTruncate mode="middle" text="Quarterly-design-review.pdf" query="design" />);
+    flush();
+    const shown = () => container.querySelector("[data-truncate-visible]")!.textContent;
+    const marker = () => container.querySelector("[data-truncate-marker]");
+    const before = { text: shown(), node: marker() };
+    expect(before.node).not.toBeNull();
+    rerender(<TextTruncate mode="middle" text="Quarterly-design-reviews.pdf" query="design" />);
+    flush();
+    expect(shown()).toBe(before.text);
+    expect(marker()).not.toBeNull();
+    expect(marker()).not.toBe(before.node);
+  });
+});

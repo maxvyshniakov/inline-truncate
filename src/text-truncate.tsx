@@ -224,7 +224,9 @@ export const TextTruncate = React.memo(function TextTruncate({
   const content = trimmedQuery ? (
     cut ? (
       <CutHighlightedText
-        key={`${query!.length}:${query}:${renderedText}`}
+        // The cut and its source decide the runs; the visible string alone
+        // can be the same for two cuts or two texts.
+        key={`${query!.length}:${query}:${truncation.source.length}:${cut.prefixEnd}:${cut.suffixStart}:${renderedText}`}
         text={truncation.source}
         cut={cut}
         query={query}
