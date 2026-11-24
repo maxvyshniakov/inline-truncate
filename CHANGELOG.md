@@ -10,6 +10,12 @@ Versions and release rules: [docs/VERSIONING.md](docs/VERSIONING.md).
 - Depends on `cn` `^0.5.2` (was `^0.4.0`), which needs Node 22 or later and groups the legacy
   `bg-gradient-to-*` utilities with `bg-color` when merging a `className`. Applications that install `cn` `^0.4`
   themselves get a second copy until they move to `^0.5`.
+- The root has `box-sizing: content-box`, 1px of inline padding and an equal negative inline margin (`box-content
+  px-px -mx-px`). A highlight decoration that paints 1px past its glyphs, as Data Grid's `box-shadow` does, keeps
+  that pixel and its rounded corners at the text's first and last character and next to the marker, where the
+  root's clip cut it flat (data-grid#148). The content box, the measured width and the cut do not move; the root's
+  border box is 2px wider and reaches 1px past its container on each side. A `className` that sets inline padding or
+  margin replaces the room.
 
 ### Fixed
 

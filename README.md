@@ -50,6 +50,14 @@ Offsets always refer to the original string, and a match never splits a
 user-perceived character: `e` does not match the `é` written as `e` plus a
 combining accent, and `👩` does not match inside `👨‍👩‍👧`.
 
+The root clips its text. It keeps 1px of inline padding inside the clip, an equal
+negative inline margin outside it, and `box-sizing: content-box`, so a highlight
+decoration that paints up to 1px past its glyphs (a `box-shadow`, as Data Grid
+draws) keeps that pixel and its rounded corners at the text's first and last
+character and next to the marker. The content box, and so the measured width and
+the cut, stay where they would be without the room. A `className` that sets inline
+padding or margin replaces it.
+
 Highlight colors use `--text-truncate-highlight-background` and
 `--text-truncate-highlight-foreground`, with amber and current-text defaults.
 Hosts can override those variables; Data Grid maps them to its search-match

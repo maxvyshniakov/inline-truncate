@@ -13,9 +13,14 @@ export type TextTruncateEllipsis = "end" | "start";
 
 const MAX_CLASSNAME_CACHE = 64;
 
-const BASE_CSS_END_CLASS = "block w-full min-w-0 truncate";
-const BASE_CSS_START_CLASS = "block w-full min-w-0 truncate [direction:rtl]";
-const BASE_MEASURE_CLASS = "block w-full min-w-0 overflow-hidden whitespace-nowrap";
+// The root clips its text. 1px of inline padding, inside the clip, leaves room
+// for a highlight decoration that paints past the glyphs (Data Grid's 1px
+// box-shadow); the equal negative margin and the content box keep the content
+// box, and so the measured width and the cut, where they were.
+const BASE_BOX_CLASS = "block w-full min-w-0 box-content px-px -mx-px";
+const BASE_CSS_END_CLASS = `${BASE_BOX_CLASS} truncate`;
+const BASE_CSS_START_CLASS = `${BASE_BOX_CLASS} truncate [direction:rtl]`;
+const BASE_MEASURE_CLASS = `${BASE_BOX_CLASS} overflow-hidden whitespace-nowrap`;
 
 // Holds the full text for assistive technology while the visible string is cut.
 // Inline, so it works without the host's CSS. Not selectable, so a copied
