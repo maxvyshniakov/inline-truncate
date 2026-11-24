@@ -31,7 +31,11 @@
     "typecheck:fast": "tsc --noEmit -p tsconfig.build.json",
     "perf:capture": "slotfather run -n all --priority batch -- package-kit heavy all node scripts/perf/run.mjs",
     "perf:test": "node --test scripts/perf/*.test.mjs",
+    "verify:browser": "package-kit verify --browser",
     "check:browser": "package-kit heavy 1 node scripts/perf/run.mjs --check",
+    "check:browser:engine": "node scripts/perf/run.mjs --check",
+    "check:a11y:engine": "node scripts/a11y/check.mjs",
+    "check:a11y:pointer": "node scripts/a11y/pointer.mjs",
     "check:a11y": "package-kit heavy 1 sh -c 'for browser in chromium firefox webkit; do node scripts/a11y/check.mjs --browser=$browser && node scripts/a11y/pointer.mjs --browser=$browser || exit 1; done'"
   },
   "dependencies": {
