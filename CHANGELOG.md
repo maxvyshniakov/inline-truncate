@@ -4,6 +4,8 @@ Versions and release rules: [docs/VERSIONING.md](docs/VERSIONING.md).
 
 ## Unreleased
 
+## 0.5.0 - 2026-11-24
+
 ### Breaking
 
 - Breaking: the package is renamed from `@maxvyshniakov/text-truncate` to the unscoped
