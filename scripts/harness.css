@@ -1,0 +1,34 @@
+/*
+ * The package's Tailwind utilities, written out as Tailwind 4 compiles them,
+ * for the browser harnesses (perf, a11y, pointer, highlight), which have no
+ * Tailwind build. src/harness-css.test.ts fails when a class the component or
+ * HIGHLIGHT_CLASS_NAME renders has no rule here.
+ */
+.block{display:block}
+.w-full{width:100%}
+.min-w-0{min-width:0}
+.truncate{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.overflow-hidden{overflow:hidden}
+.overflow-visible{overflow:visible}
+.whitespace-nowrap{white-space:nowrap}
+.\[direction\:rtl\]{direction:rtl}
+.\[clip-path\:inset\(0_-1px\)\]{clip-path:inset(0 -1px)}
+
+/* HIGHLIGHT_CLASS_NAME */
+.relative{position:relative}
+.isolate{isolation:isolate}
+.rounded-\[2px\]{border-radius:2px}
+.text-\[var\(--text-truncate-highlight-foreground\,currentColor\)\]{color:var(--text-truncate-highlight-foreground,currentColor)}
+.before\:pointer-events-none::before{content:"";pointer-events:none}
+.before\:absolute::before{content:"";position:absolute}
+.before\:inset-x-0::before{content:"";inset-inline:0}
+.before\:inset-y-0::before{content:"";inset-block:0}
+.before\:-z-10::before{content:"";z-index:-10}
+.before\:rounded-\[2px\]::before{content:"";border-radius:2px}
+.before\:bg-\[var\(--text-truncate-highlight-background\,\#fde68a\)\]::before{content:"";background-color:var(--text-truncate-highlight-background,#fde68a)}
+
+/* Consumer utilities the harnesses pass through className. */
+.px-2{padding-inline:.5rem}
+.mx-2{margin-inline:.5rem}
+.border{border-style:solid;border-width:1px}
+.box-border{box-sizing:border-box}

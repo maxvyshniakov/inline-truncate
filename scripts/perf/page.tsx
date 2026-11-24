@@ -43,7 +43,7 @@ const settle = async () => { await frame(); await frame(); await frame(); };
 const text = (index: number, long = false) => long
   ? `collections/${"final-production-materials/".repeat(30)}${index}-approved.glb`
   : `Halden walnut lounge chair / collection-2026 / revision-${index}-final.glb`;
-interface Scenario {id:string;kind:string;count:number;mode:string;long?:boolean;repeat?:boolean;query?:string;emoji?:boolean}
+interface Scenario {id:string;kind:string;count:number;mode:string;long?:boolean;repeat?:boolean;query?:string;emoji?:boolean;short?:boolean}
 const cases: Scenario[] = [
   ...[50, 200].flatMap(count => ["middle", "end"].map(mode => ({ id: `algorithm.${mode}.${count}`, kind: "algorithm", count, mode }))),
   { id: "algorithm.repeated-labels.middle.200", kind:"algorithm",count:200,mode:"middle",repeat:true },
@@ -55,6 +55,8 @@ const cases: Scenario[] = [
   // marker can take the highlight of a match the cut hides (inline-truncate#8).
   { id:"components.mount.auto-end.cold.50",kind:"mount",count:50,mode:"auto-end" },
   { id:"components.mount.highlight-auto-end.cold.50",kind:"mount",count:50,mode:"auto-end",query:"walnut" },
+  // Short matching text that fits: Canvas settles it without a DOM verification.
+  { id:"components.mount.highlight-auto-end-fit.cold.50",kind:"mount",count:50,mode:"auto-end",query:"walnut",short:true },
   { id:"components.mount.emoji-middle.cold.50",kind:"mount",count:50,mode:"middle",emoji:true },
   { id:"components.notifications.middle.warm.200",kind:"notifications",count:200,mode:"middle" },
   ...[false,true].map(emoji=>({id:`notifications.same-width.${emoji ? "emoji-" : ""}middle.cpu.200`,kind:"same-width",count:200,mode:"middle",emoji})),
@@ -62,16 +64,16 @@ const cases: Scenario[] = [
   { id: "components.change-text.middle.50", kind: "change", count: 50, mode: "middle" },
   { id: "components.change-style.middle.50", kind: "style", count: 50, mode: "middle" },
 ];
-function render(count: number, mode: string, revision = 0, className = "",query = "",emoji = false) {
-  const content = <>{Array.from({ length: count }, (_, i) => <TextTruncate key={i} className={className} query={query} mode={mode === "middle" ? "middle" : "end"} strategy={mode.startsWith("css") ? "css" : mode.startsWith("auto") ? "auto" : "measure"} ellipsis={mode === "css-start" ? "start" : "end"} text={`${revision ? "Updated " : ""}${emoji ? `catalog/collections/🧑🏽‍🎨/final-${i}-approved-materials.pdf` : text(i)}`} />)}</>;
+function render(count: number, mode: string, revision = 0, className = "",query = "",emoji = false,short = false) {
+  const content = <>{Array.from({ length: count }, (_, i) => <TextTruncate key={i} className={className} query={query} mode={mode === "middle" ? "middle" : "end"} strategy={mode.startsWith("css") ? "css" : mode.startsWith("auto") ? "auto" : "measure"} ellipsis={mode === "css-start" ? "start" : "end"} text={`${revision ? "Updated " : ""}${emoji ? `catalog/collections/🧑🏽‍🎨/final-${i}-approved-materials.pdf` : short ? `Walnut chair ${i}` : text(i)}`} />)}</>;
   flushSync(() => root.render(profileCommits
     ? <React.Profiler id="truncate-fixture" onRender={()=>{reactCommits += 1;}}>{content}</React.Profiler>
     : content));
 }
-// "auto" picks per component, so its cases check whichever strategy each one took.
+// How many components measure: CSS cases none, "auto" end mode those whose query matches (every text holds it).
 function measuredCount(scenario: Scenario) {
   if (scenario.mode.startsWith("css")) return 0;
-  if (scenario.mode.startsWith("auto")) return fixture.querySelectorAll('[data-truncate-strategy="measure"]').length;
+  if (scenario.mode.startsWith("auto")) return scenario.query ? scenario.count : 0;
   return scenario.count;
 }
 function componentFits(expected: number, total = expected) {
@@ -121,7 +123,7 @@ async function sample(scenario: typeof cases[number], countWork = false) {
       outputs.push(truncateText({text: text(scenario.repeat ? 0 : i, scenario.long), maxWidth: 180, mode: scenario.mode as "middle" | "end", measureText: measure}).text);
     }
   } else if (scenario.kind === "mount") {
-    render(scenario.count, scenario.mode,0,"",scenario.query,scenario.emoji); await settle();
+    render(scenario.count, scenario.mode,0,"",scenario.query,scenario.emoji,scenario.short); await settle();
   } else if (scenario.kind === "same-width") {
     // CPU throughput, not frame latency: deliver the existing RO callbacks and
     // synchronously drain their actual RAF work against live native geometry.
@@ -201,13 +203,21 @@ async function correctness() {
   // measured (WebKit). The listed widths clipped by 0.5-1.4px before the final
   // string was verified in the DOM.
   const clipped = [106,133,176,191,197,217,236,244,249,253,261,265,268,273,285,293,296,311,314,316,320,328,333,339,349,364,377];
-  for (const mode of ["middle", "end"] as const) for (const query of ["oak", "lookbook", "spring"]) {
+  // The ellipsis first: the end kept, the text in a bdi in a right-to-left line.
+  for (const [mode, ellipsis] of [["middle", "end"], ["end", "end"], ["end", "start"]] as const) for (const query of ["oak", "lookbook", "spring"]) {
     for (const width of [...Array.from({length:31},(_,i)=>120+i*8),...clipped]) {
       fixture.style.cssText = `width:${width}px;font:14px/20px TruncateHarnessInter`;
-      flushSync(() => root.render(<TextTruncate key={`plain-${mode}-${query}-${width}`} mode={mode} strategy="measure" query={query} text="oak-collection-spring-lookbook-2026-final-print-oak.pdf" />));
+      flushSync(() => root.render(<TextTruncate key={`plain-${mode}-${ellipsis}-${query}-${width}`} mode={mode} ellipsis={ellipsis} strategy="measure" query={query} text="oak-collection-spring-lookbook-2026-final-print-oak.pdf" />));
       await settle();
-      if (!componentFits(1)) failures.push(`highlighted-plain/${mode}/${query}/${width}`);
+      if (!componentFits(1)) failures.push(`highlighted-plain/${mode}/${ellipsis}/${query}/${width}`);
     }
+  }
+  // Right-to-left text, both ellipses: the cut keeps the end CSS keeps.
+  for (const ellipsis of ["end", "start"] as const) for (const width of [60, 90, 120, 160]) {
+    fixture.style.cssText = `width:${width}px;font:16px Arial`;
+    flushSync(() => root.render(<TextTruncate key={`arabic-${ellipsis}-${width}`} mode="end" ellipsis={ellipsis} query="ملف" text="مرحبا بالعالم ملف نهائي طويل" />));
+    await settle();
+    if (!componentFits(1)) failures.push(`arabic/${ellipsis}/${width}`);
   }
   // A query change where the cut is measured in the DOM (a style canvas cannot
   // express): the new query's highlight must be measured, not the old one's.

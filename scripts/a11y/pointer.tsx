@@ -38,7 +38,14 @@ function Page() {
             <tr key={r}>
               {row.map((text, c) => (
                 <td key={c} data-cell={`${r}-${c}`}>
-                  <TextTruncate mode={c === 0 ? "middle" : "end"} strategy="measure" text={text} query={r === 0 ? "draft" : undefined} />
+                  <TextTruncate
+                    mode={c === 0 ? "middle" : "end"}
+                    // One cell with the ellipsis first: the text in a bdi in a right-to-left line.
+                    ellipsis={r === 2 && c === 1 ? "start" : "end"}
+                    strategy="measure"
+                    text={text}
+                    query={r === 0 ? "draft" : r === 2 && c === 1 ? "spring" : undefined}
+                  />
                 </td>
               ))}
             </tr>
@@ -49,5 +56,26 @@ function Page() {
   );
 }
 
-createRoot(document.querySelector("#fixture")!).render(<Page />);
+// Measured roots flush against a scrolling box with no inline room: the paint
+// clip past their sides must not scroll it, cut, fitting or the marker alone.
+export const flushCases = [
+  { width: 120, text: "Sofas", query: "fas" },
+  { width: 120, text: "Quarterly revenue report, final draft v3.pdf", query: "draft" },
+  { width: 120, text: "Quarterly revenue report, final draft v3.pdf", query: "draft", ellipsis: "start" as const },
+  { width: 8, text: "Quarterly revenue report, final draft v3.pdf", query: "draft" },
+];
+
+function Flush() {
+  return (
+    <div id="flush">
+      {flushCases.map(({ width, text, query, ellipsis }, index) => (
+        <div key={index} data-flush={index} style={{ width, overflow: "auto" }}>
+          <TextTruncate mode="end" ellipsis={ellipsis} text={text} query={query} />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+createRoot(document.querySelector("#fixture")!).render(<><Page /><Flush /></>);
 Object.assign(window, { pointerRows: rows, readSizes: sizes });

@@ -24,16 +24,22 @@
   it after `verify --release`. Hosted CI does not, because its runner has no Firefox or WebKit. Run it before handing
   back any change under `src/` or `scripts/`: the plain gate does not run it.
 - `bun run check:a11y`: accessible text, copy and find, then pointer, selection, overflow and focus on a table of
-  truncated cells (`scripts/a11y/pointer.mjs`), in Chromium, Firefox (the installed stable, over WebDriver BiDi)
+  truncated cells (`scripts/a11y/pointer.mjs`, which also fails when a measured root makes a flush scrolling box
+  scroll), in Chromium, Firefox (the installed stable, over WebDriver BiDi)
   and WebKit, one engine at a time, behind one heavy slot, each script stopped with its process group after the same
   4 minutes (`scripts/a11y/all.mjs`). Run it for changes to the rendered DOM. Reports land in `artifacts/a11y/`.
 - `scripts/highlight/check.mjs --browser=<engine>`: how a highlighted match meets the edge of the box, read from a
   screenshot at device pixel ratio 2 (inline-truncate#8, data-grid#148). On "Lomboc boat bookcase" narrowed from
-  100 to 190px in end, middle and start-ellipsis layouts, and on "Sofas" in a fitted column, it fails when a match
-  paints past the box the text is cut to, a hidden or split match leaves the marker plain, a highlight is not drawn
-  in the highlight foreground or holds light text, or Data Grid's 1px decoration (emulated in
-  `scripts/highlight/page.html`, with the root's classes as Tailwind compiles them) loses its pixel or its radius
-  on one side. Reports and the screenshot land in `artifacts/highlight/`.
+  100 to 190px in end, middle and start-ellipsis layouts, and on "Sofas" in a fitted column, it fails when nothing is
+  highlighted, a match paints past the box the text is cut to, a hidden or split match leaves the marker plain, a
+  highlight is not drawn in the highlight foreground or holds light text, or Data Grid's 1px decoration (emulated in
+  `scripts/highlight/page.html`) loses its pixel or its rounded corner on a side, or paints otherwise at the text's
+  edge than in its middle. It also fails when the root's box or Inline Measure's width for it differs from
+  origin/dev's root with a consumer's `px-2`, `mx-2`, `border` or `box-border`, and when measured truncation keeps
+  another end of Latin or Arabic text, or draws the dots on another side, than CSS for the same props. Reports and
+  the screenshot land in `artifacts/highlight/`.
+- `scripts/harness.css`: the package's Tailwind utilities written out for the four browser harnesses, which have no
+  Tailwind build; `src/harness-css.test.tsx` fails when a class the component renders has no rule there.
 
 ## Pins
 - `@maxvyshniakov/package-kit` exact (from npmjs.org): each commit's gate is the kit its lockfile records. Raise it

@@ -1,6 +1,4 @@
 <!doctype html><html lang="en"><meta charset="utf-8"><title>TextTruncate pointer and selection</title><style>
 body {font: 14px Arial,sans-serif;margin:16px} table{border-collapse:collapse} th,td{padding:0 4px;text-align:left} td{position:relative} td>[data-truncate]{width:180px}
-#scroller{position:relative;overflow:auto;width:420px;height:120px;border:1px solid #888}
-[data-truncate]{display:block;width:100%;min-width:0;overflow:hidden;white-space:nowrap}
-[data-slot="highlighted-match"]{position:relative;isolation:isolate;border-radius:2px}[data-slot="highlighted-match"]::before{content:"";pointer-events:none;position:absolute;inset:0;z-index:-10;border-radius:2px;background:#fde68a}</style>
+#scroller{position:relative;overflow:auto;width:420px;height:120px;border:1px solid #888}</style><link rel="stylesheet" href="/scripts/harness.css">
 <input id="before" aria-label="before"><div id="fixture"></div><p id="control">Control paragraph without truncation</p><input id="after" aria-label="after"><script type="module" src="/scripts/a11y/pointer.tsx"></script></html>

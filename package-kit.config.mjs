@@ -9,7 +9,7 @@ const ENGINES = ["chromium", "firefox", "webkit"];
 // GiB a script's process tree peaks at (measured 2026-11-24: Firefox 3.8, the others under 1).
 const ENGINE_MEMORY = { chromium: 1, firefox: 4, webkit: 1 };
 // What the browser scripts read: a change elsewhere (docs) plans none of them.
-const BROWSER_INPUTS = ["src/**", "scripts/perf/**", "scripts/a11y/**", "scripts/highlight/**", "package.json", "bun.lock"];
+const BROWSER_INPUTS = ["src/**", "scripts/perf/**", "scripts/a11y/**", "scripts/highlight/**", "scripts/harness.css", "package.json", "bun.lock"];
 const SCRIPTS = {
   browser: "check:browser:engine",
   a11y: "check:a11y:engine",

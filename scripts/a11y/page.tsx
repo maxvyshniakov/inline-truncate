@@ -13,6 +13,9 @@ export const cases: { id: string; expectTruncated: boolean; expectMarker?: boole
   { id: "middle-cut-match", expectTruncated: true, expectMarker: true, props: { mode: "middle", text: LONG, query: "northern" } },
   { id: "middle-short", expectTruncated: false, props: { mode: "middle", text: "Short.pdf" } },
   { id: "middle-regrow", expectTruncated: true, props: { mode: "middle", text: LONG } },
+  // The ellipsis first, measured: the end kept, the text in a bdi in a right-to-left line.
+  { id: "end-start-measure", expectTruncated: true, props: { mode: "end", ellipsis: "start", strategy: "measure", text: LONG } },
+  { id: "end-start-cut-match", expectTruncated: true, expectMarker: true, props: { mode: "end", ellipsis: "start", text: LONG, query: "revenue" } },
 ];
 
 function Page() {

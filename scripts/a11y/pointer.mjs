@@ -97,6 +97,21 @@ try {
   if (!same(sizes.before, sizes.after)) fail(`overflow: scroll sizes changed with truncation ${JSON.stringify(sizes.before)} -> ${JSON.stringify(sizes.after)}`);
   if (!same(sizes.after, sizes.withoutCopies)) fail(`overflow: the copies change scroll sizes ${JSON.stringify(sizes.withoutCopies)} -> ${JSON.stringify(sizes.after)}`);
 
+  step("flush");
+  // (3b) A measured root flush against a scrolling box: its paint clip reaches
+  // 1px past its sides, which must not make the box scroll.
+  const flush = await page.evaluate(() => [...document.querySelectorAll("[data-flush]")].map((box) => ({
+    index: box.dataset.flush,
+    state: box.querySelector("[data-truncate]").dataset.truncateState ?? "fits",
+    strategy: box.querySelector("[data-truncate]").dataset.truncateStrategy,
+    scroll: [box.scrollWidth, box.clientWidth, box.scrollHeight, box.clientHeight],
+  })));
+  console.log(`[pointer ${browserName}] flush: ${JSON.stringify(flush)}`);
+  for (const box of flush) {
+    if (box.strategy !== "measure") fail(`flush ${box.index}: not measured (${box.strategy})`);
+    if (box.scroll[0] > box.scroll[1] || box.scroll[2] > box.scroll[3]) fail(`flush ${box.index} (${box.state}): the box scrolls ${JSON.stringify(box.scroll)}`);
+  }
+
   step("hit test");
   // (1) Hit testing over every pixel of each cell, and over each copy's own box.
   const hits = await page.evaluate(() => {

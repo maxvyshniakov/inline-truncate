@@ -29,7 +29,7 @@ if (reference) {
   }
 }
 const digest = value => createHash("sha256").update(value).digest("hex");
-const methodHash = digest(["scripts/perf/page.tsx","scripts/perf/index.html","scripts/perf/run.mjs","scripts/perf/report.mjs","scripts/perf/source.mjs","scripts/perf/options.mjs","scripts/perf/fonts/InterVariable.woff2"].map(file=>file+digest(fs.readFileSync(file))).join("\n"));
+const methodHash = digest(["scripts/perf/page.tsx","scripts/perf/index.html","scripts/harness.css","scripts/perf/run.mjs","scripts/perf/report.mjs","scripts/perf/source.mjs","scripts/perf/options.mjs","scripts/perf/fonts/InterVariable.woff2"].map(file=>file+digest(fs.readFileSync(file))).join("\n"));
 const inlineDirectory = inlineSource ? path.resolve(inlineSource,"src") : path.dirname(fileURLToPath(import.meta.resolve("inline-measure")));
 const inlinePackage = JSON.parse(fs.readFileSync(path.resolve(inlineDirectory,"../package.json"),"utf8"));
 const inlineMeasure = {version:inlinePackage.version,source:inlineSource ?? "registry",sourceHash:digest(fs.readdirSync(inlineDirectory).filter(file=>/\.(js|ts)$/.test(file) && !file.includes(".test.") && !file.endsWith(".d.ts")).sort().map(file=>file+digest(fs.readFileSync(path.join(inlineDirectory,file)))).join("\n"))};
