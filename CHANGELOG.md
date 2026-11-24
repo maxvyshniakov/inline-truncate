@@ -4,6 +4,8 @@ Versions and release rules: [docs/VERSIONING.md](docs/VERSIONING.md).
 
 ## Unreleased
 
+## 0.5.1 - 2026-11-24
+
 ### Changed
 
 - The package metadata names the renamed repository, `github.com/maxvyshniakov/inline-truncate`, and gains
