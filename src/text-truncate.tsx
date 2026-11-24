@@ -2,7 +2,7 @@
 
 import React from "react";
 import { hasEmoji } from "./measurement.js";
-import { CutHighlightedText, HighlightedMatchText } from "./highlight.js";
+import { CutHighlightedText, findMatchRanges, HighlightedMatchText } from "./highlight.js";
 import type { TextTruncateMode } from "./truncation.js";
 import { cancelJob, fullTextState, invalidateMeasurements, scheduleJob, type MeasureJob } from "./scheduler.js";
 import { observeResize, subscribeFonts } from "./observers.js";
@@ -81,7 +81,7 @@ export const TextTruncate = React.memo(function TextTruncate({
   const textRef = React.useRef<HTMLSpanElement | null>(null);
   const jobRef = React.useRef<{
     job: MeasureJob;
-    syncResolution: (needsResolution: boolean) => void;
+    syncResolutionNeed: () => void;
   } | null>(null);
   const [truncation, setTruncation] = React.useState(() => fullTextState(text));
   const resolvedStrategy = resolveTextTruncateStrategy({ mode, strategy });
@@ -143,7 +143,12 @@ export const TextTruncate = React.memo(function TextTruncate({
       }
     };
 
-    jobRef.current = { job, syncResolution };
+    // DOM-measured widths follow the device pixel ratio: emoji text, text
+    // whose style needs the DOM, and text whose highlight is verified there.
+    const syncResolutionNeed = () =>
+      syncResolution(job.emojiText || job.lastNeedsDOM || findMatchRanges(job.text, job.query).length > 0);
+    job.resolutionNeedChanged = syncResolutionNeed;
+    jobRef.current = { job, syncResolutionNeed };
 
     const unobserve = observeResize(element, schedule);
     const unsubscribe = subscribeFonts(onFontsChanged);
@@ -151,6 +156,9 @@ export const TextTruncate = React.memo(function TextTruncate({
     return () => {
       job.active = false;
       jobRef.current = null;
+      // Measuring stops: a held cut is not another strategy's result, so
+      // measuring again starts from the full text.
+      setTruncation((previous) => (previous.cut === null ? previous : fullTextState(previous.source)));
       cancelJob(job);
       unobserve();
       unsubscribe();
@@ -164,7 +172,7 @@ export const TextTruncate = React.memo(function TextTruncate({
     if (resolvedStrategy !== "measure") return undefined;
     const entry = jobRef.current;
     if (!entry) return undefined;
-    const { job, syncResolution } = entry;
+    const { job, syncResolutionNeed } = entry;
 
     if (!job.initialized) {
       job.initialized = true;
@@ -173,7 +181,7 @@ export const TextTruncate = React.memo(function TextTruncate({
       job.query = query;
       job.className = className;
       job.emojiText = hasEmoji(text);
-      syncResolution(job.emojiText);
+      syncResolutionNeed();
       scheduleJob(job);
       return undefined;
     }
@@ -187,7 +195,6 @@ export const TextTruncate = React.memo(function TextTruncate({
       job.text = text;
       job.emojiText = hasEmoji(text);
       invalidateMeasurements(job, "text");
-      syncResolution(job.emojiText);
     }
     if (classChanged) {
       job.className = className;
@@ -201,17 +208,19 @@ export const TextTruncate = React.memo(function TextTruncate({
       job.query = query;
       invalidateMeasurements(job, "query");
     }
+    if (textChanged || queryChanged) syncResolutionNeed();
 
     scheduleJob(job);
     return undefined;
   }, [className, mode, query, resolvedStrategy, text]);
 
-  const renderedText = resolvedStrategy === "measure" ? truncation.text : text;
-  const isTruncated = resolvedStrategy === "measure" && truncation.text !== text;
-  // The search hands over where it cut and which text it cut. Until it has run
-  // for a new `text`, the previous visible string stays up, so its highlight
-  // comes from the text and cut it was made of.
-  const cut = isTruncated ? truncation.cut : null;
+  // The search hands over where it cut and which text it cut. Truncated means
+  // a cut is shown. Until the search has run for a new `text`, a previous cut
+  // stays up, and its highlight comes from the text and cut it was made of; a
+  // previous result that fit is not a cut, so the current text shows whole.
+  const cut = resolvedStrategy === "measure" ? truncation.cut : null;
+  const isTruncated = cut !== null;
+  const renderedText = isTruncated ? truncation.text : text;
   const trimmedQuery = query?.trim();
   // Recreate decorated text when it changes. Reusing positioned inline spans
   // can retain stale shaping across a resize even with identical font styles.
@@ -219,7 +228,9 @@ export const TextTruncate = React.memo(function TextTruncate({
   const content = trimmedQuery ? (
     cut ? (
       <CutHighlightedText
-        key={`${query!.length}:${query}:${renderedText}`}
+        // The query, the cut and its source decide the runs (and the visible
+        // string); the visible string alone can be the same for two of them.
+        key={`${query!.length}:${query}:${cut.prefixEnd}:${cut.suffixStart}:${truncation.source}`}
         text={truncation.source}
         cut={cut}
         query={query}

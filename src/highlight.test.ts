@@ -212,6 +212,22 @@ describe("the matching rule", () => {
     expect(matched("İZMİR", "i")).toEqual([]);
   });
 
+  it("treats the final sigma as the sigma it is (ς, σ, Σ)", () => {
+    // Σ lowercases to ς at the end of a word and to σ elsewhere; a reader
+    // types either, and an upper-case word has no final form at all.
+    expect(matched("ΟΔΟΣ.pdf", "οδος")).toEqual([[0, "ΟΔΟΣ"]]);
+    expect(matched("οδος.pdf", "ΟΔΟΣ")).toEqual([[0, "οδος"]]);
+    expect(matched("οδος.pdf", "οδοσ")).toEqual([[0, "οδος"]]);
+    expect(matched("ΣΟΦΙΑ-ΟΔΟΣ", "σοφια")).toEqual([[0, "ΣΟΦΙΑ"]]);
+    expect(matched("ΣΟΦΙΑ-ΟΔΟΣ", "ς")).toEqual([[0, "Σ"], [9, "Σ"]]);
+  });
+
+  it("matches a non-ASCII query in ASCII text when its lowercase is ASCII (Kelvin sign)", () => {
+    // U+212A KELVIN SIGN lowercases to "k".
+    expect(matched("Kelvin-5K.csv", "\u212A")).toEqual([[0, "K"], [8, "K"]]);
+    expect(matched("a\r\nb-k", "\u212A")).toEqual([[5, "k"]]);
+  });
+
   it("lowercases without case folding (ß)", () => {
     expect(matched("Straße.pdf", "STRAẞE")).toEqual([[0, "Straße"]]);
     expect(matched("Straße.pdf", "strasse")).toEqual([]);

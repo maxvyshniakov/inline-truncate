@@ -44,7 +44,8 @@ make the cut one grapheme shorter than without a query.
 
 Matching is case-insensitive by the Unicode lowercase mapping, the same in every
 locale and without case folding: `STRAẞE` matches `Straße` but `strasse` does not,
-and `izmir` does not match `İZMİR`. The query is literal text, not a pattern.
+and `izmir` does not match `İZMİR`. The Greek final sigma `ς` and `σ` match as one
+letter, so `οδος` matches `ΟΔΟΣ`. The query is literal text, not a pattern.
 Offsets always refer to the original string, and a match never splits a
 user-perceived character: `e` does not match the `é` written as `e` plus a
 combining accent, and `👩` does not match inside `👨‍👩‍👧`.
@@ -65,8 +66,8 @@ change. Emoji inputs and text with a matching query select through Canvas first,
 string with a cached DOM measurement. At most two corrections use the observed width
 discrepancy; a native predicate handles larger disagreements. CSS numeric
 features, variation settings, disabled optical sizing, word spacing and text
-transforms use a hidden DOM predicate when Canvas cannot express them. Emoji native widths are invalidated
-on font/style/query changes and resolution changes, independently of box resize. Inherited
+transforms use a hidden DOM predicate when Canvas cannot express them. DOM-verified widths (emoji text,
+and text with a matching query) are invalidated on font/style/query changes and resolution changes, independently of box resize. Inherited
 style changes must cause a resize, font-load event, or a component class/text
 change to trigger a new measurement; arbitrary ancestor style mutations are
 not observed.
@@ -157,7 +158,10 @@ Text Truncate demos alongside the grid.
 
 ## Correctness and performance
 
-The standalone browser harness needs no Data Grid or Storybook build:
+The standalone browser harness needs no Data Grid or Storybook build.
+`bun run verify:browser` runs the correctness check and both accessibility
+checks in all three engines, each with a 4-minute limit; the commands below
+run one part:
 
 ```sh
 bun run check:browser -- --browser=chromium

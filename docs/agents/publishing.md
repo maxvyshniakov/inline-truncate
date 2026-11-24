@@ -17,6 +17,9 @@
 - promote takes the landing lock that `.githooks/reference-transaction` requires of agent sessions, pushes the SHA and
   fast-forwards the local branches. Never use a bare `git push` to `dev` or `main`, and never force-push.
 - Landing a task branch: rebase onto `origin/dev`, push the tip.
+- Standing permission (owner, 2026-11-24): an orchestrator pushes a green batch with every review resolved to `dev`
+  without asking, and reports it in one line. `main`, a release, a publication to npmjs.org and `npm deprecate` each
+  need the owner's command; the release guard (`MASTACK_RELEASE_OK`) refuses agents without it.
 
 ## CI
 - `.github/workflows/check.yml` ("Library checks") runs on `main` pushes, pull requests and `workflow_dispatch`, on a
@@ -36,11 +39,12 @@
   requests Data Grid's catalog dependency workflow.
 - `bun run release:publish` outside Actions refuses and names that command.
 - npmjs.org trusts `release-npm.yml` once, the owner's step:
-  `npm trust github inline-truncate --file release-npm.yml --repo maxvyshniakov/text-truncate`.
-- First publication of a new name: `npm trust` needs the package to exist (`npm help trust`: "Package must exist"),
-  and `inline-truncate` does not yet. Inline Measure was bootstrapped by the owner publishing a placeholder
-  `0.0.0-stage` from their machine (npmjs.org shows it a minute before 0.5.0); do the same, then `npm trust`, then
-  the workflow. Each is an outward step: ask the owner at that moment.
+  `npm trust github inline-truncate --file release-npm.yml --repo maxvyshniakov/inline-truncate --allow-publish`.
+- First publication, as it happened for 0.5.0: the owner published from their machine
+  (`npm publish --access public`, no provenance) and pushed the tag by hand. A version `0.0.0-stage` is not a
+  placeholder to publish (the registry refuses it); npmjs.org creates it when a trusted publisher is set up for a
+  new name on the website. That publisher stays "Pending validation" until one publication from `release-npm.yml`;
+  for inline-truncate that must happen before 2026-11-26 05:41 UTC.
 - Data Grid adopts the release through its catalog dependency workflow, under the standing approval to release Data Grid
   when every check passes (maxvyshniakov/data-grid docs/CATALOG-DEPENDENCIES.md).
 

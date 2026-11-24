@@ -48,3 +48,165 @@ describe("the frame between a text change and its measurement", () => {
     expect(highlights(container)).toEqual(["{...}"]);
   });
 });
+
+// Highlighted Canvas text is verified in the DOM, and a DOM width can change
+// with the device pixel ratio without a resize, as emoji widths do.
+describe("the device pixel ratio", () => {
+  function resolution() {
+    let ratio = 1;
+    vi.spyOn(window, "devicePixelRatio", "get").mockImplementation(() => ratio);
+    const queries: { media: string; listeners: Set<() => void> }[] = [];
+    const match = vi.spyOn(window, "matchMedia").mockImplementation((media) => {
+      const query = { media, listeners: new Set<() => void>() };
+      queries.push(query);
+      return {
+        media, matches: true,
+        addEventListener: (_type: string, listener: () => void) => query.listeners.add(listener),
+        removeEventListener: (_type: string, listener: () => void) => query.listeners.delete(listener),
+      } as unknown as MediaQueryList;
+    });
+    const live = () => queries.filter((query) => query.listeners.size > 0);
+    return { match, live, change: (next: number) => { ratio = next; act(() => { for (const query of live()) for (const listener of query.listeners) listener(); }); } };
+  }
+
+  it("remeasures highlighted plain text when it changes, and stops listening without a match", () => {
+    const flush = queuedFrames(16);
+    const reads = vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (this: HTMLElement) {
+      return { width: this.textContent?.length ?? 0, height: 16 } as DOMRect;
+    });
+    const dpr = resolution();
+    const text = "plain-spring-long-file-name.pdf";
+    const { rerender } = render(<TextTruncate mode="middle" text={text} query="spring" />);
+    flush();
+    expect(dpr.live()).toHaveLength(1);
+    reads.mockClear();
+    dpr.change(2);
+    flush();
+    expect(reads).toHaveBeenCalled();
+    expect(dpr.live().map((query) => query.media).join()).toContain("2dppx");
+    rerender(<TextTruncate mode="middle" text={text} query="walnut" />);
+    flush();
+    expect(dpr.live()).toHaveLength(0);
+  });
+
+  it("starts listening when a new query or a new text brings a match", () => {
+    const flush = queuedFrames(16);
+    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (this: HTMLElement) {
+      return { width: this.textContent?.length ?? 0, height: 16 } as DOMRect;
+    });
+    const dpr = resolution();
+    const { rerender } = render(<TextTruncate mode="middle" text="plain-long-file-name.pdf" query="spring" />);
+    flush();
+    expect(dpr.live()).toHaveLength(0);
+    rerender(<TextTruncate mode="middle" text="plain-spring-long-file-name.pdf" query="spring" />);
+    flush();
+    expect(dpr.live()).toHaveLength(1);
+    rerender(<TextTruncate mode="middle" text="plain-spring-long-file-name.pdf" query="walnut" />);
+    flush();
+    expect(dpr.live()).toHaveLength(0);
+    rerender(<TextTruncate mode="middle" text="plain-spring-long-file-name.pdf" query="long" />);
+    flush();
+    expect(dpr.live()).toHaveLength(1);
+  });
+
+  it("remeasures plain text measured in the DOM (a style Canvas cannot express)", () => {
+    const flush = queuedFrames(16);
+    const reads = vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (this: HTMLElement) {
+      return { width: this.textContent?.length ?? 0, height: 16 } as DOMRect;
+    });
+    const dpr = resolution();
+    const { container } = render(<TextTruncate mode="middle" text="plain-long-file-name.pdf" />);
+    container.querySelector<HTMLElement>("[data-truncate]")!.style.fontOpticalSizing = "none";
+    flush();
+    expect(dpr.live()).toHaveLength(1);
+    reads.mockClear();
+    dpr.change(2);
+    flush();
+    expect(reads).toHaveBeenCalled();
+  });
+});
+
+describe("the truncated state", () => {
+  for (const [name, measured, css] of [
+    ["the CSS strategy", { strategy: "measure" as const, mode: "middle" as const }, { strategy: "css" as const, mode: "middle" as const }],
+    ["mode under strategy auto", { mode: "middle" as const }, { mode: "end" as const }],
+  ] as const) it(`drops a previous cut when ${name} took over in between`, () => {
+    const flush = queuedFrames(40);
+    const longer = "a-much-longer-file-name-than-fits-the-cell.pdf";
+    const { container, rerender } = render(<TextTruncate {...measured} text={longer} />);
+    flush();
+    const root = container.querySelector<HTMLElement>("[data-truncate]")!;
+    expect(root.dataset.truncateState).toBe("truncated");
+    rerender(<TextTruncate {...css} text="short.pdf" />);
+    flush();
+    rerender(<TextTruncate {...measured} text="short.pdf" />);
+    expect(root.dataset.truncateState).toBeUndefined();
+    expect(root.querySelector("[data-truncate-full-text]")).toBeNull();
+    expect(root.textContent).toBe("short.pdf");
+  });
+
+  it("is not claimed for a result that fit while a new text waits for its measurement", () => {
+    const flush = queuedFrames(40);
+    const { container, rerender } = render(<TextTruncate mode="middle" text="short.pdf" />);
+    flush();
+    const root = container.querySelector<HTMLElement>("[data-truncate]")!;
+    expect(root.dataset.truncateState).toBeUndefined();
+    const longer = "a-much-longer-file-name-than-fits-the-cell.pdf";
+    rerender(<TextTruncate mode="middle" text={longer} />);
+    expect(root.dataset.truncateState).toBeUndefined();
+    expect(root.querySelector("[data-truncate-full-text]")).toBeNull();
+    expect(root.textContent).toBe(longer);
+    flush();
+    expect(root.dataset.truncateState).toBe("truncated");
+  });
+
+  it("is not claimed after switching from the CSS strategy to measuring a new text", () => {
+    const flush = queuedFrames(40);
+    const { container, rerender } = render(<TextTruncate mode="end" strategy="css" text="short.pdf" />);
+    flush();
+    const longer = "a-much-longer-file-name-than-fits-the-cell.pdf";
+    rerender(<TextTruncate mode="end" strategy="measure" text={longer} />);
+    const root = container.querySelector<HTMLElement>("[data-truncate]")!;
+    expect(root.dataset.truncateState).toBeUndefined();
+    expect(root.querySelector("[data-truncate-full-text]")).toBeNull();
+    flush();
+    expect(root.dataset.truncateState).toBe("truncated");
+  });
+});
+
+describe("highlight spans of a cut", () => {
+  it("are recreated when a same-length text keeps the cut and the visible string", () => {
+    // A match starting inside the cut straddles into the suffix: the visible
+    // string and the cut are the same, the suffix's highlight is not.
+    const flush = queuedFrames(19);
+    const { container, rerender } = render(<TextTruncate mode="middle" text="prefix--xxxxababab.pdf" query="abab" />);
+    flush();
+    const visible = () => container.querySelector("[data-truncate-visible]")!;
+    const spans = () => [...visible().querySelectorAll('[data-slot="highlighted-match"]')];
+    const before = { text: visible().textContent, spans: spans() };
+    expect(before.text).toBe("prefix--...abab.pdf");
+    rerender(<TextTruncate mode="middle" text="prefix--ababxxabab.pdf" query="abab" />);
+    flush();
+    expect(visible().textContent).toBe(before.text);
+    expect(spans().length).toBeGreaterThan(0);
+    for (const span of spans()) expect(before.spans).not.toContain(span);
+  });
+
+  // Positioned inline spans can keep stale shaping when React reuses them, so
+  // a different cut or source recreates them even if the visible string is
+  // the same.
+  it("are recreated when a new text keeps the same visible string", () => {
+    const flush = queuedFrames(10);
+    const { container, rerender } = render(<TextTruncate mode="middle" text="Quarterly-design-review.pdf" query="design" />);
+    flush();
+    const shown = () => container.querySelector("[data-truncate-visible]")!.textContent;
+    const marker = () => container.querySelector("[data-truncate-marker]");
+    const before = { text: shown(), node: marker() };
+    expect(before.node).not.toBeNull();
+    rerender(<TextTruncate mode="middle" text="Quarterly-design-reviews.pdf" query="design" />);
+    flush();
+    expect(shown()).toBe(before.text);
+    expect(marker()).not.toBeNull();
+    expect(marker()).not.toBe(before.node);
+  });
+});

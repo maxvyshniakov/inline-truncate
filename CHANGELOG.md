@@ -4,6 +4,26 @@ Versions and release rules: [docs/VERSIONING.md](docs/VERSIONING.md).
 
 ## Unreleased
 
+### Changed
+
+- The package metadata names the renamed repository, `github.com/maxvyshniakov/inline-truncate`, and gains
+  `homepage` and `bugs` links.
+
+### Fixed
+
+- `query` matches the Greek final sigma: `ς` and `σ` match as one letter, so `οδος` finds `ΟΔΟΣ` and `ΟΔΟΣ` finds
+  `οδος`. Matching lowercases code point by code point, which always turned `Σ` into `σ` and missed a typed `ς`.
+- A non-ASCII `query` whose lowercase is ASCII now matches ASCII text, as the lowercase rule says: the Kelvin sign
+  `K` (U+212A) finds `k` and `K`. Every such match was dropped.
+- Text with a matching `query`, and text whose style Canvas cannot express (numeric or font features, disabled optical
+  sizing, word spacing, text transforms), is measured again when the device pixel ratio changes, as emoji text already
+  was: its widths come from the DOM, and moving the window to another display could keep a cut that no longer fit.
+- After a text change, until the next frame measures it, a previous result that fit no longer counts as truncated:
+  for that frame the root set `data-truncate-state="truncated"` and rendered the hidden full-text copy although
+  nothing was cut, so hosts reading the state (tooltips) saw a false truncation. It now shows the new text whole. The
+  same holds when measuring resumes after the CSS strategy took over (also a `mode` switch under `strategy="auto"`):
+  the cut from before is dropped instead of flashing for a frame.
+
 ## 0.5.0 - 2026-11-24
 
 ### Breaking
