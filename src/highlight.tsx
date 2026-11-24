@@ -78,13 +78,18 @@ export function findMatchRanges(text: string, query?: string): MatchRange[] {
   }
   const { lower, origins } = lowercaseWithOrigins(text);
   const normalizedQuery = lowercaseCodePoints(trimmed);
-  let boundaries: Set<number> | undefined;
+  // Grapheme boundaries; null when every index is one (ASCII text without CR
+  // reaches here when only the query is non-ASCII, as the Kelvin sign is).
+  let boundaries: Set<number> | null | undefined;
   let matchIndex = lower.indexOf(normalizedQuery);
   while (matchIndex >= 0) {
     const start = origins[matchIndex];
     const end = origins[matchIndex + normalizedQuery.length];
-    boundaries ??= new Set(indexTextGraphemes(text).offsets ?? []);
-    if (start >= 0 && end >= 0 && boundaries.has(start) && boundaries.has(end)) {
+    if (boundaries === undefined) {
+      const { offsets } = indexTextGraphemes(text);
+      boundaries = offsets ? new Set(offsets) : null;
+    }
+    if (start >= 0 && end >= 0 && (!boundaries || (boundaries.has(start) && boundaries.has(end)))) {
       ranges.push({ start, end });
       matchIndex = lower.indexOf(normalizedQuery, matchIndex + normalizedQuery.length);
     } else {
