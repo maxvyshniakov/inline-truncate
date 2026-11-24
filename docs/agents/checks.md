@@ -25,8 +25,8 @@
   back any change under `src/` or `scripts/`: the plain gate does not run it.
 - `bun run check:a11y`: accessible text, copy and find, then pointer, selection, overflow and focus on a table of
   truncated cells (`scripts/a11y/pointer.mjs`), in Chromium, Firefox (the installed stable, over WebDriver BiDi)
-  and WebKit, one engine at a time, behind one heavy slot. Run it for changes to the rendered DOM. Reports land in
-  `artifacts/a11y/`.
+  and WebKit, one engine at a time, behind one heavy slot, each script stopped with its process group after the same
+  4 minutes (`scripts/a11y/all.mjs`). Run it for changes to the rendered DOM. Reports land in `artifacts/a11y/`.
 
 ## Pins
 - `@maxvyshniakov/package-kit` exact (from npmjs.org): each commit's gate is the kit its lockfile records. Raise it

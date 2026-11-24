@@ -158,7 +158,10 @@ Text Truncate demos alongside the grid.
 
 ## Correctness and performance
 
-The standalone browser harness needs no Data Grid or Storybook build:
+The standalone browser harness needs no Data Grid or Storybook build.
+`bun run verify:browser` runs the correctness check and both accessibility
+checks in all three engines, each with a 4-minute limit; the commands below
+run one part:
 
 ```sh
 bun run check:browser -- --browser=chromium
