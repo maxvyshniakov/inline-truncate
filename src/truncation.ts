@@ -94,7 +94,8 @@ export function truncatePrepared(
 
   const indexed = getIndexed();
   if (mode === "end") {
-    const prefixCount = takePrefixThatFits({
+    const prefixCount = takeEdgeThatFits({
+      fromEnd: false,
       fullWidth,
       indexed,
       markerWidth,
@@ -109,7 +110,8 @@ export function truncatePrepared(
   }
 
   if (mode === "start") {
-    const suffixCount = takeSuffixThatFits({
+    const suffixCount = takeEdgeThatFits({
+      fromEnd: true,
       fullWidth,
       indexed,
       markerWidth,
@@ -328,40 +330,17 @@ function createEdgeWidths(
   };
 }
 
-function takePrefixThatFits({
+// The most graphemes from one edge that fit beside the marker. At most every
+// grapheme but one: a cut hides at least one, as in middle mode.
+function takeEdgeThatFits({
+  fromEnd,
   fullWidth,
   indexed,
   markerWidth,
   maxWidth,
   measureText,
 }: {
-  fullWidth: number;
-  indexed: IndexedText;
-  markerWidth: number;
-  maxWidth: number;
-  measureText: CandidateMeasure;
-}) {
-  const initialGuess = fullWidth > 0 ? Math.floor(((maxWidth - markerWidth) / fullWidth) * indexed.length) : 1;
-  // At most every grapheme but one: a cut hides at least one, as in middle mode.
-  return findMaxFittingCount(
-    indexed.length - 1,
-    maxWidth,
-    initialGuess,
-    markerWidth,
-    (count) => measureText(slicePrefix(indexed, count) + TRUNCATION_MARKER, {
-      prefixEnd: prefixEndOffset(indexed, count),
-      suffixStart: indexed.text.length,
-    }),
-  );
-}
-
-function takeSuffixThatFits({
-  fullWidth,
-  indexed,
-  markerWidth,
-  maxWidth,
-  measureText,
-}: {
+  fromEnd: boolean;
   fullWidth: number;
   indexed: IndexedText;
   markerWidth: number;
@@ -374,9 +353,14 @@ function takeSuffixThatFits({
     maxWidth,
     initialGuess,
     markerWidth,
-    (count) => measureText(TRUNCATION_MARKER + sliceSuffix(indexed, count), {
-      prefixEnd: 0,
-      suffixStart: suffixStartOffset(indexed, count),
-    }),
+    (count) => fromEnd
+      ? measureText(TRUNCATION_MARKER + sliceSuffix(indexed, count), {
+        prefixEnd: 0,
+        suffixStart: suffixStartOffset(indexed, count),
+      })
+      : measureText(slicePrefix(indexed, count) + TRUNCATION_MARKER, {
+        prefixEnd: prefixEndOffset(indexed, count),
+        suffixStart: indexed.text.length,
+      }),
   );
 }
