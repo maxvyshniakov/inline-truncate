@@ -36,11 +36,12 @@
   requests Data Grid's catalog dependency workflow.
 - `bun run release:publish` outside Actions refuses and names that command.
 - npmjs.org trusts `release-npm.yml` once, the owner's step:
-  `npm trust github inline-truncate --file release-npm.yml --repo maxvyshniakov/inline-truncate`.
-- First publication of a new name: `npm trust` needs the package to exist (`npm help trust`: "Package must exist"),
-  and `inline-truncate` does not yet. Inline Measure was bootstrapped by the owner publishing a placeholder
-  `0.0.0-stage` from their machine (npmjs.org shows it a minute before 0.5.0); do the same, then `npm trust`, then
-  the workflow. Each is an outward step: ask the owner at that moment.
+  `npm trust github inline-truncate --file release-npm.yml --repo maxvyshniakov/inline-truncate --allow-publish`.
+- First publication, as it happened for 0.5.0: the owner published from their machine
+  (`npm publish --access public`, no provenance) and pushed the tag by hand. A version `0.0.0-stage` is not a
+  placeholder to publish (the registry refuses it); npmjs.org creates it when a trusted publisher is set up for a
+  new name on the website. That publisher stays "Pending validation" until one publication from `release-npm.yml`;
+  for inline-truncate that must happen before 2026-11-26 05:41 UTC.
 - Data Grid adopts the release through its catalog dependency workflow, under the standing approval to release Data Grid
   when every check passes (maxvyshniakov/data-grid docs/CATALOG-DEPENDENCIES.md).
 

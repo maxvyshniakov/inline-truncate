@@ -57,7 +57,13 @@ provenance attestation. `package-kit.config.mjs` sets
 `bun run release:publish` outside Actions refuses and names the workflow. If the tag push fails
 after publication, rerun the workflow; `package-kit publish --resume` finishes it without
 republishing. npmjs.org trusts the workflow file once, the owner's step:
-`npm trust github inline-truncate --file release-npm.yml --repo maxvyshniakov/inline-truncate`.
+`npm trust github inline-truncate --file release-npm.yml --repo maxvyshniakov/inline-truncate --allow-publish`.
+
+0.5.0, the first version under this name, was published by the owner from their machine
+(`npm publish --access public`, no provenance, tag pushed by hand). npmjs.org then holds the trusted
+publisher as "Pending validation" until one publication from `release-npm.yml`. The `0.0.0-stage` version
+npmjs.org shows is its own placeholder for a trusted publisher set up on the website for a new name;
+publishing that version is refused.
 
 After publication and tag creation, the same command requests Data Grid's
 **Update catalog dependencies** workflow. Its catalog and package dependencies
