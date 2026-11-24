@@ -39,8 +39,8 @@
     "check:a11y": "package-kit heavy 1 node scripts/a11y/all.mjs"
   },
   "dependencies": {
-    "cn": "^0.4.0",
-    "inline-measure": "^0.5.0"
+    "cn": "^0.5.2",
+    "inline-measure": "^0.5.1"
   },
   "peerDependencies": {
     "react": "^19.2.8",
@@ -49,19 +49,19 @@
   "devDependencies": {
     "@maxvyshniakov/package-kit": "1.0.1",
     "@testing-library/dom": "10.4.2",
-    "@testing-library/jest-dom": "7.0.1",
+    "@testing-library/jest-dom": "8.0.0",
     "@testing-library/react": "16.3.3",
-    "@types/node": "26.6.3",
+    "@types/node": "26.6.6",
     "@types/react": "19.3.0",
     "@types/react-dom": "19.3.0",
-    "happy-dom": "20.14.5",
-    "oxlint": "1.86.0",
-    "react": "^19.3.0",
-    "react-dom": "^19.3.0",
+    "happy-dom": "21.0.4",
+    "oxlint": "1.95.0",
+    "playwright": "1.65.1",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
     "typescript": "7.0.2",
-    "vite": "8.3.2",
-    "vitest": "5.0.3",
-    "playwright": "1.64.1"
+    "vite": "8.3.8",
+    "vitest": "5.1.1"
   },
   "license": "MIT",
   "repository": {

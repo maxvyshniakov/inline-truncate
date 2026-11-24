@@ -18,7 +18,7 @@
   fast-forwards the local branches. Never use a bare `git push` to `dev` or `main`, and never force-push.
 - Landing a task branch: rebase onto `origin/dev`, push the tip.
 - Standing permission (owner, 2026-11-24): an orchestrator pushes a green batch with every review resolved to `dev`
-  without asking, and reports it in one line. `main`, a release, a publication to npmjs.org and `npm deprecate` each
+  without asking, and reports it in one line. `main`, a release and a publication to npmjs.org each
   need the owner's command; the release guard (`MASTACK_RELEASE_OK`) refuses agents without it.
 
 ## CI
@@ -51,9 +51,8 @@
 ## After publish
 - `npm view inline-truncate version` names the new version; `git ls-remote --tags origin v<version>` shows
   the tag.
-- After the first `inline-truncate` release is live, with the owner's go-ahead (ticket #3):
-  `npm deprecate @maxvyshniakov/text-truncate "Renamed to inline-truncate"`; `npm view @maxvyshniakov/text-truncate
-  deprecated` then shows the message.
+- The old name, `@maxvyshniakov/text-truncate` (up to 0.4.1), lives only in the private GitHub Packages registry; it
+  never existed on npmjs.org, so there is nothing to `npm deprecate`, and GitHub Packages has no deprecation.
 - The Data Grid request only warns on failure (the workflow token cannot dispatch another repository's workflow); retry
   it locally with `bunx package-kit notify`.
 

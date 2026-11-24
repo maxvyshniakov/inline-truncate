@@ -4,6 +4,18 @@ Versions and release rules: [docs/VERSIONING.md](docs/VERSIONING.md).
 
 ## Unreleased
 
+### Changed
+
+- Depends on `inline-measure` `^0.5.1` (was `^0.5.0`); 0.5.1 changes only its release tooling.
+- Depends on `cn` `^0.5.2` (was `^0.4.0`), which needs Node 22 or later and groups the legacy
+  `bg-gradient-to-*` utilities with `bg-color` when merging a `className`. Applications that install `cn` `^0.4`
+  themselves get a second copy until they move to `^0.5`.
+
+### Fixed
+
+- Correction to 0.5.0: the old scoped `@maxvyshniakov/text-truncate` is not deprecated on npmjs.org;
+  it never existed there and lives only in the private GitHub Packages registry, at 0.4.1.
+
 ## 0.5.1 - 2026-11-24
 
 ### Changed
