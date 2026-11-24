@@ -77,7 +77,39 @@ export interface MeasureJob {
   verifiedWidths: Map<string, number>;
   verifiedUnits: number;
   setTruncation: React.Dispatch<React.SetStateAction<TruncationState>>;
-  invalidate: () => void;
+}
+
+/** An input whose change can make what a job measured stale. */
+export type MeasurementChange = "text" | "style" | "query" | "mode";
+
+/**
+ * Drops what a changed input makes stale. The rules, in one place:
+ * - text: every width and the grapheme index, all measured on the old text.
+ * - style (class, computed typography, fonts, device pixel ratio): every
+ *   width and the captured style.
+ * - query: the DOM probe draws highlights, so DOM-drawn widths go: verified
+ *   widths always, primary widths when the last measurement ran in the DOM.
+ *   Canvas widths ignore markup and stay; with none dropped the cut stands.
+ * - mode: the cut only; a width does not depend on the mode.
+ * The available width needs no rule: widths do not depend on it, and the cut
+ * is redone whenever it differs from `completedWidth`.
+ */
+export function invalidateMeasurements(job: MeasureJob, change: MeasurementChange) {
+  if (change === "mode") {
+    job.completedWidth = undefined;
+    return;
+  }
+  const dropsPrimary = change !== "query" || job.lastNeedsDOM;
+  if (change === "query" && !dropsPrimary && !job.emojiText) return;
+  job.completedWidth = undefined;
+  job.verifiedWidths.clear();
+  job.verifiedUnits = 0;
+  if (dropsPrimary) {
+    job.widths.clear();
+    job.cachedUnits = 0;
+  }
+  if (change === "style") job.lastStyle = undefined;
+  if (change === "text") job.indexedText = undefined;
 }
 
 function resolveLang(element: Element, flush: FlushContext): string {
@@ -252,7 +284,7 @@ function flushJobs() {
     const lang = resolveLang(element, flush);
     let style: StyleSnapshot;
     if (!job.lastStyle || !isSameStyle(job.lastStyle, computed, lang, flush.dpr)) {
-      job.invalidate();
+      invalidateMeasurements(job, "style");
       style = captureStyle(job.lastStyle, computed, lang, flush.dpr);
       job.lastStyle = style;
     } else {

@@ -187,6 +187,17 @@ async function correctness() {
     await settle();
     if (!componentFits(1)) failures.push(`highlighted-cut/${query}/${width}`);
   }
+  // A query change where the cut is measured in the DOM (a style canvas cannot
+  // express): the new query's highlight must be measured, not the old one's.
+  for (const width of [...Array.from({length:61},(_,i)=>120+i*4),295]) {
+    fixture.style.cssText = `width:${width}px;font:14px/20px TruncateHarnessInter;font-optical-sizing:none`;
+    flushSync(() => root.render(<TextTruncate key={`dom-query-${width}`} mode="middle" query="walnut" text="oak-collection-spring-lookbook-2026-final-print-oak.pdf" />));
+    await settle();
+    flushSync(() => root.render(<TextTruncate key={`dom-query-${width}`} mode="middle" query="spring" text="oak-collection-spring-lookbook-2026-final-print-oak.pdf" />));
+    await settle();
+    if (!componentFits(1)) failures.push(`dom-query-change/${width}`);
+  }
+  fixture.style.cssText = "width:295px;font:14px/20px TruncateHarnessInter";
   flushSync(() => root.render(<TextTruncate mode="middle" query="final" text="oak-collection-🧑🏽‍🎨-spring-lookbook-2026-final-print-oak.pdf" />));
   await settle();
   if (!componentFits(1)) failures.push("highlight-query-change");
