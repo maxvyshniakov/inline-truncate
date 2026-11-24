@@ -181,7 +181,9 @@ export function createMeasurementSession(
       probe.textContent = value;
     } else {
       // The runs the component renders: a cut's are drawn from the full text.
-      const parts = cut ? cutHighlightRuns(originalText, query, cut, fullTextMatches) : highlightedTextParts(value, query);
+      const parts = cut
+        ? cutHighlightRuns(originalText, query, cut, fullTextMatches)
+        : highlightedTextParts(value, query, value === originalText ? fullTextMatches : undefined);
       const nodes: Node[] = [];
       const doc = element.ownerDocument;
       for (let i = 0; i < parts.length; i++) {

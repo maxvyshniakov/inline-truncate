@@ -119,8 +119,11 @@ function pushWindowParts(
   if (cursor < to) parts.push({ text: text.slice(cursor, to), matched: false, start: cursor });
 }
 
-export function highlightedTextParts(text: string, query?: string): HighlightedTextPart[] {
-  const ranges = findMatchRanges(text, query);
+export function highlightedTextParts(
+  text: string,
+  query?: string,
+  ranges: readonly MatchRange[] = findMatchRanges(text, query),
+): HighlightedTextPart[] {
   if (ranges.length === 0) return [{ text, matched: false, start: 0 }];
   const parts: HighlightedTextPart[] = [];
   pushWindowParts(parts, text, ranges, 0, text.length);

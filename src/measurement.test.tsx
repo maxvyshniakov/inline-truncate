@@ -93,3 +93,25 @@ describe("the DOM probe for a cut", () => {
     }
   });
 });
+
+it("measures the uncut full text with the matches the session already found", () => {
+  const text = "Quarterly-design-review.pdf";
+  const source = document.createElement("span");
+  document.body.append(source);
+  vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockReturnValue({ width: 10 } as DOMRect);
+  const session = createMeasurementSession(source, getComputedStyle(source), "design", { originalText: text, emojiText: false, needsDOM: true });
+  const native = String.prototype.toLowerCase;
+  let textLowercased = 0;
+  vi.spyOn(String.prototype, "toLowerCase").mockImplementation(function (this: string) {
+    if (String(this) === text) textLowercased += 1;
+    return native.call(this);
+  });
+  try {
+    session.measureText(text);
+    // Matching lowercases the text; the session matched it when it began.
+    expect(textLowercased).toBe(0);
+  } finally {
+    session.dispose();
+    source.remove();
+  }
+});
