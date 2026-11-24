@@ -4,17 +4,25 @@ Versions and release rules: [docs/VERSIONING.md](docs/VERSIONING.md).
 
 ## Unreleased
 
-### Changed
+### Breaking
 
 - Breaking: the package is renamed from `@maxvyshniakov/text-truncate` to the unscoped
   `inline-truncate` on npmjs.org, next to `inline-measure`. Replace the old name in
-  `package.json`, imports and the Tailwind `@source` path; the API, the `--text-truncate-highlight-*`
-  CSS variables and the behavior are unchanged. The scoped package stays installable but
-  receives no further releases.
+  `package.json`, imports and the Tailwind `@source` path. The API and the `--text-truncate-highlight-*`
+  CSS variables keep their names; the behavior changes below come with the new name. The scoped package
+  stays installable at 0.4.1, receives no further releases, and is marked deprecated on npmjs.org
+  ("Renamed to inline-truncate") once the new name is published.
+  No transition period: consumers that take the `maxvyshniakov` scope from GitHub Packages cannot install the scoped
+  name from npmjs.org at all, so releasing it under both names would not reach them.
+
+### Changed
 - Measured truncation now exposes the full text to assistive technology. While the string is cut, the visible text sits
   in an `aria-hidden` span (`data-truncate-visible`) and the full text in a visually hidden span that takes no
-  selection or pointer events (`data-truncate-full-text`); text that fits and the CSS strategy add no nodes. The
-  root's `textContent` then holds both strings, so read `data-truncate-original` for the full text, and in-page find also matches the hidden copy.
+  selection or pointer events (`data-truncate-full-text`); text that fits and the CSS strategy add no nodes. While
+  cut, the root's `textContent` holds both strings back to back and its `innerText` both strings (on two lines in
+  Chromium and Firefox), so tests that read a truncated cell's text, such as `toHaveTextContent` or an exact
+  `getByText`, see the full text after the visible one: read `data-truncate-original` for the full text and
+  `[data-truncate-visible]` for the visible string. In-page find also matches the hidden copy.
 - `query` is matched against the full text instead of the visible cut string. A match the cut hides highlights the
   truncation marker (`data-slot="highlighted-match"` with `data-truncate-marker`), a match straddling the cut
   highlights its visible end and the marker, and text that exists only where the visible ends join no longer matches.

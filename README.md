@@ -30,8 +30,11 @@ Matches are found once, in the full text; the cut string only renders them. A
 match that straddles the cut highlights its visible end and the marker, and the
 query never matches text that exists only where the two visible ends join. The
 highlighted marker is a `span` with `data-slot="highlighted-match"` and
-`data-truncate-marker`, styled like any match. Highlighting does not take part in
-measurement: the cut is the same with or without a query.
+`data-truncate-marker`, styled like any match. Where the cut is measured in the
+DOM (text with emoji, or the styles listed below that Canvas cannot express), the
+probe draws the highlight as the component renders it, so a highlighted marker or
+a straddling match can make the cut one grapheme shorter. Elsewhere Canvas
+measures the plain string and the cut is the same with or without a query.
 
 Matching is case-insensitive by the Unicode lowercase mapping, the same in every
 locale and without case folding: `STRAẞE` matches `Straße` but `strasse` does not,
