@@ -88,6 +88,27 @@ describe("the device pixel ratio", () => {
     flush();
     expect(dpr.live()).toHaveLength(0);
   });
+
+  it("starts listening when a new query or a new text brings a match", () => {
+    const flush = queuedFrames(16);
+    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (this: HTMLElement) {
+      return { width: this.textContent?.length ?? 0, height: 16 } as DOMRect;
+    });
+    const dpr = resolution();
+    const { rerender } = render(<TextTruncate mode="middle" text="plain-long-file-name.pdf" query="spring" />);
+    flush();
+    expect(dpr.live()).toHaveLength(0);
+    rerender(<TextTruncate mode="middle" text="plain-spring-long-file-name.pdf" query="spring" />);
+    flush();
+    expect(dpr.live()).toHaveLength(1);
+    rerender(<TextTruncate mode="middle" text="plain-spring-long-file-name.pdf" query="walnut" />);
+    flush();
+    expect(dpr.live()).toHaveLength(0);
+    rerender(<TextTruncate mode="middle" text="plain-spring-long-file-name.pdf" query="long" />);
+    flush();
+    expect(dpr.live()).toHaveLength(1);
+  });
+
 });
 
 describe("the truncated state", () => {
