@@ -139,6 +139,26 @@ describe("the truncated state", () => {
 });
 
 describe("highlight spans of a cut", () => {
+  it("are recreated when a same-length text keeps the cut and the visible string", () => {
+    // A match starting inside the cut straddles into the suffix: the visible
+    // string and the cut are the same, the suffix's highlight is not.
+    const flush = queuedFrames(19);
+    const { container, rerender } = render(<TextTruncate mode="middle" text="prefix--xxxxababab.pdf" query="abab" />);
+    flush();
+    const visible = () => container.querySelector("[data-truncate-visible]")!;
+    const spans = () => [...visible().querySelectorAll('[data-slot="highlighted-match"]')];
+    const before = { text: visible().textContent, spans: spans() };
+    expect(before.text).toBe("prefix--...abab.pdf");
+    rerender(<TextTruncate mode="middle" text="prefix--ababxxabab.pdf" query="abab" />);
+    flush();
+    expect(visible().textContent).toBe(before.text);
+    expect(spans().length).toBeGreaterThan(0);
+    for (const span of spans()) expect(before.spans).not.toContain(span);
+  });
+
+  // Positioned inline spans can keep stale shaping when React reuses them, so
+  // a different cut or source recreates them even if the visible string is
+  // the same.
   it("are recreated when a new text keeps the same visible string", () => {
     const flush = queuedFrames(10);
     const { container, rerender } = render(<TextTruncate mode="middle" text="Quarterly-design-review.pdf" query="design" />);
