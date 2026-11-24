@@ -309,8 +309,15 @@ function flushJobs() {
       setTruncation(job, { source: job.text, text: result.text, cut: result.cut });
     };
 
-    const measureText = (value: string) => {
-      const cached = job.widths.get(value);
+    // Highlighted text is drawn from a candidate's cut, and two cuts can make
+    // the same string, so with a query a cached width belongs to the cut.
+    const highlighted = !!job.query?.trim();
+    const cacheKey = (value: string, cut?: TruncationCut) =>
+      highlighted && cut ? `${cut.prefixEnd}:${cut.suffixStart}:${value}` : value;
+
+    const measureText = (value: string, cut?: TruncationCut) => {
+      const key = cacheKey(value, cut);
+      const cached = job.widths.get(key);
       if (cached !== undefined) return cached;
       if (flushWidthMap) {
         const flushHit = flushWidthMap.get(value);
@@ -320,13 +327,13 @@ function flushJobs() {
             job.cachedUnits = 0;
           }
           if (value.length <= MAX_CACHED_CODE_UNITS) {
-            job.widths.set(value, flushHit);
+            job.widths.set(key, flushHit);
             job.cachedUnits += value.length;
           }
           return flushHit;
         }
       }
-      const measured = session.measureText(value);
+      const measured = session.measureText(value, cut);
       if (flushWidthMap && value.length <= MAX_CACHED_CODE_UNITS) {
         flushWidthMap.set(value, measured);
       }
@@ -337,7 +344,7 @@ function flushJobs() {
         job.cachedUnits = 0;
       }
       if (value.length <= MAX_CACHED_CODE_UNITS) {
-        job.widths.set(value, measured);
+        job.widths.set(key, measured);
         job.cachedUnits += value.length;
       }
       return measured;
@@ -352,19 +359,20 @@ function flushJobs() {
         continue;
       }
 
-      const select = (budget: number, measure = measureText) =>
+      const select = (budget: number, measure: (value: string, cut?: TruncationCut) => number = measureText) =>
         truncatePrepared({ text: job.text, maxWidth: budget, mode: job.mode, measureText: measure }, getIndexed);
-      const verify = (value: string) => {
-        const cached = job.verifiedWidths.get(value);
+      const verify = ({ text: value, cut }: TruncationResult) => {
+        const key = cacheKey(value, cut ?? undefined);
+        const cached = job.verifiedWidths.get(key);
         if (cached !== undefined) return cached;
-        const actual = session.verifyText?.(value);
+        const actual = session.verifyText?.(value, cut ?? undefined);
         if (actual === undefined) return undefined;
         if (job.verifiedWidths.size >= MAX_CACHED_WIDTHS || job.verifiedUnits + value.length > MAX_CACHED_CODE_UNITS) {
           job.verifiedWidths.clear();
           job.verifiedUnits = 0;
         }
         if (value.length <= MAX_CACHED_CODE_UNITS) {
-          job.verifiedWidths.set(value, actual);
+          job.verifiedWidths.set(key, actual);
           job.verifiedUnits += value.length;
         }
         return actual;
@@ -373,17 +381,17 @@ function flushJobs() {
       let next = select(width);
       let budget = width;
       for (let refinement = 0; ; refinement++) {
-        const actual = verify(next.text);
+        const actual = verify(next);
         if (next.text === TRUNCATION_MARKER || actual === undefined || actual <= width) break;
         if (refinement >= 2) {
           next = select(width, session.measureExact!);
-          verify(next.text);
+          verify(next);
           break;
         }
-        budget = Math.min(budget, width - (actual - measureText(next.text)));
+        budget = Math.min(budget, width - (actual - measureText(next.text, next.cut ?? undefined)));
         if (budget <= 0) {
           next = select(width, session.measureExact!);
-          verify(next.text);
+          verify(next);
           break;
         }
         next = select(budget);

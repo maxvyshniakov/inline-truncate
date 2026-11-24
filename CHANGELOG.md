@@ -18,7 +18,9 @@ Versions and release rules: [docs/VERSIONING.md](docs/VERSIONING.md).
 - `query` is matched against the full text instead of the visible cut string. A match the cut hides highlights the
   truncation marker (`data-slot="highlighted-match"` with `data-truncate-marker`), a match straddling the cut
   highlights its visible end and the marker, and text that exists only where the visible ends join no longer matches.
-  Text that fits and the CSS strategy highlight as before; the measured cut does not change.
+  Text that fits and the CSS strategy highlight as before. Where the cut is measured in the DOM (text with emoji, or
+  styles canvas cannot express), it is measured as drawn, highlighted marker included, so with the marker or a
+  straddling match highlighted it can keep one grapheme less than before; otherwise the measured cut does not change.
 
 ## 0.4.1 - 2026-11-23
 

@@ -4,7 +4,8 @@ import {
   createInlineTextMeasurementNode,
   parseCssPixelValue,
 } from "inline-measure";
-import { highlightedTextParts, HIGHLIGHT_CLASS_NAME } from "./highlight.js";
+import { cutHighlightRuns, highlightedTextParts, HIGHLIGHT_CLASS_NAME } from "./highlight.js";
+import type { TruncationCut } from "./truncation.js";
 
 const NON_ASCII = /[\u0080-\uffff]/;
 const EMOJI_PATTERN = /[\p{Extended_Pictographic}\p{Regional_Indicator}\uFE0F\u20E3]/u;
@@ -106,10 +107,16 @@ export function createCanvasMeasurerFromStyle(
   return createCanvasTextMeasurer(computed);
 }
 
+/**
+ * Measures a candidate visible string. `cut`, when the candidate holds the
+ * marker, is the cut that makes it: highlighted text is drawn from it.
+ */
+export type CandidateMeasurer = (text: string, cut?: TruncationCut) => number;
+
 export interface MeasurementSession {
-  measureText: (text: string) => number;
-  verifyText?: (text: string) => number | undefined;
-  measureExact?: (text: string) => number;
+  measureText: CandidateMeasurer;
+  verifyText?: (text: string, cut?: TruncationCut) => number | undefined;
+  measureExact?: CandidateMeasurer;
   dispose: () => void;
 }
 
@@ -149,7 +156,7 @@ export function createMeasurementSession(
   let probe: HTMLElement;
   let box = 0;
 
-  const measureDOM = (value: string) => {
+  const measureDOM = (value: string, cut?: TruncationCut) => {
     if (!root) {
       // Compute box width lazily from the already-read computed style instead
       // of calling getHorizontalBoxWidth(element), which reads getComputedStyle again.
@@ -173,7 +180,8 @@ export function createMeasurementSession(
     if (!hasHighlights) {
       probe.textContent = value;
     } else {
-      const parts = highlightedTextParts(value, query);
+      // The runs the component renders: a cut's are drawn from the full text.
+      const parts = cut ? cutHighlightRuns(originalText, query, cut) : highlightedTextParts(value, query);
       const nodes: Node[] = [];
       const doc = element.ownerDocument;
       for (let i = 0; i < parts.length; i++) {
@@ -183,6 +191,7 @@ export function createMeasurementSession(
         } else {
           const span = doc.createElement("span");
           span.dataset.slot = "highlighted-match";
+          if (part.marker) span.dataset.truncateMarker = "";
           span.className = HIGHLIGHT_CLASS_NAME;
           span.textContent = part.text;
           nodes.push(span);

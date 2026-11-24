@@ -37,6 +37,14 @@ type TruncateInput = {
   text: string;
 };
 
+/**
+ * Measures a candidate. A candidate that holds the marker comes with the cut
+ * that makes it, so a measurer can draw what the component renders for it.
+ */
+type CandidateMeasure = (value: string, cut?: TruncationCut) => number;
+
+type PreparedInput = Omit<TruncateInput, "measureText"> & { measureText: CandidateMeasure };
+
 export function truncateText(input: TruncateInput): { text: string; truncated: boolean } {
   const widths = new Map<string, number>();
   let cachedUnits = 0;
@@ -62,7 +70,7 @@ export function truncateText(input: TruncateInput): { text: string; truncated: b
 }
 
 export function truncatePrepared(
-  { maxWidth, measureText, mode, text }: TruncateInput,
+  { maxWidth, measureText, mode, text }: PreparedInput,
   getIndexed: () => IndexedText,
 ): TruncationResult {
   if (!text || maxWidth <= 0) {
@@ -73,7 +81,7 @@ export function truncatePrepared(
     return { text, truncated: false, cut: null };
   }
 
-  const markerWidth = measureText(TRUNCATION_MARKER);
+  const markerWidth = measureText(TRUNCATION_MARKER, { prefixEnd: 0, suffixStart: text.length });
   if (markerWidth >= maxWidth) {
     return { text: TRUNCATION_MARKER, truncated: true, cut: { prefixEnd: 0, suffixStart: text.length } };
   }
@@ -209,7 +217,7 @@ function measuredMiddleTruncate({
   indexed: IndexedText;
   markerWidth: number;
   maxWidth: number;
-  measureText: (value: string) => number;
+  measureText: CandidateMeasure;
 }): TruncationResult {
   const maxEdge = indexed.length - 1;
   if (maxEdge <= 0) {
@@ -231,6 +239,7 @@ function measuredMiddleTruncate({
       slicePrefix(indexed, nextPrefixCount)
         + TRUNCATION_MARKER
         + sliceSuffix(indexed, nextSuffixCount),
+      { prefixEnd: prefixEndOffset(indexed, nextPrefixCount), suffixStart: suffixStartOffset(indexed, nextSuffixCount) },
     ) <= maxWidth;
 
   // Shrink if combined edges + marker exceed maxWidth (e.g. shaping/kerning at
@@ -284,7 +293,7 @@ function measuredMiddleTruncate({
 // suffix makes a narrow filename cost quadratic text work in its full length.
 function createEdgeWidths(
   indexed: IndexedText,
-  measureText: (value: string) => number,
+  measureText: CandidateMeasure,
   fromEnd: boolean,
 ) {
   const widths = new Map<number, number>([[0, 0]]);
@@ -309,7 +318,7 @@ function takePrefixThatFits({
   indexed: IndexedText;
   markerWidth: number;
   maxWidth: number;
-  measureText: (value: string) => number;
+  measureText: CandidateMeasure;
 }) {
   const initialGuess = fullWidth > 0 ? Math.floor(((maxWidth - markerWidth) / fullWidth) * indexed.length) : 1;
   return findMaxFittingCount(
@@ -317,6 +326,9 @@ function takePrefixThatFits({
     maxWidth,
     initialGuess,
     markerWidth,
-    (count) => measureText(slicePrefix(indexed, count) + TRUNCATION_MARKER),
+    (count) => measureText(slicePrefix(indexed, count) + TRUNCATION_MARKER, {
+      prefixEnd: prefixEndOffset(indexed, count),
+      suffixStart: indexed.text.length,
+    }),
   );
 }

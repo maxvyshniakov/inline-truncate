@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { indexTextGraphemes } from "./graphemes.js";
 import { highlightedTextParts, mapMatchesToCut } from "./highlight.js";
-import { TRUNCATION_MARKER, truncatePrepared, truncateText, type TextTruncateMode } from "./truncation.js";
+import { TRUNCATION_MARKER, truncatePrepared, truncateText, type TextTruncateMode, type TruncationCut } from "./truncation.js";
 
 const M = TRUNCATION_MARKER;
 
@@ -157,6 +157,25 @@ describe("mapMatchesToCut", () => {
     const visible = `Quart${M}w.pdf`;
     for (const query of ["q", "r", "design", "review.pdf", "rt", "-", "pdf"]) {
       expect(draw(text, query, "Quart", "w.pdf").plain, query).toBe(visible);
+    }
+  });
+});
+
+describe("the cut the search measures", () => {
+  // The DOM probe draws a candidate's highlight from its cut, so every
+  // candidate that holds the marker must arrive with the cut that makes it.
+  for (const mode of ["middle", "end"] as const) it(`comes with every ${mode} candidate`, () => {
+    const text = "oak-collection-spring-lookbook-2026-final-print-oak.pdf";
+    const calls: Array<[string, TruncationCut | undefined]> = [];
+    truncatePrepared(
+      { text, maxWidth: 24, mode, measureText: (value, cut) => { calls.push([value, cut]); return value.length; } },
+      () => indexTextGraphemes(text),
+    );
+    const candidates = calls.filter(([value]) => value.includes(M));
+    expect(candidates.length).toBeGreaterThan(1);
+    for (const [value, cut] of candidates) {
+      expect(cut).toBeDefined();
+      expect(text.slice(0, cut!.prefixEnd) + M + text.slice(cut!.suffixStart)).toBe(value);
     }
   });
 });

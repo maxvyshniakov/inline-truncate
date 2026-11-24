@@ -173,11 +173,19 @@ async function correctness() {
     await settle();
     if (!componentFits(1)) failures.push(`optical-none/${mode}/${width}`);
   }
-  for (const width of [...Array.from({length:61},(_,i)=>120+i*4),289,315,332]) {
+  for (const width of [...Array.from({length:61},(_,i)=>120+i*4),289,295,315,332]) {
   fixture.style.cssText = `width:${width}px;font:14px/20px TruncateHarnessInter`;
   flushSync(() => root.render(<TextTruncate mode="middle" query="oak" text="oak-collection-🧑🏽‍🎨-spring-lookbook-2026-final-print-oak.pdf" />));
   await settle();
   if (!componentFits(1)) failures.push(`highlighted-emoji/${width}`);
+  }
+  // Matches found in the full text: "lookbook" sits in the cut part, so the
+  // marker is highlighted; "spring" straddles the cut at some widths.
+  for (const query of ["lookbook", "spring"]) for (const width of [...Array.from({length:61},(_,i)=>120+i*4),295]) {
+    fixture.style.cssText = `width:${width}px;font:14px/20px TruncateHarnessInter`;
+    flushSync(() => root.render(<TextTruncate mode="middle" query={query} text="oak-collection-🧑🏽‍🎨-spring-lookbook-2026-final-print-oak.pdf" />));
+    await settle();
+    if (!componentFits(1)) failures.push(`highlighted-cut/${query}/${width}`);
   }
   flushSync(() => root.render(<TextTruncate mode="middle" query="final" text="oak-collection-🧑🏽‍🎨-spring-lookbook-2026-final-print-oak.pdf" />));
   await settle();

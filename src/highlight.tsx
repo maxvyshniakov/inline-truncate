@@ -82,6 +82,29 @@ export function mapMatchesToCut(
   return { parts, markerMatched };
 }
 
+/**
+ * The runs a cut's visible string is drawn in: mapped parts with adjacent
+ * plain parts (the marker included when it is not highlighted) joined into
+ * one. Engines shape each text node apart, so the component renders these
+ * runs and the DOM measurement probe measures the same ones.
+ */
+export function cutHighlightRuns(
+  text: string,
+  query: string | undefined,
+  cut: TruncationCut,
+): HighlightedTextPart[] {
+  const runs: HighlightedTextPart[] = [];
+  for (const part of mapMatchesToCut(text, query, cut).parts) {
+    const previous = runs.at(-1);
+    if (!part.matched && previous && !previous.matched) {
+      runs[runs.length - 1] = { start: previous.start, text: previous.text + part.text, matched: false };
+    } else {
+      runs.push(part);
+    }
+  }
+  return runs;
+}
+
 export function HighlightedMatchText({
   query,
   text,
@@ -110,7 +133,7 @@ export function HighlightedMatchText({
  * The visible string of a cut, with matches found in the full text: visible
  * portions highlighted in place, the marker highlighted for any match in the
  * cut part. `cut` comes from the truncation search, which knows it exactly.
- * Presentation only; measurement never renders this.
+ * The DOM measurement probe draws the same runs (`cutHighlightRuns`).
  */
 export function CutHighlightedText({
   cut,
@@ -121,10 +144,9 @@ export function CutHighlightedText({
   query?: string;
   text: string;
 }) {
-  const { parts } = mapMatchesToCut(text, query, cut);
   return (
     <>
-      {parts.map((part) =>
+      {cutHighlightRuns(text, query, cut).map((part) =>
         part.matched ? (
           <span
             key={part.start}
