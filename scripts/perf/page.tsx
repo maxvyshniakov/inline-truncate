@@ -73,10 +73,20 @@ function componentFits(expected: number, total = expected) {
   }
   const nodes = [...fixture.querySelectorAll<HTMLElement>('[data-truncate-strategy="measure"]')];
   return nodes.length === expected && nodes.every(el => {
-    const range = document.createRange(); range.selectNodeContents(el);
+    // Measure what a user sees: the visible string. A cut root also holds the
+    // full text for assistive technology, clipped to a 1px box; a range over
+    // the root would add that copy's unclipped text run to the width.
+    const visible = el.querySelector<HTMLElement>(":scope > [data-truncate-visible]") ?? el;
+    const range = document.createRange(); range.selectNodeContents(visible);
     const style=getComputedStyle(el);
     const contentWidth=el.clientWidth-(parseFloat(style.paddingLeft)||0)-(parseFloat(style.paddingRight)||0);
-    return range.getBoundingClientRect().width <= contentWidth + 0.5;
+    if (range.getBoundingClientRect().width > contentWidth + 0.5) return false;
+    // The copy must take no room: its box stays inside the root's.
+    const copy = el.querySelector<HTMLElement>(":scope > [data-truncate-full-text]");
+    if (!copy) return true;
+    const box = copy.getBoundingClientRect(), outer = el.getBoundingClientRect();
+    return box.width <= 1 && box.height <= 1 && box.left >= outer.left - 1 && box.right <= outer.right + 0.5
+      && box.top >= outer.top - 1 && box.bottom <= outer.bottom + 0.5;
   });
 }
 function domFits(value: string, maxWidth: number, font?: string) {
