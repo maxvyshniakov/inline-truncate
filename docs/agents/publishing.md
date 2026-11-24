@@ -36,12 +36,12 @@
   requests Data Grid's catalog dependency workflow.
 - `bun run release:publish` outside Actions refuses and names that command.
 - npmjs.org trusts `release-npm.yml` once, the owner's step:
-  `npm trust github @maxvyshniakov/text-truncate --file release-npm.yml --repo maxvyshniakov/text-truncate`.
+  `npm trust github inline-truncate --file release-npm.yml --repo maxvyshniakov/text-truncate`.
 - Data Grid adopts the release through its catalog dependency workflow, under the standing approval to release Data Grid
   when every check passes (maxvyshniakov/data-grid docs/CATALOG-DEPENDENCIES.md).
 
 ## After publish
-- `npm view @maxvyshniakov/text-truncate version` names the new version; `git ls-remote --tags origin v<version>` shows
+- `npm view inline-truncate version` names the new version; `git ls-remote --tags origin v<version>` shows
   the tag.
 - The Data Grid request only warns on failure (the workflow token cannot dispatch another repository's workflow); retry
   it locally with `bunx package-kit notify`.

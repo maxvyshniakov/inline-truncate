@@ -1,7 +1,7 @@
 # Versions, changelog and publishing
 
 The package owns its version and its `CHANGELOG.md`, and is published to
-npmjs.org as `@maxvyshniakov/text-truncate`, with public access.
+npmjs.org as `inline-truncate`, with public access.
 
 ## Rules
 
@@ -55,7 +55,7 @@ provenance attestation. `package-kit.config.mjs` sets
 `bun run release:publish` outside Actions refuses and names the workflow. If the tag push fails
 after publication, rerun the workflow; `package-kit publish --resume` finishes it without
 republishing. npmjs.org trusts the workflow file once, the owner's step:
-`npm trust github @maxvyshniakov/text-truncate --file release-npm.yml --repo maxvyshniakov/text-truncate`.
+`npm trust github inline-truncate --file release-npm.yml --repo maxvyshniakov/text-truncate`.
 
 After publication and tag creation, the same command requests Data Grid's
 **Update catalog dependencies** workflow. Its catalog and package dependencies
