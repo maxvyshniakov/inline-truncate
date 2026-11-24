@@ -51,6 +51,10 @@ const cases: Scenario[] = [
   ...["middle", "measured-end", "css-end", "css-start"].map(mode => ({ id: `components.mount.${mode}.cold.200`, kind: "mount", count: 200, mode })),
   { id:"components.mount.middle.cold.50",kind:"mount",count:50,mode:"middle" },
   { id:"components.mount.highlight-middle.cold.50",kind:"mount",count:50,mode:"middle",query:"walnut" },
+  // End mode under "auto": CSS without a match; with one it measures, so the
+  // marker can take the highlight of a match the cut hides (inline-truncate#8).
+  { id:"components.mount.auto-end.cold.50",kind:"mount",count:50,mode:"auto-end" },
+  { id:"components.mount.highlight-auto-end.cold.50",kind:"mount",count:50,mode:"auto-end",query:"walnut" },
   { id:"components.mount.emoji-middle.cold.50",kind:"mount",count:50,mode:"middle",emoji:true },
   { id:"components.notifications.middle.warm.200",kind:"notifications",count:200,mode:"middle" },
   ...[false,true].map(emoji=>({id:`notifications.same-width.${emoji ? "emoji-" : ""}middle.cpu.200`,kind:"same-width",count:200,mode:"middle",emoji})),
@@ -59,10 +63,16 @@ const cases: Scenario[] = [
   { id: "components.change-style.middle.50", kind: "style", count: 50, mode: "middle" },
 ];
 function render(count: number, mode: string, revision = 0, className = "",query = "",emoji = false) {
-  const content = <>{Array.from({ length: count }, (_, i) => <TextTruncate key={i} className={className} query={query} mode={mode === "middle" ? "middle" : "end"} strategy={mode.startsWith("css") ? "css" : "measure"} ellipsis={mode === "css-start" ? "start" : "end"} text={`${revision ? "Updated " : ""}${emoji ? `catalog/collections/🧑🏽‍🎨/final-${i}-approved-materials.pdf` : text(i)}`} />)}</>;
+  const content = <>{Array.from({ length: count }, (_, i) => <TextTruncate key={i} className={className} query={query} mode={mode === "middle" ? "middle" : "end"} strategy={mode.startsWith("css") ? "css" : mode.startsWith("auto") ? "auto" : "measure"} ellipsis={mode === "css-start" ? "start" : "end"} text={`${revision ? "Updated " : ""}${emoji ? `catalog/collections/🧑🏽‍🎨/final-${i}-approved-materials.pdf` : text(i)}`} />)}</>;
   flushSync(() => root.render(profileCommits
     ? <React.Profiler id="truncate-fixture" onRender={()=>{reactCommits += 1;}}>{content}</React.Profiler>
     : content));
+}
+// "auto" picks per component, so its cases check whichever strategy each one took.
+function measuredCount(scenario: Scenario) {
+  if (scenario.mode.startsWith("css")) return 0;
+  if (scenario.mode.startsWith("auto")) return fixture.querySelectorAll('[data-truncate-strategy="measure"]').length;
+  return scenario.count;
 }
 function componentFits(expected: number, total = expected) {
   if (fixture.querySelectorAll("[data-truncate]").length !== total) return false;
@@ -144,7 +154,7 @@ async function sample(scenario: typeof cases[number], countWork = false) {
   const counters = {calls, units,domReads,styleReads,reactCommits}; instrument(false); profileCommits = false;
   const correct = scenario.kind === "algorithm"
     ? outputs.length === scenario.count && outputs.every(value => domFits(value,180))
-    : intermediateCorrect && componentFits(scenario.mode.startsWith("css") ? 0 : scenario.count,scenario.count);
+    : intermediateCorrect && componentFits(measuredCount(scenario),scenario.count);
   return {ms, ...counters, correct};
 }
 async function correctness() {

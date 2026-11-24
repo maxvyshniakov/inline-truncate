@@ -11,7 +11,7 @@ import {
   MAX_CACHED_WIDTHS,
   TRUNCATION_MARKER,
   truncatePrepared,
-  type TextTruncateMode,
+  type TruncationSide,
   type TruncationCut,
   type TruncationResult,
 } from "./truncation.js";
@@ -64,7 +64,7 @@ export interface MeasureJob {
   initialized: boolean;
   element: HTMLElement;
   text: string;
-  mode: TextTruncateMode;
+  mode: TruncationSide;
   query: string | undefined;
   className: string | undefined;
   emojiText: boolean;

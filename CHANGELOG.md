@@ -10,6 +10,20 @@ Versions and release rules: [docs/VERSIONING.md](docs/VERSIONING.md).
 - Depends on `cn` `^0.5.2` (was `^0.4.0`), which needs Node 22 or later and groups the legacy
   `bg-gradient-to-*` utilities with `bg-color` when merging a `className`. Applications that install `cn` `^0.4`
   themselves get a second copy until they move to `^0.5`.
+- Rendering changes for consumers that pass `query` with `mode="end"`: under `strategy="auto"` (the default), end
+  mode now measures whenever `query` matches the text, as `middle` does, instead of using CSS `text-overflow`. A match
+  the cut hides or splits highlights the marker (`data-slot="highlighted-match"` with `data-truncate-marker`): dark
+  dots on the highlight background, the box around the dots. The browser's own ellipsis could not take the highlight:
+  a clipped match painted a highlight box after, or half under, dots in the text colour (inline-truncate#8). Such a
+  root reports `data-truncate-strategy="measure"`, sets `data-truncate-state="truncated"` while cut, and holds the
+  visible string and the hidden full-text copy described under Accessibility; text that fits renders whole as before.
+  End mode without a query, or with one that does not match, keeps CSS and measures nothing.
+  Measured on 50 such components (2026-11-24): 53 Canvas calls, 200 DOM reads and 150 style reads where CSS made
+  none; the mount median stays at the frame floor in Chromium, Firefox and WebKit.
+- `ellipsis="start"` now applies to measured end mode as well: the measured cut keeps the end of the text, the marker
+  comes first, and the root aligns to the end (`[direction:rtl]`, the text in a `bdi`, `data-tip-align="end"`), as
+  with CSS. With `strategy="auto"` that is the case whenever `query` matches; `strategy="measure"` ignored the prop
+  before. Measured `middle` still ignores it.
 - The root has `box-sizing: content-box`, 1px of inline padding and an equal negative inline margin (`box-content
   px-px -mx-px`). A highlight decoration that paints 1px past its glyphs, as Data Grid's `box-shadow` does, keeps
   that pixel and its rounded corners at the text's first and last character and next to the marker, where the

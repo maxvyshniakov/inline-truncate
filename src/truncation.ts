@@ -9,6 +9,12 @@ import {
 
 export type TextTruncateMode = "middle" | "end";
 
+/**
+ * Which part the measured search hides: the public modes, plus "start" for end
+ * mode with the ellipsis first (`ellipsis="start"`), which keeps the end.
+ */
+export type TruncationSide = TextTruncateMode | "start";
+
 export const TRUNCATION_MARKER = "...";
 export const MAX_CACHED_WIDTHS = 256;
 export const MAX_CACHED_CODE_UNITS = 32_768;
@@ -43,7 +49,7 @@ type TruncateInput = {
  */
 type CandidateMeasure = (value: string, cut?: TruncationCut) => number;
 
-type PreparedInput = Omit<TruncateInput, "measureText"> & { measureText: CandidateMeasure };
+type PreparedInput = Omit<TruncateInput, "measureText" | "mode"> & { measureText: CandidateMeasure; mode: TruncationSide };
 
 export function truncateText(input: TruncateInput): { text: string; truncated: boolean } {
   const widths = new Map<string, number>();
@@ -99,6 +105,21 @@ export function truncatePrepared(
       text: `${slicePrefix(indexed, prefixCount)}${TRUNCATION_MARKER}`,
       truncated: true,
       cut: { prefixEnd: prefixEndOffset(indexed, prefixCount), suffixStart: text.length },
+    };
+  }
+
+  if (mode === "start") {
+    const suffixCount = takeSuffixThatFits({
+      fullWidth,
+      indexed,
+      markerWidth,
+      maxWidth,
+      measureText,
+    });
+    return {
+      text: `${TRUNCATION_MARKER}${sliceSuffix(indexed, suffixCount)}`,
+      truncated: true,
+      cut: { prefixEnd: 0, suffixStart: suffixStartOffset(indexed, suffixCount) },
     };
   }
 
@@ -330,6 +351,32 @@ function takePrefixThatFits({
     (count) => measureText(slicePrefix(indexed, count) + TRUNCATION_MARKER, {
       prefixEnd: prefixEndOffset(indexed, count),
       suffixStart: indexed.text.length,
+    }),
+  );
+}
+
+function takeSuffixThatFits({
+  fullWidth,
+  indexed,
+  markerWidth,
+  maxWidth,
+  measureText,
+}: {
+  fullWidth: number;
+  indexed: IndexedText;
+  markerWidth: number;
+  maxWidth: number;
+  measureText: CandidateMeasure;
+}) {
+  const initialGuess = fullWidth > 0 ? Math.floor(((maxWidth - markerWidth) / fullWidth) * indexed.length) : 1;
+  return findMaxFittingCount(
+    indexed.length - 1,
+    maxWidth,
+    initialGuess,
+    markerWidth,
+    (count) => measureText(TRUNCATION_MARKER + sliceSuffix(indexed, count), {
+      prefixEnd: 0,
+      suffixStart: suffixStartOffset(indexed, count),
     }),
   );
 }

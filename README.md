@@ -15,8 +15,8 @@ container a constrained width.
 | --- | --- | --- |
 | `text` | required | The full string. |
 | `mode` | required | `"end"` keeps the start of the text; `"middle"` keeps both ends. |
-| `strategy` | `"auto"` | `"css"` truncates with CSS `text-overflow`. `"measure"` measures the text with Inline Measure and shortens the string, again after a resize or once fonts load. `"auto"` measures for `middle` and uses CSS for `end`. |
-| `ellipsis` | `"end"` | `"start"` puts the ellipsis first and keeps the end of the text visible. CSS strategy only. |
+| `strategy` | `"auto"` | `"css"` truncates with CSS `text-overflow`. `"measure"` measures the text with Inline Measure and shortens the string, again after a resize or once fonts load. `"auto"` measures for `middle`, and for `end` when `query` matches the text; `end` without a match uses CSS. |
+| `ellipsis` | `"end"` | `"start"` puts the ellipsis first, keeps the end of the text visible and aligns the text to the end. With `mode="end"` under either strategy; measured `middle` ignores it. |
 | `query` | none | Highlights every case-insensitive match in the full text. When measured truncation cuts the string, a match's visible part is highlighted in place and a match in the cut part highlights the marker. |
 | `className` | none | Merged onto the root `span`. |
 | `measureExtra` | none | Written to `data-truncate-measure-extra` for hosts that measure the cell, such as Data Grid auto-fit. |
@@ -49,6 +49,14 @@ letter, so `οδος` matches `ΟΔΟΣ`. The query is literal text, not a patte
 Offsets always refer to the original string, and a match never splits a
 user-perceived character: `e` does not match the `é` written as `e` plus a
 combining accent, and `👩` does not match inside `👨‍👩‍👧`.
+
+In `end` mode, `strategy="auto"` measures whenever `query` matches, as `middle`
+does. The browser's own `text-overflow` ellipsis is no element, so it cannot take
+the highlight of a match it hides, and a match it clips still paints its background
+up to the edge of the box, under or after the dots. Measured, a hidden or split match
+highlights the marker instead. Text that fits renders as under CSS: whole, with its
+matches highlighted. End mode without a query, or with one that does not match, keeps
+CSS and measures nothing.
 
 The root clips its text. It keeps 1px of inline padding inside the clip, an equal
 negative inline margin outside it, and `box-sizing: content-box`, so a highlight

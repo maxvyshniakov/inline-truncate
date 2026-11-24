@@ -35,7 +35,12 @@ plain 50-component case. With a matching query the final string is verified once
 the DOM as drawn, because a highlight span can paint wider than Canvas measured
 (WebKit); on 2026-11-24 in Chromium that took the case from 100 to 200 DOM reads
 and 100 to 150 style reads, with the median still bound by frames. Text without a
-match adds no DOM probe. A separate 50-component emoji mount case records the cost of the
+match adds no DOM probe. Two 50-component end-mode cases under `strategy="auto"`, without a query and
+with one that matches, record what inline-truncate#8 costs: with a match, end mode measures instead of using CSS,
+so the marker can take the highlight of a match it hides. On 2026-11-24 (`--scenario=cold.50`, `--ref=HEAD` against
+the working tree) the matching case went from 0 to 53 Canvas calls, 200 DOM reads and 150 style reads; medians
+before and after: Chromium 48.5 and 47.9 ms, Firefox 22 and 21 ms, WebKit 48 and 45 ms, all at the frame floor.
+The case without a query stayed at zero work. A separate 50-component emoji mount case records the cost of the
 accuracy fallback for browser Canvas/paint width discrepancies. Text/style cases retain the original
 text or style respectively so invalidation is tested independently.
 

@@ -3,7 +3,7 @@
 import React from "react";
 import { hasEmoji } from "./measurement.js";
 import { CutHighlightedText, findMatchRanges, HighlightedMatchText } from "./highlight.js";
-import type { TextTruncateMode } from "./truncation.js";
+import type { TextTruncateMode, TruncationSide } from "./truncation.js";
 import { cancelJob, fullTextState, invalidateMeasurements, scheduleJob, type MeasureJob } from "./scheduler.js";
 import { observeResize, subscribeFonts } from "./observers.js";
 import { cn } from "cn";
@@ -21,6 +21,7 @@ const BASE_BOX_CLASS = "block w-full min-w-0 box-content px-px -mx-px";
 const BASE_CSS_END_CLASS = `${BASE_BOX_CLASS} truncate`;
 const BASE_CSS_START_CLASS = `${BASE_BOX_CLASS} truncate [direction:rtl]`;
 const BASE_MEASURE_CLASS = `${BASE_BOX_CLASS} overflow-hidden whitespace-nowrap`;
+const BASE_MEASURE_START_CLASS = `${BASE_MEASURE_CLASS} [direction:rtl]`;
 
 // Holds the full text for assistive technology while the visible string is cut.
 // Inline, so it works without the host's CSS. Not selectable, so a copied
@@ -42,15 +43,23 @@ const FULL_TEXT_STYLE: React.CSSProperties = {
   pointerEvents: "none",
 };
 
+/**
+ * "auto" measures middle mode, and end mode when the query matches: the
+ * browser's own ellipsis is no node, so it cannot take the highlight of a match
+ * it hides, and a clipped match would paint under it. End mode without a match
+ * keeps CSS and measures nothing.
+ */
 function resolveTextTruncateStrategy({
   mode,
+  queryMatches,
   strategy,
 }: {
   mode: TextTruncateMode;
+  queryMatches: boolean;
   strategy: TextTruncateStrategy;
-}) {
+}): "css" | "measure" {
   if (strategy !== "auto") return strategy;
-  return mode === "middle" ? "measure" : "css";
+  return mode === "middle" || queryMatches ? "measure" : "css";
 }
 
 const rootClassCache = new Map<string, string>();
@@ -89,7 +98,14 @@ export const TextTruncate = React.memo(function TextTruncate({
     syncResolutionNeed: () => void;
   } | null>(null);
   const [truncation, setTruncation] = React.useState(() => fullTextState(text));
-  const resolvedStrategy = resolveTextTruncateStrategy({ mode, strategy });
+  const queryMatches = React.useMemo(
+    () => strategy === "auto" && mode === "end" && findMatchRanges(text, query).length > 0,
+    [mode, query, strategy, text],
+  );
+  const resolvedStrategy = resolveTextTruncateStrategy({ mode, queryMatches, strategy });
+  // A measured end cut with the ellipsis first keeps the end of the text.
+  const measuredStart = resolvedStrategy === "measure" && mode === "end" && ellipsis === "start";
+  const cutSide: TruncationSide = measuredStart ? "start" : mode;
 
   // Persistent lifecycle effect: keeps ResizeObserver and document.fonts
   // subscriptions attached across text, className, query, and mode updates.
@@ -182,7 +198,7 @@ export const TextTruncate = React.memo(function TextTruncate({
     if (!job.initialized) {
       job.initialized = true;
       job.text = text;
-      job.mode = mode;
+      job.mode = cutSide;
       job.query = query;
       job.className = className;
       job.emojiText = hasEmoji(text);
@@ -193,7 +209,7 @@ export const TextTruncate = React.memo(function TextTruncate({
 
     const textChanged = job.text !== text;
     const classChanged = job.className !== className;
-    const modeChanged = job.mode !== mode;
+    const modeChanged = job.mode !== cutSide;
     const queryChanged = job.query !== query;
 
     if (textChanged) {
@@ -206,7 +222,7 @@ export const TextTruncate = React.memo(function TextTruncate({
       invalidateMeasurements(job, "style");
     }
     if (modeChanged) {
-      job.mode = mode;
+      job.mode = cutSide;
       invalidateMeasurements(job, "mode");
     }
     if (queryChanged) {
@@ -217,7 +233,7 @@ export const TextTruncate = React.memo(function TextTruncate({
 
     scheduleJob(job);
     return undefined;
-  }, [className, mode, query, resolvedStrategy, text]);
+  }, [className, cutSide, query, resolvedStrategy, text]);
 
   // The search hands over where it cut and which text it cut. Truncated means
   // a cut is shown. Until the search has run for a new `text`, a previous cut
@@ -256,14 +272,18 @@ export const TextTruncate = React.memo(function TextTruncate({
       ? shouldUseStartEllipsis
         ? BASE_CSS_START_CLASS
         : BASE_CSS_END_CLASS
-      : BASE_MEASURE_CLASS;
+      : measuredStart
+        ? BASE_MEASURE_START_CLASS
+        : BASE_MEASURE_CLASS;
+  // The start ellipsis aligns the root to the end; the text stays isolated in its own direction.
+  const shown = measuredStart ? <bdi>{content}</bdi> : content;
   const rootClassName = className ? mergeRootClassName(baseClass, className) : baseClass;
 
   return (
     <span
       ref={textRef}
       className={rootClassName}
-      data-tip-align={shouldUseStartEllipsis ? "end" : undefined}
+      data-tip-align={shouldUseStartEllipsis || measuredStart ? "end" : undefined}
       data-truncate=""
       data-truncate-measure-extra={measureExtra}
       data-truncate-mode={mode}
@@ -276,11 +296,11 @@ export const TextTruncate = React.memo(function TextTruncate({
         <bdi>{content}</bdi>
       ) : isTruncated ? (
         <>
-          <span aria-hidden="true" data-truncate-visible="">{content}</span>
+          <span aria-hidden="true" data-truncate-visible="">{shown}</span>
           <span data-truncate-full-text="" style={FULL_TEXT_STYLE}>{text}</span>
         </>
       ) : (
-        content
+        shown
       )}
     </span>
   );
