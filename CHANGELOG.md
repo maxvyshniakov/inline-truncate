@@ -30,6 +30,11 @@ Versions and release rules: [docs/VERSIONING.md](docs/VERSIONING.md).
   styles canvas cannot express), it is measured as drawn, highlighted marker included, so with the marker or a
   straddling match highlighted it can keep one grapheme less than before; otherwise the measured cut does not change.
 
+### Removed
+
+- The package no longer ships source maps (`dist/*.js.map`, `dist/*.d.ts.map`). They named `src/` files the package
+  does not include, so they never resolved; the archive shrinks from about 34 kB to 22 kB.
+
 ### Fixed
 
 - `query` matching keeps its place in the original text when lowercasing changes a character's length (`İ`
