@@ -2,7 +2,7 @@
 
 import React from "react";
 import { hasEmoji } from "./measurement.js";
-import { CutHighlightedText, HighlightedMatchText } from "./highlight.js";
+import { CutHighlightedText, findMatchRanges, HighlightedMatchText } from "./highlight.js";
 import type { TextTruncateMode } from "./truncation.js";
 import { cancelJob, fullTextState, invalidateMeasurements, scheduleJob, type MeasureJob } from "./scheduler.js";
 import { observeResize, subscribeFonts } from "./observers.js";
@@ -165,6 +165,10 @@ export const TextTruncate = React.memo(function TextTruncate({
     const entry = jobRef.current;
     if (!entry) return undefined;
     const { job, syncResolution } = entry;
+    // DOM-verified widths follow the device pixel ratio: emoji text, and text
+    // whose highlight is verified in the DOM.
+    const syncResolutionNeed = () =>
+      syncResolution(job.emojiText || findMatchRanges(job.text, job.query).length > 0);
 
     if (!job.initialized) {
       job.initialized = true;
@@ -173,7 +177,7 @@ export const TextTruncate = React.memo(function TextTruncate({
       job.query = query;
       job.className = className;
       job.emojiText = hasEmoji(text);
-      syncResolution(job.emojiText);
+      syncResolutionNeed();
       scheduleJob(job);
       return undefined;
     }
@@ -187,7 +191,6 @@ export const TextTruncate = React.memo(function TextTruncate({
       job.text = text;
       job.emojiText = hasEmoji(text);
       invalidateMeasurements(job, "text");
-      syncResolution(job.emojiText);
     }
     if (classChanged) {
       job.className = className;
@@ -201,6 +204,7 @@ export const TextTruncate = React.memo(function TextTruncate({
       job.query = query;
       invalidateMeasurements(job, "query");
     }
+    if (textChanged || queryChanged) syncResolutionNeed();
 
     scheduleJob(job);
     return undefined;

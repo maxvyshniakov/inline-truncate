@@ -66,8 +66,8 @@ change. Emoji inputs and text with a matching query select through Canvas first,
 string with a cached DOM measurement. At most two corrections use the observed width
 discrepancy; a native predicate handles larger disagreements. CSS numeric
 features, variation settings, disabled optical sizing, word spacing and text
-transforms use a hidden DOM predicate when Canvas cannot express them. Emoji native widths are invalidated
-on font/style/query changes and resolution changes, independently of box resize. Inherited
+transforms use a hidden DOM predicate when Canvas cannot express them. DOM-verified widths (emoji text,
+and text with a matching query) are invalidated on font/style/query changes and resolution changes, independently of box resize. Inherited
 style changes must cause a resize, font-load event, or a component class/text
 change to trigger a new measurement; arbitrary ancestor style mutations are
 not observed.

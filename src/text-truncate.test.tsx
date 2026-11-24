@@ -48,3 +48,44 @@ describe("the frame between a text change and its measurement", () => {
     expect(highlights(container)).toEqual(["{...}"]);
   });
 });
+
+// Highlighted Canvas text is verified in the DOM, and a DOM width can change
+// with the device pixel ratio without a resize, as emoji widths do.
+describe("the device pixel ratio", () => {
+  function resolution() {
+    let ratio = 1;
+    vi.spyOn(window, "devicePixelRatio", "get").mockImplementation(() => ratio);
+    const queries: { media: string; listeners: Set<() => void> }[] = [];
+    const match = vi.spyOn(window, "matchMedia").mockImplementation((media) => {
+      const query = { media, listeners: new Set<() => void>() };
+      queries.push(query);
+      return {
+        media, matches: true,
+        addEventListener: (_type: string, listener: () => void) => query.listeners.add(listener),
+        removeEventListener: (_type: string, listener: () => void) => query.listeners.delete(listener),
+      } as unknown as MediaQueryList;
+    });
+    const live = () => queries.filter((query) => query.listeners.size > 0);
+    return { match, live, change: (next: number) => { ratio = next; act(() => { for (const query of live()) for (const listener of query.listeners) listener(); }); } };
+  }
+
+  it("remeasures highlighted plain text when it changes, and stops listening without a match", () => {
+    const flush = queuedFrames(16);
+    const reads = vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (this: HTMLElement) {
+      return { width: this.textContent?.length ?? 0, height: 16 } as DOMRect;
+    });
+    const dpr = resolution();
+    const text = "plain-spring-long-file-name.pdf";
+    const { rerender } = render(<TextTruncate mode="middle" text={text} query="spring" />);
+    flush();
+    expect(dpr.live()).toHaveLength(1);
+    reads.mockClear();
+    dpr.change(2);
+    flush();
+    expect(reads).toHaveBeenCalled();
+    expect(dpr.live().map((query) => query.media).join()).toContain("2dppx");
+    rerender(<TextTruncate mode="middle" text={text} query="walnut" />);
+    flush();
+    expect(dpr.live()).toHaveLength(0);
+  });
+});

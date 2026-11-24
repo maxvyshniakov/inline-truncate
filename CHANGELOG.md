@@ -15,6 +15,8 @@ Versions and release rules: [docs/VERSIONING.md](docs/VERSIONING.md).
   `οδος`. Matching lowercases code point by code point, which always turned `Σ` into `σ` and missed a typed `ς`.
 - A non-ASCII `query` whose lowercase is ASCII now matches ASCII text, as the lowercase rule says: the Kelvin sign
   `K` (U+212A) finds `k` and `K`. Every such match was dropped.
+- Text with a matching `query` is measured again when the device pixel ratio changes, as emoji text already was:
+  its final width is verified in the DOM, and moving the window to another display could keep a cut that no longer fit.
 
 ## 0.5.0 - 2026-11-24
 
