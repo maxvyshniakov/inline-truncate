@@ -33,6 +33,13 @@ highlighted marker is a `span` with `data-slot="highlighted-match"` and
 `data-truncate-marker`, styled like any match. Highlighting does not take part in
 measurement: the cut is the same with or without a query.
 
+Matching is case-insensitive by the Unicode lowercase mapping, the same in every
+locale and without case folding: `STRAẞE` matches `Straße` but `strasse` does not,
+and `izmir` does not match `İZMİR`. The query is literal text, not a pattern.
+Offsets always refer to the original string, and a match never splits a
+user-perceived character: `e` does not match the `é` written as `e` plus a
+combining accent, and `👩` does not match inside `👨‍👩‍👧`.
+
 Highlight colors use `--text-truncate-highlight-background` and
 `--text-truncate-highlight-foreground`, with amber and current-text defaults.
 Hosts can override those variables; Data Grid maps them to its search-match

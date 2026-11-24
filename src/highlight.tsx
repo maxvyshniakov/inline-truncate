@@ -1,3 +1,4 @@
+import { indexTextGraphemes } from "./graphemes.js";
 import { TRUNCATION_MARKER, type TruncationCut } from "./truncation.js";
 
 export const HIGHLIGHT_CLASS_NAME =
@@ -12,22 +13,75 @@ export interface HighlightedTextPart {
   marker?: boolean;
 }
 
-interface MatchRange {
+export interface MatchRange {
   start: number;
   end: number;
 }
 
-// Every non-overlapping case-insensitive match of the trimmed query, left to right.
-function findMatchRanges(text: string, query?: string): MatchRange[] {
-  const normalizedQuery = query?.trim().toLowerCase() ?? "";
-  if (!normalizedQuery) return [];
-  const normalizedText = text.toLowerCase();
+// In ASCII without CR, lowercasing keeps every length and every index is a
+// grapheme boundary, so matches need no mapping.
+const NON_ASCII_OR_CR = /[\r\u0080-\uffff]/;
+
+// Lowercases code point by code point and records, for every index of the
+// lowercase string that starts a code point's lowercase form, the original
+// index it came from (-1 inside a form that grew, as İ -> i + U+0307).
+function lowercaseWithOrigins(text: string) {
+  let lower = "";
+  const origins: number[] = [];
+  for (let index = 0; index < text.length;) {
+    const codePoint = String.fromCodePoint(text.codePointAt(index)!);
+    const form = codePoint.toLowerCase();
+    origins.push(index);
+    for (let extra = 1; extra < form.length; extra++) origins.push(-1);
+    lower += form;
+    index += codePoint.length;
+  }
+  origins.push(text.length);
+  return { lower, origins };
+}
+
+function lowercaseCodePoints(value: string) {
+  let lower = "";
+  for (const codePoint of value) lower += codePoint.toLowerCase();
+  return lower;
+}
+
+/**
+ * Every non-overlapping match of the trimmed query, left to right. The rule:
+ * case-insensitive by the Unicode lowercase mapping, the same in every locale
+ * and without case folding (ß does not match "ss"); offsets are in `text`; a
+ * match never splits a grapheme cluster or a character's lowercase form, so a
+ * candidate that would is skipped.
+ */
+export function findMatchRanges(text: string, query?: string): MatchRange[] {
+  const trimmed = query?.trim() ?? "";
+  if (!trimmed) return [];
   const ranges: MatchRange[] = [];
-  let matchIndex = normalizedText.indexOf(normalizedQuery);
+  if (!NON_ASCII_OR_CR.test(text) && !NON_ASCII_OR_CR.test(trimmed)) {
+    const normalizedText = text.toLowerCase();
+    const normalizedQuery = trimmed.toLowerCase();
+    let matchIndex = normalizedText.indexOf(normalizedQuery);
+    while (matchIndex >= 0) {
+      const end = matchIndex + normalizedQuery.length;
+      ranges.push({ start: matchIndex, end });
+      matchIndex = normalizedText.indexOf(normalizedQuery, end);
+    }
+    return ranges;
+  }
+  const { lower, origins } = lowercaseWithOrigins(text);
+  const normalizedQuery = lowercaseCodePoints(trimmed);
+  let boundaries: Set<number> | undefined;
+  let matchIndex = lower.indexOf(normalizedQuery);
   while (matchIndex >= 0) {
-    const end = matchIndex + normalizedQuery.length;
-    ranges.push({ start: matchIndex, end });
-    matchIndex = normalizedText.indexOf(normalizedQuery, end);
+    const start = origins[matchIndex];
+    const end = origins[matchIndex + normalizedQuery.length];
+    boundaries ??= new Set(indexTextGraphemes(text).offsets ?? []);
+    if (start >= 0 && end >= 0 && boundaries.has(start) && boundaries.has(end)) {
+      ranges.push({ start, end });
+      matchIndex = lower.indexOf(normalizedQuery, matchIndex + normalizedQuery.length);
+    } else {
+      matchIndex = lower.indexOf(normalizedQuery, matchIndex + 1);
+    }
   }
   return ranges;
 }
@@ -71,9 +125,9 @@ export function mapMatchesToCut(
   text: string,
   query: string | undefined,
   cut: TruncationCut | null,
+  ranges: readonly MatchRange[] = findMatchRanges(text, query),
 ): { parts: HighlightedTextPart[]; markerMatched: boolean } {
   if (!cut) return { parts: highlightedTextParts(text, query), markerMatched: false };
-  const ranges = findMatchRanges(text, query);
   const markerMatched = ranges.some((range) => range.start < cut.suffixStart && range.end > cut.prefixEnd);
   const parts: HighlightedTextPart[] = [];
   pushWindowParts(parts, text, ranges, 0, cut.prefixEnd);
@@ -92,9 +146,10 @@ export function cutHighlightRuns(
   text: string,
   query: string | undefined,
   cut: TruncationCut,
+  ranges?: readonly MatchRange[],
 ): HighlightedTextPart[] {
   const runs: HighlightedTextPart[] = [];
-  for (const part of mapMatchesToCut(text, query, cut).parts) {
+  for (const part of mapMatchesToCut(text, query, cut, ranges).parts) {
     const previous = runs.at(-1);
     if (!part.matched && previous && !previous.matched) {
       runs[runs.length - 1] = { start: previous.start, text: previous.text + part.text, matched: false };

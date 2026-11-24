@@ -22,6 +22,13 @@ Versions and release rules: [docs/VERSIONING.md](docs/VERSIONING.md).
   styles canvas cannot express), it is measured as drawn, highlighted marker included, so with the marker or a
   straddling match highlighted it can keep one grapheme less than before; otherwise the measured cut does not change.
 
+### Fixed
+
+- `query` matching keeps its place in the original text when lowercasing changes a character's length (`İ`
+  lowercases to two code units, which shifted every later highlight), and a match no longer splits a user-perceived
+  character: `👩` does not match inside `👨‍👩‍👧`, nor `e` the base of `e` plus a combining accent. Matching is the
+  Unicode lowercase mapping in every locale, without case folding, as the README states.
+
 ## 0.4.1 - 2026-11-23
 
 ### Changed

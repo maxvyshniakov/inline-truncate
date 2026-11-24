@@ -4,7 +4,7 @@ import {
   createInlineTextMeasurementNode,
   parseCssPixelValue,
 } from "inline-measure";
-import { cutHighlightRuns, highlightedTextParts, HIGHLIGHT_CLASS_NAME } from "./highlight.js";
+import { cutHighlightRuns, findMatchRanges, highlightedTextParts, HIGHLIGHT_CLASS_NAME } from "./highlight.js";
 import type { TruncationCut } from "./truncation.js";
 
 const NON_ASCII = /[\u0080-\uffff]/;
@@ -150,8 +150,9 @@ export function createMeasurementSession(
     };
   }
 
-  const normalizedQuery = query?.trim().toLowerCase() ?? "";
-  const hasHighlights = normalizedQuery.length > 0 && originalText.toLowerCase().includes(normalizedQuery);
+  // Matches in the full text, found once per session by the rendering rule.
+  const fullTextMatches = findMatchRanges(originalText, query);
+  const hasHighlights = fullTextMatches.length > 0;
   let root: HTMLElement | undefined;
   let probe: HTMLElement;
   let box = 0;
@@ -181,7 +182,7 @@ export function createMeasurementSession(
       probe.textContent = value;
     } else {
       // The runs the component renders: a cut's are drawn from the full text.
-      const parts = cut ? cutHighlightRuns(originalText, query, cut) : highlightedTextParts(value, query);
+      const parts = cut ? cutHighlightRuns(originalText, query, cut, fullTextMatches) : highlightedTextParts(value, query);
       const nodes: Node[] = [];
       const doc = element.ownerDocument;
       for (let i = 0; i < parts.length; i++) {
