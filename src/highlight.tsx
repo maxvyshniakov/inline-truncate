@@ -1,4 +1,4 @@
-import { indexTextGraphemes } from "./graphemes.js";
+import { indexTextGraphemes, NON_ASCII_OR_CR } from "./graphemes.js";
 import { TRUNCATION_MARKER, type TruncationCut } from "./truncation.js";
 
 export const HIGHLIGHT_CLASS_NAME =
@@ -18,9 +18,8 @@ export interface MatchRange {
   end: number;
 }
 
-// In ASCII without CR, lowercasing keeps every length and every index is a
-// grapheme boundary, so matches need no mapping.
-const NON_ASCII_OR_CR = /[\r\u0080-\uffff]/;
+// In ASCII without CR (NON_ASCII_OR_CR, graphemes.ts), lowercasing keeps every
+// length and every index is a grapheme boundary, so matches need no mapping.
 
 // Lowercases code point by code point and records, for every index of the
 // lowercase string that starts a code point's lowercase form, the original
