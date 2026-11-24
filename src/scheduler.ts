@@ -79,6 +79,17 @@ export interface MeasureJob {
   setTruncation: React.Dispatch<React.SetStateAction<TruncationState>>;
 }
 
+/**
+ * The cache key of a candidate's width. With `byCut` (the width was drawn in
+ * the DOM with a query's highlight, which depends on the cut), a cut
+ * candidate and an uncut string live in disjoint namespaces, and two cuts that
+ * make the same string get two keys. Otherwise the string alone is the key.
+ */
+export function widthCacheKey(value: string, cut: TruncationCut | undefined, byCut: boolean) {
+  if (!byCut) return value;
+  return cut ? `c${cut.prefixEnd}:${cut.suffixStart}:${value}` : `u${value}`;
+}
+
 /** An input whose change can make what a job measured stale. */
 export type MeasurementChange = "text" | "style" | "query" | "mode";
 
@@ -341,14 +352,14 @@ function flushJobs() {
       setTruncation(job, { source: job.text, text: result.text, cut: result.cut });
     };
 
-    // Highlighted text is drawn from a candidate's cut, and two cuts can make
-    // the same string, so with a query a cached width belongs to the cut.
+    // The DOM probe draws a query's highlight from the candidate's cut, so a
+    // DOM width belongs to the cut. Canvas ignores markup: its widths stay
+    // keyed by the string. Verified widths are always drawn in the DOM.
     const highlighted = !!job.query?.trim();
-    const cacheKey = (value: string, cut?: TruncationCut) =>
-      highlighted && cut ? `${cut.prefixEnd}:${cut.suffixStart}:${value}` : value;
+    const primaryByCut = highlighted && needsDOM;
 
     const measureText = (value: string, cut?: TruncationCut) => {
-      const key = cacheKey(value, cut);
+      const key = widthCacheKey(value, cut, primaryByCut);
       const cached = job.widths.get(key);
       if (cached !== undefined) return cached;
       if (flushWidthMap) {
@@ -394,7 +405,7 @@ function flushJobs() {
       const select = (budget: number, measure: (value: string, cut?: TruncationCut) => number = measureText) =>
         truncatePrepared({ text: job.text, maxWidth: budget, mode: job.mode, measureText: measure }, getIndexed);
       const verify = ({ text: value, cut }: TruncationResult) => {
-        const key = cacheKey(value, cut ?? undefined);
+        const key = widthCacheKey(value, cut ?? undefined, highlighted);
         const cached = job.verifiedWidths.get(key);
         if (cached !== undefined) return cached;
         const actual = session.verifyText?.(value, cut ?? undefined);

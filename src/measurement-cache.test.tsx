@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, render } from "@testing-library/react";
 import { TextTruncate } from "./index";
+import { widthCacheKey } from "./scheduler";
 
 // Cached widths are reused across frames, so every input a width depends on
 // must drop what it changes. Here the DOM probe draws highlights 4px wider per
@@ -143,3 +144,36 @@ describe("cached widths are dropped for every input they depend on", () => {
   });
 });
 
+// Two candidates must never share a cached width: a cut candidate and an uncut
+// string (the full text, an edge), or two cuts that make the same string.
+describe("cached widths are keyed so no two candidates share one", () => {
+  // One unit per UTF-16 unit everywhere, so only a shared cache entry can
+  // make the result differ from the plain search.
+  for (const path of ["canvas", "dom", "emoji"] as const) {
+    const text = path === "emoji" ? "0:7:...🪑" : "0:7:...";
+    it(`${path}: a string that reads like a cut key keeps its own width`, () => {
+      const view = scene(text.length - 1, 0);
+      for (const mode of ["end", "middle"] as const) {
+        const { container, unmount } = render(<TextTruncate mode={mode} strategy="measure" text={text} query="0" />);
+        const root = path === "dom" ? domMeasured(container) : container.querySelector<HTMLElement>("[data-truncate]")!;
+        view.flush();
+        const shown = visible(root).textContent!;
+        expect(shown).not.toBe("...");
+        expect(shown.length).toBe(text.length - 1);
+        unmount();
+      }
+    });
+  }
+
+  it("two cuts that make one visible string get two keys, and no uncut string gets a cut's key", () => {
+    const text = "a...MIDDLE...z";
+    const left = { prefixEnd: 4, suffixStart: 13 }; // "a..." + "..." + "z"
+    const right = { prefixEnd: 1, suffixStart: 10 }; // "a" + "..." + "...z"
+    const shown = (cut: { prefixEnd: number; suffixStart: number }) => text.slice(0, cut.prefixEnd) + "..." + text.slice(cut.suffixStart);
+    expect(shown(left)).toBe(shown(right));
+    expect(widthCacheKey(shown(left), left, true)).not.toBe(widthCacheKey(shown(right), right, true));
+    expect(widthCacheKey("0:7:...", undefined, true)).not.toBe(widthCacheKey("...", { prefixEnd: 0, suffixStart: 7 }, true));
+    // Without cut-drawn markup a width belongs to the string alone.
+    expect(widthCacheKey(shown(left), left, false)).toBe(widthCacheKey(shown(right), right, false));
+  });
+});
