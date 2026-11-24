@@ -29,6 +29,9 @@ Versions and release rules: [docs/VERSIONING.md](docs/VERSIONING.md).
   Text that fits and the CSS strategy highlight as before. Where the cut is measured in the DOM (text with emoji, or
   styles canvas cannot express), it is measured as drawn, highlighted marker included, so with the marker or a
   straddling match highlighted it can keep one grapheme less than before; otherwise the measured cut does not change.
+- The package entry no longer starts with `"use client"`; only the `TextTruncate` module does. React Server
+  Components can now call `truncateText` and `splitTextGraphemes` and render `HighlightedMatchText` from
+  `inline-truncate`, and `TextTruncate` stays a client component.
 - The package declares `"sideEffects": false`, so a bundle that imports only `truncateText` or `splitTextGraphemes`
   leaves out the component, Inline Measure and React: with Vite 8, minified, about 62 kB becomes 5 kB and 0.5 kB.
 

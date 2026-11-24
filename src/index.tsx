@@ -1,5 +1,3 @@
-"use client";
-
 export { splitTextGraphemes } from "./graphemes.js";
 export { truncateText, type TextTruncateMode } from "./truncation.js";
 export { HighlightedMatchText } from "./highlight.js";

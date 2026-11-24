@@ -26,6 +26,11 @@ combining mark. The package also exports `truncateText`, which truncates with
 any `measureText` callback, `HighlightedMatchText`, which highlights without
 truncating, and `splitTextGraphemes`.
 
+With React Server Components, `TextTruncate` is a client component (its module
+starts with `"use client"`), while `truncateText`, `splitTextGraphemes` and
+`HighlightedMatchText` are server-safe: a server component can call or render them
+through the same `inline-truncate` import.
+
 Matches are found once, in the full text; the cut string only renders them. A
 match that straddles the cut highlights its visible end and the marker, and the
 query never matches text that exists only where the two visible ends join. The

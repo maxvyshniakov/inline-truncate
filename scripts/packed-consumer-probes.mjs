@@ -6,7 +6,7 @@ import path from "node:path";
 const RUNTIME_EXPORTS = ["HighlightedMatchText", "TextTruncate", "splitTextGraphemes", "truncateText"];
 const TYPE_EXPORTS = ["TextTruncateEllipsis", "TextTruncateMode", "TextTruncateProps", "TextTruncateStrategy"];
 // Modules that must carry "use client": the ones that use hooks or the DOM.
-const CLIENT_MODULES = ["index.js", "text-truncate.js"];
+const CLIENT_MODULES = ["text-truncate.js"];
 
 const installed = consumerDir => path.join(consumerDir, "node_modules/inline-truncate");
 const firstStatement = source => source.replace(/^\s*(\/\/[^\n]*\n|\/\*[\s\S]*?\*\/\s*)*/, "").split(/[;\n]/, 1)[0].trim();
@@ -68,5 +68,36 @@ console.log(JSON.stringify(sizes));
   for (const [name, { bytes, markers, react }] of Object.entries(sizes)) {
     if (!markers.length && !react) ok(`${name}: ${bytes} bytes, no component code`);
     else fail(`${name}: ${bytes} bytes, pulls the component (${[...markers, ...(react ? ["react"] : [])].join(", ")})`);
+  }
+}
+
+/**
+ * A React server component can use the pure exports through the entry. RSC
+ * bundlers read "use client" per module: with none on the entry, its pure
+ * re-exports stay server code and TextTruncate, whose module has the
+ * directive, becomes a client reference. Run under the "react-server"
+ * condition, where React has no hooks, the pure exports must work.
+ */
+export async function serverImport({ consumerDir, run, ok, fail }) {
+  console.log("\nServer components");
+  const script = `
+const entry = await import("inline-truncate");
+const graphemes = entry.splitTextGraphemes("a👍🏽b");
+const cut = entry.truncateText({ text: "Quarterly-design-review.pdf", maxWidth: 12, mode: "middle", measureText: (value) => value.length }).text;
+const element = entry.HighlightedMatchText({ text: "Quarterly-design-review.pdf", query: "design" });
+const children = [element.props.children].flat();
+const match = children.find((child) => child?.props?.["data-slot"] === "highlighted-match");
+console.log(JSON.stringify({ graphemes, cut, match: match?.props.children }));
+`;
+  const result = run("node", ["--conditions=react-server", "--input-type=module", "-e", script], { cwd: consumerDir });
+  if (result.status !== 0) {
+    fail(`pure exports under the react-server condition: ${result.stderr.trim().split("\n").filter(Boolean).at(-1)}`);
+    return;
+  }
+  const { graphemes, cut, match } = JSON.parse(result.stdout.trim());
+  if (graphemes.length === 3 && cut.length <= 12 && cut.includes("...") && match === "design") {
+    ok('splitTextGraphemes, truncateText and HighlightedMatchText run under the "react-server" condition');
+  } else {
+    fail(`pure exports under react-server returned ${result.stdout.trim()}`);
   }
 }
