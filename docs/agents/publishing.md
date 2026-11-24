@@ -17,6 +17,9 @@
 - promote takes the landing lock that `.githooks/reference-transaction` requires of agent sessions, pushes the SHA and
   fast-forwards the local branches. Never use a bare `git push` to `dev` or `main`, and never force-push.
 - Landing a task branch: rebase onto `origin/dev`, push the tip.
+- Standing permission (owner, 2026-11-24): an orchestrator pushes a green batch with every review resolved to `dev`
+  without asking, and reports it in one line. `main`, a release, a publication to npmjs.org and `npm deprecate` each
+  need the owner's command; the release guard (`MASTACK_RELEASE_OK`) refuses agents without it.
 
 ## CI
 - `.github/workflows/check.yml` ("Library checks") runs on `main` pushes, pull requests and `workflow_dispatch`, on a
