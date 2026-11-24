@@ -9,6 +9,11 @@ Versions and release rules: [docs/VERSIONING.md](docs/VERSIONING.md).
 - The package metadata names the renamed repository, `github.com/maxvyshniakov/inline-truncate`, and gains
   `homepage` and `bugs` links.
 
+### Fixed
+
+- `query` matches the Greek final sigma: `ς` and `σ` match as one letter, so `οδος` finds `ΟΔΟΣ` and `ΟΔΟΣ` finds
+  `οδος`. Matching lowercases code point by code point, which always turned `Σ` into `σ` and missed a typed `ς`.
+
 ## 0.5.0 - 2026-11-24
 
 ### Breaking

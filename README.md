@@ -44,7 +44,8 @@ make the cut one grapheme shorter than without a query.
 
 Matching is case-insensitive by the Unicode lowercase mapping, the same in every
 locale and without case folding: `STRAẞE` matches `Straße` but `strasse` does not,
-and `izmir` does not match `İZMİR`. The query is literal text, not a pattern.
+and `izmir` does not match `İZMİR`. The Greek final sigma `ς` and `σ` match as one
+letter, so `οδος` matches `ΟΔΟΣ`. The query is literal text, not a pattern.
 Offsets always refer to the original string, and a match never splits a
 user-perceived character: `e` does not match the `é` written as `e` plus a
 combining accent, and `👩` does not match inside `👨‍👩‍👧`.

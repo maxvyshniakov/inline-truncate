@@ -212,6 +212,16 @@ describe("the matching rule", () => {
     expect(matched("İZMİR", "i")).toEqual([]);
   });
 
+  it("treats the final sigma as the sigma it is (ς, σ, Σ)", () => {
+    // Σ lowercases to ς at the end of a word and to σ elsewhere; a reader
+    // types either, and an upper-case word has no final form at all.
+    expect(matched("ΟΔΟΣ.pdf", "οδος")).toEqual([[0, "ΟΔΟΣ"]]);
+    expect(matched("οδος.pdf", "ΟΔΟΣ")).toEqual([[0, "οδος"]]);
+    expect(matched("οδος.pdf", "οδοσ")).toEqual([[0, "οδος"]]);
+    expect(matched("ΣΟΦΙΑ-ΟΔΟΣ", "σοφια")).toEqual([[0, "ΣΟΦΙΑ"]]);
+    expect(matched("ΣΟΦΙΑ-ΟΔΟΣ", "ς")).toEqual([[0, "Σ"], [9, "Σ"]]);
+  });
+
   it("lowercases without case folding (ß)", () => {
     expect(matched("Straße.pdf", "STRAẞE")).toEqual([[0, "Straße"]]);
     expect(matched("Straße.pdf", "strasse")).toEqual([]);

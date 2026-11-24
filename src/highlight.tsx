@@ -25,12 +25,20 @@ const NON_ASCII_OR_CR = /[\r\u0080-\uffff]/;
 // Lowercases code point by code point and records, for every index of the
 // lowercase string that starts a code point's lowercase form, the original
 // index it came from (-1 inside a form that grew, as İ -> i + U+0307).
+// One code point's lowercase form for matching. Σ lowercases to ς at the
+// end of a word and σ elsewhere, so both sigmas match as one letter; ς and σ
+// are one code unit each, so offsets stay exact.
+function lowercaseForMatch(codePoint: string) {
+  const form = codePoint.toLowerCase();
+  return form === "ς" ? "σ" : form;
+}
+
 function lowercaseWithOrigins(text: string) {
   let lower = "";
   const origins: number[] = [];
   for (let index = 0; index < text.length;) {
     const codePoint = String.fromCodePoint(text.codePointAt(index)!);
-    const form = codePoint.toLowerCase();
+    const form = lowercaseForMatch(codePoint);
     origins.push(index);
     for (let extra = 1; extra < form.length; extra++) origins.push(-1);
     lower += form;
@@ -42,14 +50,15 @@ function lowercaseWithOrigins(text: string) {
 
 function lowercaseCodePoints(value: string) {
   let lower = "";
-  for (const codePoint of value) lower += codePoint.toLowerCase();
+  for (const codePoint of value) lower += lowercaseForMatch(codePoint);
   return lower;
 }
 
 /**
  * Every non-overlapping match of the trimmed query, left to right. The rule:
  * case-insensitive by the Unicode lowercase mapping, the same in every locale
- * and without case folding (ß does not match "ss"); offsets are in `text`; a
+ * and without case folding (ß does not match "ss"), with ς and σ as one
+ * letter; offsets are in `text`; a
  * match never splits a grapheme cluster or a character's lowercase form, so a
  * candidate that would is skipped.
  */
