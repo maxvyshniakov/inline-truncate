@@ -117,11 +117,15 @@ export interface MeasurementSession {
   measureText: CandidateMeasurer;
   verifyText?: (text: string, cut?: TruncationCut) => number | undefined;
   measureExact?: CandidateMeasurer;
+  /** Highlighted matches in the full text. */
+  matchCount?: number;
   dispose: () => void;
 }
 
 export interface MeasurementSessionOptions {
   emojiText?: boolean;
+  /** Whether the component isolates this candidate in a `bdi`; the probe does too. */
+  isolate?: (cut?: TruncationCut) => boolean;
   lang?: string;
   needsDOM?: boolean;
   originalText?: string;
@@ -149,6 +153,7 @@ export function createMeasurementSession(
   if (!needsDOM && !emojiText && !hasHighlights) {
     return {
       measureText: options?.sharedCanvasMeasure ?? createCanvasMeasurerFromStyle(computed, options?.style),
+      matchCount: 0,
       dispose: NOOP,
     };
   }
@@ -177,8 +182,14 @@ export function createMeasurementSession(
       root.append(probe);
       element.ownerDocument.body.append(root);
     }
+    // The node the text goes in: the probe, or a bdi in it as the component renders.
+    let target: HTMLElement = probe;
+    if (options?.isolate?.(cut)) {
+      target = element.ownerDocument.createElement("bdi");
+      probe.replaceChildren(target);
+    }
     if (!hasHighlights) {
-      probe.textContent = value;
+      target.textContent = value;
     } else {
       // The runs the component renders: a cut's are drawn from the full text.
       const parts = cut
@@ -199,7 +210,7 @@ export function createMeasurementSession(
           nodes.push(span);
         }
       }
-      probe.replaceChildren(...nodes);
+      target.replaceChildren(...nodes);
     }
     const contentWidth = Math.max(0, probe.getBoundingClientRect().width - box);
     if (!hasHighlights) return contentWidth;
@@ -218,6 +229,7 @@ export function createMeasurementSession(
     // and highlight spans, which can split shaping (WebKit paints them wider).
     verifyText: needsDOM ? undefined : measureDOM,
     measureExact: needsDOM ? undefined : measureDOM,
+    matchCount: fullTextMatches.length,
     dispose() {
       root?.remove();
     },

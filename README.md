@@ -16,7 +16,7 @@ container a constrained width.
 | `text` | required | The full string. |
 | `mode` | required | `"end"` keeps the start of the text; `"middle"` keeps both ends. |
 | `strategy` | `"auto"` | `"css"` truncates with CSS `text-overflow`. `"measure"` measures the text with Inline Measure and shortens the string, again after a resize or once fonts load. `"auto"` measures for `middle`, and for `end` when `query` matches the text; `end` without a match uses CSS. |
-| `ellipsis` | `"end"` | `"start"` puts the ellipsis first, keeps the end of the text visible and aligns the text to the end. With `mode="end"` under either strategy; measured `middle` ignores it. |
+| `ellipsis` | `"end"` | `"start"` puts the ellipsis first, keeps the end of the text visible and aligns the text to the end: the line runs right to left with the text isolated in a `bdi`. With `mode="end"` under either strategy; measured `middle` ignores it. |
 | `query` | none | Highlights every case-insensitive match in the full text. When measured truncation cuts the string, a match's visible part is highlighted in place and a match in the cut part highlights the marker. |
 | `className` | none | Merged onto the root `span`. |
 | `measureExtra` | none | Written to `data-truncate-measure-extra` for hosts that measure the cell, such as Data Grid auto-fit. |
@@ -55,16 +55,30 @@ does. The browser's own `text-overflow` ellipsis is no element, so it cannot tak
 the highlight of a match it hides, and a match it clips still paints its background
 up to the edge of the box, under or after the dots. Measured, a hidden or split match
 highlights the marker instead. Text that fits renders as under CSS: whole, with its
-matches highlighted. End mode without a query, or with one that does not match, keeps
-CSS and measures nothing.
+matches highlighted; when Canvas puts it more than a few pixels inside the box, it is
+not verified in the DOM. Whether the text fits is known only once it is measured, so
+matching text measures even when it fits. End mode without a query, or with one that
+does not match, keeps CSS and measures nothing. Until the first measurement of a text
+(the server's HTML, the frame before it, the frame after the query starts matching),
+measured end mode renders as CSS does, ellipsis included.
 
-The root clips its text. It keeps 1px of inline padding inside the clip, an equal
-negative inline margin outside it, and `box-sizing: content-box`, so a highlight
-decoration that paints up to 1px past its glyphs (a `box-shadow`, as Data Grid
-draws) keeps that pixel and its rounded corners at the text's first and last
-character and next to the marker. The content box, and so the measured width and
-the cut, stay where they would be without the room. A `className` that sets inline
-padding or margin replaces it.
+Measured end mode cuts where CSS `text-overflow` cuts the same text: the line keeps
+its start edge and loses its end edge. Text in the line's direction keeps its start,
+and text in the other direction (Arabic in a left-to-right line; Latin text, or
+numbers, with `ellipsis="start"`, whose line runs right to left) keeps its end, with
+the dots on the line's end side. The text's direction is its first letter's, as
+`dir="auto"` reads it; text without letters reads left to right. A cut that keeps the
+end sits in a `bdi`, so the dots lead it.
+
+A measured root clips paint, not layout: `clip-path: inset(0 -1px)` instead of
+`overflow: hidden`, so a highlight decoration that paints up to 1px past its glyphs
+(a `box-shadow`, as Data Grid draws) keeps that pixel and its rounded corners at the
+text's first and last character and next to the marker. The root's box, what Inline
+Measure reports for it, its scroll sizes and how a `className` merges are as with
+`overflow: hidden`; the measured string fits the box, so nothing scrolls. An ancestor
+that clips flush with the root (`overflow: hidden` or `auto` with no inline padding)
+still clips that pixel: leave the cell at least 1px of inline room. Text that is not
+cut yet in `middle` mode, and a marker alone in a box narrower than it, clip flush.
 
 Highlight colors use `--text-truncate-highlight-background` and
 `--text-truncate-highlight-foreground`, with amber and current-text defaults.
@@ -175,9 +189,9 @@ Text Truncate demos alongside the grid.
 ## Correctness and performance
 
 The standalone browser harness needs no Data Grid or Storybook build.
-`bun run verify:browser` runs the correctness check and both accessibility
-checks in all three engines, each with a 4-minute limit; the commands below
-run one part:
+`bun run verify:browser` runs the correctness check, both accessibility checks and
+the highlight-edge check (`scripts/highlight/check.mjs`) in all three engines, each
+with a 4-minute limit; the commands below run one part:
 
 ```sh
 bun run check:browser -- --browser=chromium

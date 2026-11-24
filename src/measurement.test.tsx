@@ -115,3 +115,40 @@ it("measures the uncut full text with the matches the session already found", ()
     source.remove();
   }
 });
+
+// Review F3: with the ellipsis first, or a cut that keeps the end, the
+// component isolates the visible text in a bdi; the probe measures the same
+// structure, so bidi reordering of the leading dots is measured as drawn.
+describe("the DOM probe for an isolated cut", () => {
+  const text = "Lomboc boat bookcase";
+  const cut: TruncationCut = { prefixEnd: 0, suffixStart: 3 };
+  const tree = (node: Node): string => node.nodeType === Node.TEXT_NODE
+    ? `"${node.textContent}"`
+    : `${(node as Element).tagName.toLowerCase()}(${[...node.childNodes].map(tree).join(",")})`;
+
+  for (const [name, isolate] of [["isolated", true], ["not isolated", false]] as const) it(`draws the candidate ${name} as the component does`, () => {
+    const source = document.createElement("span");
+    document.body.append(source);
+    const probes: string[] = [];
+    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (this: HTMLElement) {
+      probes.push([...this.childNodes].map(tree).join(","));
+      return { width: this.textContent?.length ?? 0 } as DOMRect;
+    });
+    const rendered = document.createElement("span");
+    document.body.append(rendered);
+    const root = createRoot(rendered);
+    const content = <CutHighlightedText text={text} cut={cut} query="mb" />;
+    flushSync(() => root.render(isolate ? <bdi>{content}</bdi> : content));
+    const session = createMeasurementSession(source, getComputedStyle(source), "mb", { originalText: text, emojiText: false, needsDOM: true, isolate: () => isolate });
+    try {
+      session.measureText(TRUNCATION_MARKER + text.slice(cut.suffixStart), cut);
+      expect(probes.at(-1)).toBe([...rendered.childNodes].map(tree).join(","));
+      expect(probes.at(-1)!.startsWith("bdi(")).toBe(isolate);
+    } finally {
+      session.dispose();
+      flushSync(() => root.unmount());
+      rendered.remove();
+      source.remove();
+    }
+  });
+});

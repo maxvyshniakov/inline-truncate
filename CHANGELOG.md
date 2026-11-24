@@ -15,21 +15,30 @@ Versions and release rules: [docs/VERSIONING.md](docs/VERSIONING.md).
   the cut hides or splits highlights the marker (`data-slot="highlighted-match"` with `data-truncate-marker`): dark
   dots on the highlight background, the box around the dots. The browser's own ellipsis could not take the highlight:
   a clipped match painted a highlight box after, or half under, dots in the text colour (inline-truncate#8). Such a
-  root reports `data-truncate-strategy="measure"`, sets `data-truncate-state="truncated"` while cut, and holds the
-  visible string and the hidden full-text copy described under Accessibility; text that fits renders whole as before.
+  root reports `data-truncate-strategy="measure"`, sets `data-truncate-state="truncated"` while cut and holds the
+  visible string and the hidden full-text copy described under Accessibility. Until its first measurement (the
+  server's HTML, the frame after the query starts matching) it renders as CSS does, ellipsis included. Text that fits
+  renders whole as before; when Canvas puts it more than a few pixels inside the box, it is not verified in the DOM.
   End mode without a query, or with one that does not match, keeps CSS and measures nothing.
-  Measured on 50 such components (2026-11-24): 53 Canvas calls, 200 DOM reads and 150 style reads where CSS made
-  none; the mount median stays at the frame floor in Chromium, Firefox and WebKit.
-- `ellipsis="start"` now applies to measured end mode as well: the measured cut keeps the end of the text, the marker
-  comes first, and the root aligns to the end (`[direction:rtl]`, the text in a `bdi`, `data-tip-align="end"`), as
-  with CSS. With `strategy="auto"` that is the case whenever `query` matches; `strategy="measure"` ignored the prop
-  before. Measured `middle` still ignores it.
-- The root has `box-sizing: content-box`, 1px of inline padding and an equal negative inline margin (`box-content
-  px-px -mx-px`). A highlight decoration that paints 1px past its glyphs, as Data Grid's `box-shadow` does, keeps
-  that pixel and its rounded corners at the text's first and last character and next to the marker, where the
-  root's clip cut it flat (data-grid#148). The content box, the measured width and the cut do not move; the root's
-  border box is 2px wider and reaches 1px past its container on each side. A `className` that sets inline padding or
-  margin replaces the room.
+  Measured on 50 matching components that overflow (2026-11-24): 53 Canvas calls, 200 DOM reads and 150 style reads
+  where CSS made none; on 50 that fit, 50 Canvas calls, 100 DOM reads and 100 style reads, and one more React commit
+  as the CSS look gives way. Mount medians stay at the frame floor in Chromium, Firefox and WebKit.
+- With `ellipsis="start"` and a matching `query` (or `strategy="measure"`, which ignored the prop before), end mode
+  measures as above with the ellipsis first, as CSS draws it: the root keeps `[direction:rtl]` and `data-tip-align="end"`,
+  and the visible string sits in a `bdi` inside `[data-truncate-visible]`. Measured, such a root has no
+  `data-truncate-overflow-target`: once cut, `data-truncate-state="truncated"` says so; before its first measurement it
+  has the CSS root's `data-truncate-overflow-target=":scope > bdi"`. Measured `middle` still ignores the prop.
+- Measured end mode cuts the side CSS `text-overflow` cuts for the same text: the line keeps its start edge. Text in
+  the line's direction keeps its start, as before. Text in the other direction keeps its end, with the dots on the
+  line's end side, in a `bdi`: Arabic or Hebrew text in a left-to-right line kept its start under `strategy="measure"`,
+  where CSS keeps its end, and with `ellipsis="start"` Latin text and numbers keep their end, right-to-left text its
+  start. The direction is the text's first letter's, as `dir="auto"` reads it.
+- A measured root clips paint, not layout: `overflow-visible [clip-path:inset(0_-1px)]` replaces `overflow-hidden`,
+  so a highlight decoration that paints 1px past its glyphs, as Data Grid's `box-shadow` does, keeps that pixel and
+  its rounded corners at the text's first and last character and next to the marker, where the clip cut it flat
+  (data-grid#148). The root's box, what Inline Measure reports for it, its scroll sizes and how a `className` merges
+  do not change. An ancestor that clips flush with the root still clips the pixel. A root whose text is not cut yet in
+  `middle` mode, or that shows the marker alone in a box narrower than it, keeps `overflow-hidden`.
 
 ### Fixed
 

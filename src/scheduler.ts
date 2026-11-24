@@ -10,7 +10,9 @@ import {
   MAX_CACHED_CODE_UNITS,
   MAX_CACHED_WIDTHS,
   TRUNCATION_MARKER,
+  endModeSide,
   truncatePrepared,
+  type TextTruncateMode,
   type TruncationSide,
   type TruncationCut,
   type TruncationResult,
@@ -21,16 +23,19 @@ export interface TruncationState {
   source: string;
   text: string;
   cut: TruncationCut | null;
+  /** The search ran for `source` at the current width; false while it is pending. */
+  measured: boolean;
 }
 
 export function fullTextState(text: string): TruncationState {
-  return { source: text, text, cut: null };
+  return { source: text, text, cut: null, measured: false };
 }
 
 // Keeps the previous state object when nothing changed, so React bails out of
 // the render as it did when the state was the visible string alone.
 function sameTruncation(a: TruncationState, b: TruncationState) {
   return a.source === b.source
+    && a.measured === b.measured
     && a.text === b.text
     && a.cut?.prefixEnd === b.cut?.prefixEnd
     && a.cut?.suffixStart === b.cut?.suffixStart;
@@ -64,7 +69,12 @@ export interface MeasureJob {
   initialized: boolean;
   element: HTMLElement;
   text: string;
-  mode: TruncationSide;
+  mode: TextTruncateMode;
+  /**
+   * End mode with the ellipsis first: the root runs right to left and the
+   * text sits in a `bdi`, as under CSS.
+   */
+  startEllipsis: boolean;
   query: string | undefined;
   className: string | undefined;
   emojiText: boolean;
@@ -91,6 +101,10 @@ export function widthCacheKey(value: string, cut: TruncationCut | undefined, byC
   if (!byCut) return value;
   return cut ? `c${cut.prefixEnd}:${cut.suffixStart}:${value}` : `u${value}`;
 }
+
+// Pixels a Canvas width must stay below the box, plus one per highlighted
+// match, for a fitting text to skip the DOM verification.
+const FIT_MARGIN = 2;
 
 /** An input whose change can make what a job measured stale. */
 export type MeasurementChange = "text" | "style" | "query" | "mode";
@@ -343,8 +357,17 @@ function flushJobs() {
       }
     }
 
+    // End mode hides what CSS text-overflow hides in this line (see endModeSide).
+    // With the ellipsis first the line runs right to left by definition, not
+    // only when the host compiled the root's [direction:rtl] class.
+    const side: TruncationSide = job.mode === "middle"
+      ? "middle"
+      : endModeSide(job.text, job.startEllipsis ? "rtl" : style.direction);
     const session = createMeasurementSession(job.element, computed, job.query, {
       emojiText: job.emojiText,
+      // The component isolates the text in a bdi with the ellipsis first, and
+      // a cut that keeps the end; the probe draws the same structure.
+      isolate: (cut) => job.startEllipsis || (cut !== undefined && cut.prefixEnd === 0 && cut.suffixStart < job.text.length),
       lang: style.lang,
       needsDOM,
       originalText: job.text,
@@ -354,7 +377,7 @@ function flushJobs() {
 
     const commit = (result: TruncationResult) => {
       job.completedWidth = width;
-      setTruncation(job, { source: job.text, text: result.text, cut: result.cut });
+      setTruncation(job, { source: job.text, text: result.text, cut: result.cut, measured: true });
     };
 
     // The DOM probe draws a query's highlight from the candidate's cut, so a
@@ -402,13 +425,13 @@ function flushJobs() {
 
     try {
       if (!session.verifyText) {
-        const next = truncatePrepared({ text: job.text, maxWidth: width, mode: job.mode, measureText }, getIndexed);
+        const next = truncatePrepared({ text: job.text, maxWidth: width, mode: side, measureText }, getIndexed);
         commit(next);
         continue;
       }
 
       const select = (budget: number, measure: (value: string, cut?: TruncationCut) => number = measureText) =>
-        truncatePrepared({ text: job.text, maxWidth: budget, mode: job.mode, measureText: measure }, getIndexed);
+        truncatePrepared({ text: job.text, maxWidth: budget, mode: side, measureText: measure }, getIndexed);
       const verify = ({ text: value, cut }: TruncationResult) => {
         const key = widthCacheKey(value, cut ?? undefined, highlighted);
         const cached = job.verifiedWidths.get(key);
@@ -427,6 +450,13 @@ function flushJobs() {
       };
 
       let next = select(width);
+      // Text that fits by a clear margin needs no DOM verification: a
+      // highlight span can paint up to about a pixel wider than Canvas measured
+      // (WebKit), emoji widths can differ more.
+      if (next.cut === null && !job.emojiText && measureText(job.text) <= width - FIT_MARGIN - (session.matchCount ?? 0)) {
+        commit(next);
+        continue;
+      }
       let budget = width;
       for (let refinement = 0; ; refinement++) {
         const actual = verify(next);

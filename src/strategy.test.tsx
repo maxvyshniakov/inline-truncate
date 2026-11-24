@@ -1,8 +1,9 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { cleanup, render } from "@testing-library/react";
+import { act, cleanup, render } from "@testing-library/react";
+import { renderToString } from "react-dom/server";
 import { TextTruncate } from "./index";
 import { indexTextGraphemes } from "./graphemes";
-import { truncatePrepared } from "./truncation";
+import { contentDirection, endModeSide, truncatePrepared } from "./truncation";
 
 // Ten units per UTF-16 code unit, as index.test.tsx measures.
 function measuredLayout(width: number) {
@@ -131,5 +132,134 @@ describe("ellipsis start, measured", () => {
     // 7 units would hold "..." + the skin-tone modifier alone + "cd".
     const wider = truncatePrepared({ text, maxWidth: 7, measureText, mode: "start" }, () => indexTextGraphemes(text));
     expect(wider.text).toBe("...cd");
+  });
+});
+
+// Frames run only when the test says, so the render before the first
+// measurement can be inspected (a synchronous requestAnimationFrame hides it).
+function queuedFrames(width: number) {
+  globalThis.ResizeObserver = class { observe() {} unobserve() {} disconnect() {} } as unknown as typeof ResizeObserver;
+  const frames: FrameRequestCallback[] = [];
+  vi.spyOn(window, "requestAnimationFrame").mockImplementation((callback) => { frames.push(callback); return frames.length; });
+  vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockReturnValue(width);
+  vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue({
+    font: "", measureText: (value: string) => ({ width: value.length * 10 }),
+  } as unknown as CanvasRenderingContext2D);
+  vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (this: HTMLElement) {
+    return { width: (this.textContent?.length ?? 0) * 10, height: 16 } as DOMRect;
+  });
+  return () => act(() => { while (frames.length) frames.shift()!(0); });
+}
+
+// Until measured end mode has cut, it looks as CSS draws it: dots, not a hard clip.
+describe("measured end mode before its first measurement", () => {
+  it("renders the CSS ellipsis in the server's HTML", () => {
+    const html = renderToString(
+      <>
+        <TextTruncate mode="end" text={fileName} query="review" />
+        <TextTruncate mode="end" ellipsis="start" text={fileName} query="review" />
+      </>,
+    );
+    expect(html).toContain('class="block w-full min-w-0 truncate"');
+    expect(html).toContain('class="block w-full min-w-0 truncate [direction:rtl]"');
+    expect(html).toContain('data-truncate-overflow-target=":scope &gt; bdi"');
+  });
+
+  it("keeps the CSS ellipsis on mount and after the query starts matching, until the frame measures", () => {
+    const flush = queuedFrames(100);
+    const { container, rerender } = render(<TextTruncate mode="end" text={fileName} query="review" />);
+    expect(root(container)).toHaveAttribute("data-truncate-strategy", "measure");
+    expect(root(container)).toHaveClass("truncate");
+    expect(root(container)).not.toHaveAttribute("data-truncate-state");
+    flush();
+    expect(root(container)).not.toHaveClass("truncate");
+    expect(visible(root(container))).toBe("Quarter...");
+
+    rerender(<TextTruncate mode="end" text={fileName} query="inv" />);
+    expect(root(container)).toHaveAttribute("data-truncate-strategy", "css");
+    rerender(<TextTruncate mode="end" text={fileName} query="design" />);
+    expect(root(container)).toHaveClass("truncate");
+    expect(root(container).textContent).toBe(fileName);
+    flush();
+    expect(root(container)).not.toHaveClass("truncate");
+    expect(highlights(root(container))).toEqual(["{...}"]);
+  });
+
+  it("keeps the CSS ellipsis for a new text until it is measured", () => {
+    const flush = queuedFrames(400);
+    const { container, rerender } = render(<TextTruncate mode="end" text="design.pdf" query="design" />);
+    flush();
+    expect(root(container)).not.toHaveClass("truncate");
+    rerender(<TextTruncate mode="end" text={`${fileName}-${fileName}`} query="design" />);
+    expect(root(container)).toHaveClass("truncate");
+    flush();
+    expect(root(container)).not.toHaveClass("truncate");
+  });
+});
+
+// inline-truncate#8 review F5: "auto" measures matching end-mode text even when
+// it fits; Canvas decides that, and the DOM verification is only for a close call.
+describe("matching end-mode text that fits", () => {
+  const cells = (count: number) => Array.from({ length: count }, (_, i) => (
+    <TextTruncate key={i} mode="end" text={`${fileName}-${i % 10}`} query="design" />
+  ));
+
+  it("skips the DOM verification when Canvas puts it clearly inside the box", () => {
+    measuredLayout(400);
+    const reads = vi.mocked(HTMLElement.prototype.getBoundingClientRect);
+    reads.mockClear();
+    const { container } = render(<>{cells(50)}</>);
+    expect(container.querySelectorAll("[data-truncate-state]")).toHaveLength(0);
+    expect(reads).not.toHaveBeenCalled();
+  });
+
+  it("verifies it in the DOM when Canvas puts it within a few pixels of the edge", () => {
+    // 29 characters, 290 Canvas units: inside 292, but within the margin.
+    measuredLayout(292);
+    const reads = vi.mocked(HTMLElement.prototype.getBoundingClientRect);
+    reads.mockClear();
+    const { container } = render(<>{cells(50)}</>);
+    expect(container.querySelectorAll("[data-truncate-state]")).toHaveLength(0);
+    expect(reads).toHaveBeenCalledTimes(50);
+  });
+});
+
+// Review F3: measured end mode keeps the end of the text CSS keeps, and puts
+// the dots on CSS's side: the line keeps its start edge and cuts at its end.
+describe("the side end mode cuts", () => {
+  const arabic = "مرحبا بالعالم ملف نهائي طويل";
+
+  it("reads the text's direction from its first letter, as dir=auto does", () => {
+    expect(contentDirection("Lomboc boat")).toBe("ltr");
+    expect(contentDirection(arabic)).toBe("rtl");
+    expect(contentDirection("2026 שנה")).toBe("rtl");
+    expect(contentDirection("1,234.56")).toBe("ltr");
+    expect(endModeSide("Lomboc boat", "ltr")).toBe("end");
+    expect(endModeSide("Lomboc boat", "rtl")).toBe("start");
+    expect(endModeSide(arabic, "ltr")).toBe("start");
+    expect(endModeSide(arabic, "rtl")).toBe("end");
+  });
+
+  it("keeps the start of right-to-left text with the ellipsis first, the dots after it in a bdi", () => {
+    measuredLayout(100);
+    const { container } = render(<TextTruncate mode="end" ellipsis="start" text={arabic} query="ملف" />);
+    expect(visible(root(container))).toBe("مرحبا ب...");
+    expect(root(container).querySelector("[data-truncate-visible] > bdi")).not.toBeNull();
+    expect(highlights(root(container))).toEqual(["{...}"]);
+  });
+
+  it("keeps the end of right-to-left text in a left-to-right line, the dots leading it in a bdi", () => {
+    measuredLayout(100);
+    const { container } = render(<TextTruncate mode="end" text={arabic} query="ملف" />);
+    expect(visible(root(container))).toBe("...ئي طويل");
+    expect(root(container).querySelector("[data-truncate-visible] > bdi")).not.toBeNull();
+    expect(root(container)).not.toHaveClass("[direction:rtl]");
+  });
+
+  it("leaves left-to-right text in a left-to-right line as it was: start kept, no bdi", () => {
+    measuredLayout(100);
+    const { container } = render(<TextTruncate mode="end" text={fileName} query="review" />);
+    expect(visible(root(container))).toBe("Quarter...");
+    expect(root(container).querySelector("bdi")).toBeNull();
   });
 });

@@ -10,10 +10,35 @@ import {
 export type TextTruncateMode = "middle" | "end";
 
 /**
- * Which part the measured search hides: the public modes, plus "start" for end
- * mode with the ellipsis first (`ellipsis="start"`), which keeps the end.
+ * Which part the measured search hides: "middle", "end" (keeps the start) or
+ * "start" (keeps the end). End mode picks "end" or "start" by direction, see
+ * `endModeSide`.
  */
 export type TruncationSide = TextTruncateMode | "start";
+
+// Letters of the right-to-left scripts in Unicode: their bidi class is R or AL.
+const RTL_LETTER = /[\p{Script=Hebrew}\p{Script=Arabic}\p{Script=Syriac}\p{Script=Thaana}\p{Script=Nko}\p{Script=Samaritan}\p{Script=Mandaic}\p{Script=Adlam}\p{Script=Hanifi_Rohingya}\p{Script=Yezidi}\p{Script=Mende_Kikakui}\p{Script=Old_Hungarian}]/u;
+const LETTER = /\p{L}/u;
+
+/**
+ * The text's own direction as `dir="auto"` resolves it: the first letter's.
+ * Text without letters (numbers, punctuation) reads left to right.
+ */
+export function contentDirection(text: string): "ltr" | "rtl" {
+  const first = LETTER.exec(text);
+  return first && RTL_LETTER.test(first[0]) ? "rtl" : "ltr";
+}
+
+/**
+ * The side an end-mode cut hides, matching what CSS `text-overflow` hides for
+ * the same text in a line of `lineDirection`: the line keeps its start edge
+ * and cuts at its end edge. Text in the line's direction starts at that start
+ * edge, so its logical end goes; text in the other direction ends there, so
+ * its logical start goes.
+ */
+export function endModeSide(text: string, lineDirection: string): "end" | "start" {
+  return contentDirection(text) === (lineDirection === "rtl" ? "rtl" : "ltr") ? "end" : "start";
+}
 
 export const TRUNCATION_MARKER = "...";
 export const MAX_CACHED_WIDTHS = 256;

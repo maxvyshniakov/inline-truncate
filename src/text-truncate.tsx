@@ -3,7 +3,7 @@
 import React from "react";
 import { hasEmoji } from "./measurement.js";
 import { CutHighlightedText, findMatchRanges, HighlightedMatchText } from "./highlight.js";
-import type { TextTruncateMode, TruncationSide } from "./truncation.js";
+import { TRUNCATION_MARKER, type TextTruncateMode } from "./truncation.js";
 import { cancelJob, fullTextState, invalidateMeasurements, scheduleJob, type MeasureJob } from "./scheduler.js";
 import { observeResize, subscribeFonts } from "./observers.js";
 import { cn } from "cn";
@@ -13,15 +13,18 @@ export type TextTruncateEllipsis = "end" | "start";
 
 const MAX_CLASSNAME_CACHE = 64;
 
-// The root clips its text. 1px of inline padding, inside the clip, leaves room
-// for a highlight decoration that paints past the glyphs (Data Grid's 1px
-// box-shadow); the equal negative margin and the content box keep the content
-// box, and so the measured width and the cut, where they were.
-const BASE_BOX_CLASS = "block w-full min-w-0 box-content px-px -mx-px";
-const BASE_CSS_END_CLASS = `${BASE_BOX_CLASS} truncate`;
-const BASE_CSS_START_CLASS = `${BASE_BOX_CLASS} truncate [direction:rtl]`;
-const BASE_MEASURE_CLASS = `${BASE_BOX_CLASS} overflow-hidden whitespace-nowrap`;
-const BASE_MEASURE_START_CLASS = `${BASE_MEASURE_CLASS} [direction:rtl]`;
+const BASE_CSS_END_CLASS = "block w-full min-w-0 truncate";
+const BASE_CSS_START_CLASS = "block w-full min-w-0 truncate [direction:rtl]";
+// A measured string fits its box, so the root clips paint, not layout: 1px past
+// each inline side, room for a highlight decoration that paints past the glyphs
+// (Data Grid's 1px box-shadow) at the text's first and last character. The box,
+// what hosts measure on it and its scroll overflow stay as with overflow:hidden.
+const BASE_MEASURE_CLASS = "block w-full min-w-0 whitespace-nowrap overflow-visible [clip-path:inset(0_-1px)]";
+// Clips flush, as before the paint room: text the search has not cut yet, and
+// the marker alone, which can be wider than a very narrow box, must not
+// overflow into a scrolling ancestor.
+const BASE_MEASURE_CLIP_CLASS = "block w-full min-w-0 whitespace-nowrap overflow-hidden";
+const START_CLASS = " [direction:rtl]";
 
 // Holds the full text for assistive technology while the visible string is cut.
 // Inline, so it works without the host's CSS. Not selectable, so a copied
@@ -103,9 +106,8 @@ export const TextTruncate = React.memo(function TextTruncate({
     [mode, query, strategy, text],
   );
   const resolvedStrategy = resolveTextTruncateStrategy({ mode, queryMatches, strategy });
-  // A measured end cut with the ellipsis first keeps the end of the text.
-  const measuredStart = resolvedStrategy === "measure" && mode === "end" && ellipsis === "start";
-  const cutSide: TruncationSide = measuredStart ? "start" : mode;
+  // Measured end mode with the ellipsis first: the line runs right to left, as under CSS.
+  const startEllipsis = ellipsis === "start" && (resolvedStrategy === "css" || mode === "end");
 
   // Persistent lifecycle effect: keeps ResizeObserver and document.fonts
   // subscriptions attached across text, className, query, and mode updates.
@@ -120,6 +122,7 @@ export const TextTruncate = React.memo(function TextTruncate({
       element,
       text: "",
       mode: "middle",
+      startEllipsis: false,
       query: undefined,
       className: undefined,
       emojiText: false,
@@ -177,9 +180,9 @@ export const TextTruncate = React.memo(function TextTruncate({
     return () => {
       job.active = false;
       jobRef.current = null;
-      // Measuring stops: a held cut is not another strategy's result, so
-      // measuring again starts from the full text.
-      setTruncation((previous) => (previous.cut === null ? previous : fullTextState(previous.source)));
+      // Measuring stops: a held result is not another strategy's, so
+      // measuring again starts from the full text, pending.
+      setTruncation((previous) => (previous.measured ? fullTextState(previous.source) : previous));
       cancelJob(job);
       unobserve();
       unsubscribe();
@@ -198,7 +201,8 @@ export const TextTruncate = React.memo(function TextTruncate({
     if (!job.initialized) {
       job.initialized = true;
       job.text = text;
-      job.mode = cutSide;
+      job.mode = mode;
+      job.startEllipsis = startEllipsis;
       job.query = query;
       job.className = className;
       job.emojiText = hasEmoji(text);
@@ -209,7 +213,8 @@ export const TextTruncate = React.memo(function TextTruncate({
 
     const textChanged = job.text !== text;
     const classChanged = job.className !== className;
-    const modeChanged = job.mode !== cutSide;
+    const modeChanged = job.mode !== mode;
+    const ellipsisChanged = job.startEllipsis !== startEllipsis;
     const queryChanged = job.query !== query;
 
     if (textChanged) {
@@ -222,8 +227,13 @@ export const TextTruncate = React.memo(function TextTruncate({
       invalidateMeasurements(job, "style");
     }
     if (modeChanged) {
-      job.mode = cutSide;
+      job.mode = mode;
       invalidateMeasurements(job, "mode");
+    }
+    if (ellipsisChanged) {
+      // The direction and the bdi change what the DOM draws.
+      job.startEllipsis = startEllipsis;
+      invalidateMeasurements(job, "style");
     }
     if (queryChanged) {
       job.query = query;
@@ -233,7 +243,7 @@ export const TextTruncate = React.memo(function TextTruncate({
 
     scheduleJob(job);
     return undefined;
-  }, [className, cutSide, query, resolvedStrategy, text]);
+  }, [className, mode, query, resolvedStrategy, startEllipsis, text]);
 
   // The search hands over where it cut and which text it cut. Truncated means
   // a cut is shown. Until the search has run for a new `text`, a previous cut
@@ -266,35 +276,36 @@ export const TextTruncate = React.memo(function TextTruncate({
   ) : (
     renderedText
   );
-  const shouldUseStartEllipsis = resolvedStrategy === "css" && ellipsis === "start";
-  const baseClass =
-    resolvedStrategy === "css"
-      ? shouldUseStartEllipsis
-        ? BASE_CSS_START_CLASS
-        : BASE_CSS_END_CLASS
-      : measuredStart
-        ? BASE_MEASURE_START_CLASS
-        : BASE_MEASURE_CLASS;
-  // The start ellipsis aligns the root to the end; the text stays isolated in its own direction.
-  const shown = measuredStart ? <bdi>{content}</bdi> : content;
+  // Until the search has run for this text, measured end mode looks as CSS
+  // draws it, dots included: the server's HTML and the frame before the first
+  // measurement, and the frame after the query starts matching.
+  const unmeasured = resolvedStrategy === "measure" && cut === null
+    && !(truncation.measured && truncation.source === text);
+  const cssLook = resolvedStrategy === "css" || (unmeasured && mode === "end");
+  const baseClass = cssLook
+    ? (startEllipsis ? BASE_CSS_START_CLASS : BASE_CSS_END_CLASS)
+    : (unmeasured || truncation.text === TRUNCATION_MARKER ? BASE_MEASURE_CLIP_CLASS : BASE_MEASURE_CLASS)
+      + (startEllipsis ? START_CLASS : "");
+  // The text sits in a bdi in its own direction with the ellipsis first, as
+  // under CSS, and when a cut keeps the end, so the marker leads it.
+  const isolated = startEllipsis || (cut !== null && cut.prefixEnd === 0 && cut.suffixStart < truncation.source.length);
+  const shown = isolated ? <bdi>{content}</bdi> : content;
   const rootClassName = className ? mergeRootClassName(baseClass, className) : baseClass;
 
   return (
     <span
       ref={textRef}
       className={rootClassName}
-      data-tip-align={shouldUseStartEllipsis || measuredStart ? "end" : undefined}
+      data-tip-align={startEllipsis ? "end" : undefined}
       data-truncate=""
       data-truncate-measure-extra={measureExtra}
       data-truncate-mode={mode}
       data-truncate-original={text}
-      data-truncate-overflow-target={shouldUseStartEllipsis ? ":scope > bdi" : undefined}
+      data-truncate-overflow-target={cssLook && startEllipsis ? ":scope > bdi" : undefined}
       data-truncate-state={isTruncated ? "truncated" : undefined}
       data-truncate-strategy={resolvedStrategy}
     >
-      {shouldUseStartEllipsis ? (
-        <bdi>{content}</bdi>
-      ) : isTruncated ? (
+      {isTruncated ? (
         <>
           <span aria-hidden="true" data-truncate-visible="">{shown}</span>
           <span data-truncate-full-text="" style={FULL_TEXT_STYLE}>{text}</span>

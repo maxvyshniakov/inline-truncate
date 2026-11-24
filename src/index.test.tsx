@@ -337,7 +337,7 @@ describe("TextTruncate", () => {
     expect(bdi).toHaveTextContent(fileName);
   });
 
-  it("ignores ellipsis start under the measure strategy", () => {
+  it("ignores ellipsis start in measured middle mode", () => {
     stubMeasuredLayout(100);
 
     const { container } = render(<TextTruncate mode="middle" ellipsis="start" text={fileName} />);
