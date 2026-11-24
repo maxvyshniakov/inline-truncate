@@ -31,8 +31,11 @@ five times at a stable width; preparation is warmed before timing. The construct
 wrapper still uses native ResizeObserver and removes replays on disconnect. Cold
 mount and warm resize/notification IDs make cache state explicit. A 50-component
 highlight mount case measures the decorated markup cost against the matching
-plain 50-component case; highlights do not add per-update DOM probes to the normal
-Canvas path. A separate 50-component emoji mount case records the cost of the
+plain 50-component case. With a matching query the final string is verified once in
+the DOM as drawn, because a highlight span can paint wider than Canvas measured
+(WebKit); on 2026-11-24 in Chromium that took the case from 100 to 200 DOM reads
+and 100 to 150 style reads, with the median still bound by frames. Text without a
+match adds no DOM probe. A separate 50-component emoji mount case records the cost of the
 accuracy fallback for browser Canvas/paint width discrepancies. Text/style cases retain the original
 text or style respectively so invalidation is tested independently.
 

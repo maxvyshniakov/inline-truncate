@@ -26,12 +26,28 @@ combining mark. The package also exports `truncateText`, which truncates with
 any `measureText` callback, `HighlightedMatchText`, which highlights without
 truncating, and `splitTextGraphemes`.
 
+With React Server Components, `TextTruncate` is a client component (its module
+starts with `"use client"`), while `truncateText`, `splitTextGraphemes` and
+`HighlightedMatchText` are server-safe: a server component can call or render them
+through the same `inline-truncate` import.
+
 Matches are found once, in the full text; the cut string only renders them. A
 match that straddles the cut highlights its visible end and the marker, and the
 query never matches text that exists only where the two visible ends join. The
 highlighted marker is a `span` with `data-slot="highlighted-match"` and
-`data-truncate-marker`, styled like any match. Highlighting does not take part in
-measurement: the cut is the same with or without a query.
+`data-truncate-marker`, styled like any match. Highlight spans can paint wider
+than the plain string (WebKit shapes each side of a span apart), so when the query
+matches, the result is measured as drawn: a DOM probe renders the highlighted
+string the way the component does, after Canvas selects the cut or in place of
+Canvas for the styles listed below. A highlighted match or marker can therefore
+make the cut one grapheme shorter than without a query.
+
+Matching is case-insensitive by the Unicode lowercase mapping, the same in every
+locale and without case folding: `STRAẞE` matches `Straße` but `strasse` does not,
+and `izmir` does not match `İZMİR`. The query is literal text, not a pattern.
+Offsets always refer to the original string, and a match never splits a
+user-perceived character: `e` does not match the `é` written as `e` plus a
+combining accent, and `👩` does not match inside `👨‍👩‍👧`.
 
 Highlight colors use `--text-truncate-highlight-background` and
 `--text-truncate-highlight-foreground`, with amber and current-text defaults.
@@ -45,8 +61,8 @@ Highlight customization is intended for colors; metric-changing host styles such
 as extra padding need their own measurement policy. Middle truncation measures only the edges it
 visits. Each mounted measured component reuses segmented text and a bounded
 width cache across resizes, and invalidates widths after a class or font-load
-change. Emoji inputs select through Canvas first, then verify the complete final string
-with a cached DOM measurement. At most two corrections use the observed width
+change. Emoji inputs and text with a matching query select through Canvas first, then verify the complete final
+string with a cached DOM measurement. At most two corrections use the observed width
 discrepancy; a native predicate handles larger disagreements. CSS numeric
 features, variation settings, disabled optical sizing, word spacing and text
 transforms use a hidden DOM predicate when Canvas cannot express them. Emoji native widths are invalidated

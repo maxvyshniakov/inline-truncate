@@ -4,7 +4,7 @@ import {
   createInlineTextMeasurementNode,
   parseCssPixelValue,
 } from "inline-measure";
-import { cutHighlightRuns, highlightedTextParts, HIGHLIGHT_CLASS_NAME } from "./highlight.js";
+import { cutHighlightRuns, findMatchRanges, highlightedTextParts, HIGHLIGHT_CLASS_NAME } from "./highlight.js";
 import type { TruncationCut } from "./truncation.js";
 
 const NON_ASCII = /[\u0080-\uffff]/;
@@ -142,16 +142,16 @@ export function createMeasurementSession(
   const originalText = options?.originalText ?? element.dataset.truncateOriginal ?? "";
   const emojiText = options?.emojiText ?? hasEmoji(originalText);
   const needsDOM = options?.needsDOM ?? needsDomMeasurement(options?.style ?? computed);
+  // Matches in the full text, found once per session by the rendering rule.
+  const fullTextMatches = findMatchRanges(originalText, query);
+  const hasHighlights = fullTextMatches.length > 0;
 
-  if (!needsDOM && !emojiText) {
+  if (!needsDOM && !emojiText && !hasHighlights) {
     return {
       measureText: options?.sharedCanvasMeasure ?? createCanvasMeasurerFromStyle(computed, options?.style),
       dispose: NOOP,
     };
   }
-
-  const normalizedQuery = query?.trim().toLowerCase() ?? "";
-  const hasHighlights = normalizedQuery.length > 0 && originalText.toLowerCase().includes(normalizedQuery);
   let root: HTMLElement | undefined;
   let probe: HTMLElement;
   let box = 0;
@@ -181,7 +181,7 @@ export function createMeasurementSession(
       probe.textContent = value;
     } else {
       // The runs the component renders: a cut's are drawn from the full text.
-      const parts = cut ? cutHighlightRuns(originalText, query, cut) : highlightedTextParts(value, query);
+      const parts = cut ? cutHighlightRuns(originalText, query, cut, fullTextMatches) : highlightedTextParts(value, query);
       const nodes: Node[] = [];
       const doc = element.ownerDocument;
       for (let i = 0; i < parts.length; i++) {
@@ -212,8 +212,10 @@ export function createMeasurementSession(
     measureText: needsDOM
       ? measureDOM
       : (options?.sharedCanvasMeasure ?? createCanvasMeasurerFromStyle(computed, options?.style)),
-    verifyText: !needsDOM && emojiText ? measureDOM : undefined,
-    measureExact: !needsDOM && emojiText ? measureDOM : undefined,
+    // Canvas selects; the DOM verifies what Canvas cannot see: emoji widths,
+    // and highlight spans, which can split shaping (WebKit paints them wider).
+    verifyText: needsDOM ? undefined : measureDOM,
+    measureExact: needsDOM ? undefined : measureDOM,
     dispose() {
       root?.remove();
     },

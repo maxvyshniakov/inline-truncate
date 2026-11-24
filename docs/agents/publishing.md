@@ -37,12 +37,19 @@
 - `bun run release:publish` outside Actions refuses and names that command.
 - npmjs.org trusts `release-npm.yml` once, the owner's step:
   `npm trust github inline-truncate --file release-npm.yml --repo maxvyshniakov/text-truncate`.
+- First publication of a new name: `npm trust` needs the package to exist (`npm help trust`: "Package must exist"),
+  and `inline-truncate` does not yet. Inline Measure was bootstrapped by the owner publishing a placeholder
+  `0.0.0-stage` from their machine (npmjs.org shows it a minute before 0.5.0); do the same, then `npm trust`, then
+  the workflow. Each is an outward step: ask the owner at that moment.
 - Data Grid adopts the release through its catalog dependency workflow, under the standing approval to release Data Grid
   when every check passes (maxvyshniakov/data-grid docs/CATALOG-DEPENDENCIES.md).
 
 ## After publish
 - `npm view inline-truncate version` names the new version; `git ls-remote --tags origin v<version>` shows
   the tag.
+- After the first `inline-truncate` release is live, with the owner's go-ahead (ticket #3):
+  `npm deprecate @maxvyshniakov/text-truncate "Renamed to inline-truncate"`; `npm view @maxvyshniakov/text-truncate
+  deprecated` then shows the message.
 - The Data Grid request only warns on failure (the workflow token cannot dispatch another repository's workflow); retry
   it locally with `bunx package-kit notify`.
 

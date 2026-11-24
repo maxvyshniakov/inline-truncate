@@ -20,8 +20,10 @@ npmjs.org as `inline-truncate`, with public access.
    version in `package.json`. `bun run verify -- --release` fails otherwise; CI
    runs it, and so does the pre-push hook for main.
 3. Choose the level with semver. Before `1.0.0`:
-   - **minor** for a breaking change (start its entry with `Breaking:`, or put
-     it under `### Breaking`) and for a new entrypoint or broad default-behavior
+   - **minor** for a breaking change (put it under `### Breaking`, start it with
+     `Breaking:`, and give it an indented `No transition period: <why>` line, which
+     `bun run check:changelogs` requires there; a `Breaking:` entry under another
+     heading escapes that check) and for a new entrypoint or broad default-behavior
      change;
    - **patch** for fixes and compatible additions.
 

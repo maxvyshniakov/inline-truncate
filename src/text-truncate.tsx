@@ -4,7 +4,7 @@ import React from "react";
 import { hasEmoji } from "./measurement.js";
 import { CutHighlightedText, HighlightedMatchText } from "./highlight.js";
 import type { TextTruncateMode } from "./truncation.js";
-import { cancelJob, fullTextState, scheduleJob, type MeasureJob } from "./scheduler.js";
+import { cancelJob, fullTextState, invalidateMeasurements, scheduleJob, type MeasureJob } from "./scheduler.js";
 import { observeResize, subscribeFonts } from "./observers.js";
 import { cn } from "cn";
 
@@ -111,26 +111,18 @@ export const TextTruncate = React.memo(function TextTruncate({
       verifiedWidths: new Map(),
       verifiedUnits: 0,
       setTruncation,
-      invalidate() {
-        job.completedWidth = undefined;
-        job.lastStyle = undefined;
-        job.widths.clear();
-        job.cachedUnits = 0;
-        job.verifiedWidths.clear();
-        job.verifiedUnits = 0;
-      },
     };
 
     const schedule = () => scheduleJob(job);
     const onFontsChanged = () => {
-      job.invalidate();
+      invalidateMeasurements(job, "style");
       scheduleJob(job, true);
     };
 
     let resolutionQuery: MediaQueryList | undefined;
     const resolutionChanged = () => {
       if (!job.active) return;
-      job.invalidate();
+      invalidateMeasurements(job, "style");
       scheduleJob(job, true);
       bindResolution();
     };
@@ -193,30 +185,21 @@ export const TextTruncate = React.memo(function TextTruncate({
 
     if (textChanged) {
       job.text = text;
-      job.indexedText = undefined;
       job.emojiText = hasEmoji(text);
-      job.completedWidth = undefined;
-      job.widths.clear();
-      job.cachedUnits = 0;
-      job.verifiedWidths.clear();
-      job.verifiedUnits = 0;
+      invalidateMeasurements(job, "text");
       syncResolution(job.emojiText);
     }
     if (classChanged) {
       job.className = className;
-      job.invalidate();
+      invalidateMeasurements(job, "style");
     }
     if (modeChanged) {
       job.mode = mode;
-      job.completedWidth = undefined;
+      invalidateMeasurements(job, "mode");
     }
     if (queryChanged) {
       job.query = query;
-      if (job.emojiText || job.lastNeedsDOM) {
-        job.completedWidth = undefined;
-        job.verifiedWidths.clear();
-        job.verifiedUnits = 0;
-      }
+      invalidateMeasurements(job, "query");
     }
 
     scheduleJob(job);
@@ -225,9 +208,10 @@ export const TextTruncate = React.memo(function TextTruncate({
 
   const renderedText = resolvedStrategy === "measure" ? truncation.text : text;
   const isTruncated = resolvedStrategy === "measure" && truncation.text !== text;
-  // The search hands over where it cut. Until it has run for a new `text`, the
-  // previous visible string stays up and its cut does not apply.
-  const cut = isTruncated && truncation.source === text ? truncation.cut : null;
+  // The search hands over where it cut and which text it cut. Until it has run
+  // for a new `text`, the previous visible string stays up, so its highlight
+  // comes from the text and cut it was made of.
+  const cut = isTruncated ? truncation.cut : null;
   const trimmedQuery = query?.trim();
   // Recreate decorated text when it changes. Reusing positioned inline spans
   // can retain stale shaping across a resize even with identical font styles.
@@ -236,7 +220,7 @@ export const TextTruncate = React.memo(function TextTruncate({
     cut ? (
       <CutHighlightedText
         key={`${query!.length}:${query}:${renderedText}`}
-        text={text}
+        text={truncation.source}
         cut={cut}
         query={query}
       />

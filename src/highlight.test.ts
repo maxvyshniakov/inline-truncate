@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { indexTextGraphemes } from "./graphemes.js";
+import { indexTextGraphemes, splitTextGraphemes } from "./graphemes.js";
 import { highlightedTextParts, mapMatchesToCut } from "./highlight.js";
 import { TRUNCATION_MARKER, truncatePrepared, truncateText, type TextTruncateMode, type TruncationCut } from "./truncation.js";
 
@@ -176,6 +176,81 @@ describe("the cut the search measures", () => {
     for (const [value, cut] of candidates) {
       expect(cut).toBeDefined();
       expect(text.slice(0, cut!.prefixEnd) + M + text.slice(cut!.suffixStart)).toBe(value);
+    }
+  });
+});
+
+// The matching rule: case-insensitive by the Unicode lowercase mapping
+// (locale-independent, not case folding), offsets always in the original
+// string, and a match never splits a grapheme cluster or a character's
+// lowercase form.
+describe("the matching rule", () => {
+  const matched = (text: string, query: string) =>
+    highlightedTextParts(text, query).filter((part) => part.matched).map((part) => [part.start, part.text]);
+  const boundaries = (text: string) => new Set([0, ...splitTextGraphemes(text).map((_, i, all) => all.slice(0, i + 1).join("").length)]);
+  const splitsNothing = (text: string, query: string) => {
+    const edges = boundaries(text);
+    for (const part of highlightedTextParts(text, query)) {
+      expect(edges.has(part.start) && edges.has(part.start + part.text.length)).toBe(true);
+    }
+  };
+
+  it("keeps offsets in the original string when lowercasing changes the length (İ)", () => {
+    expect(matched("İstanbul-design.pdf", "design")).toEqual([[9, "design"]]);
+    expect(matched("İİİ.pdf", "pdf")).toEqual([[4, "pdf"]]);
+    expect(matched("İZMİR.pdf", "İzmİr")).toEqual([[0, "İZMİR"]]);
+    // Lowercase mapping, not Turkish folding: a dotless query "izmir" is not İZMİR.
+    expect(matched("İZMİR.pdf", "izmir")).toEqual([]);
+    expect(draw("İZMİR-report-final.pdf", "report", "İZMİR-report", ".pdf")).toMatchObject({
+      drawn: "İZMİR-[report]....pdf",
+      markerMatched: false,
+    });
+  });
+
+  it("does not match part of a character's lowercase form", () => {
+    // İ lowercases to i + U+0307; "i" alone is not İ.
+    expect(matched("İZMİR", "i")).toEqual([]);
+  });
+
+  it("lowercases without case folding (ß)", () => {
+    expect(matched("Straße.pdf", "STRAẞE")).toEqual([[0, "Straße"]]);
+    expect(matched("Straße.pdf", "strasse")).toEqual([]);
+  });
+
+  it("never splits a grapheme cluster", () => {
+    // A base letter carrying a combining mark is another character.
+    expect(matched("créme", "e")).toEqual([[5, "e"]]);
+    expect(matched("créme", "é")).toEqual([[2, "é"]]);
+    // A person inside a family, half of each of two flags, a skin tone's base.
+    expect(matched("family-👨‍👩‍👧-notes.txt", "👩")).toEqual([]);
+    expect(matched("family-👨‍👩‍👧-notes.txt", "👨‍👩‍👧")).toEqual([[7, "👨‍👩‍👧"]]);
+    expect(matched("flag-🇺🇦🇵🇱-list.csv", "🇦🇵")).toEqual([]);
+    expect(matched("ok-👍🏽.png", "👍")).toEqual([]);
+    for (const [text, query] of [["family-👨‍👩‍👧-notes.txt", "👩"], ["créme", "e"], ["flag-🇺🇦🇵🇱-list.csv", "🇦🇵"], ["a\r\nb", "\r"]]) {
+      splitsNothing(text, query);
+    }
+    const family = "family-👨‍👩‍👧-notes.txt";
+    expect(mapMatchesToCut(family, "👩", { prefixEnd: 7, suffixStart: family.indexOf("-notes") }).markerMatched).toBe(false);
+  });
+
+  it("matches the query literally, not as a pattern", () => {
+    expect(matched("a.b*(c)[d]+.pdf", "(c)[d]+")).toEqual([[4, "(c)[d]+"]]);
+    expect(matched("abc", ".*")).toEqual([]);
+    expect(matched("a$b^c", "$B^")).toEqual([[1, "$b^"]]);
+  });
+});
+
+describe("every cut hides at least one grapheme", () => {
+  // A measurer need not be monotonic (shaping can make a longer string
+  // narrower), so the search may not lean on it to keep a cut non-empty.
+  for (const mode of ["end", "middle"] as const) it(`in ${mode} mode`, () => {
+    for (let length = 2; length <= 40; length++) for (let maxWidth = 4; maxWidth <= length + 2; maxWidth++) {
+      const text = "abcdefghijklmnopqrstuvwxyz0123456789ABCD".slice(0, length);
+      // The text alone overflows; the text with the marker reads as fitting.
+      const measureText = (value: string) => (value === text ? maxWidth + 1 : value === `${text}${M}` ? 1 : value.length);
+      const { cut } = truncatePrepared({ text, maxWidth, mode, measureText }, () => indexTextGraphemes(text));
+      expect(cut, `${length}/${maxWidth}`).not.toBeNull();
+      expect(cut!.suffixStart - cut!.prefixEnd, `${length}/${maxWidth}`).toBeGreaterThan(0);
     }
   });
 });

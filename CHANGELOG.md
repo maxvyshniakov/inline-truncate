@@ -4,23 +4,51 @@ Versions and release rules: [docs/VERSIONING.md](docs/VERSIONING.md).
 
 ## Unreleased
 
-### Changed
+### Breaking
 
 - Breaking: the package is renamed from `@maxvyshniakov/text-truncate` to the unscoped
   `inline-truncate` on npmjs.org, next to `inline-measure`. Replace the old name in
-  `package.json`, imports and the Tailwind `@source` path; the API, the `--text-truncate-highlight-*`
-  CSS variables and the behavior are unchanged. The scoped package stays installable but
-  receives no further releases.
+  `package.json`, imports and the Tailwind `@source` path. The API and the `--text-truncate-highlight-*`
+  CSS variables keep their names; the behavior changes below come with the new name. The scoped package
+  stays installable at 0.4.1, receives no further releases, and is marked deprecated on npmjs.org
+  ("Renamed to inline-truncate") once the new name is published.
+  No transition period: consumers that take the `maxvyshniakov` scope from GitHub Packages cannot install the scoped
+  name from npmjs.org at all, so releasing it under both names would not reach them.
+
+### Changed
 - Measured truncation now exposes the full text to assistive technology. While the string is cut, the visible text sits
   in an `aria-hidden` span (`data-truncate-visible`) and the full text in a visually hidden span that takes no
-  selection or pointer events (`data-truncate-full-text`); text that fits and the CSS strategy add no nodes. The
-  root's `textContent` then holds both strings, so read `data-truncate-original` for the full text, and in-page find also matches the hidden copy.
+  selection or pointer events (`data-truncate-full-text`); text that fits and the CSS strategy add no nodes. While
+  cut, the root's `textContent` holds both strings back to back and its `innerText` both strings (on two lines in
+  Chromium and Firefox), so tests that read a truncated cell's text, such as `toHaveTextContent` or an exact
+  `getByText`, see the full text after the visible one: read `data-truncate-original` for the full text and
+  `[data-truncate-visible]` for the visible string. In-page find also matches the hidden copy.
 - `query` is matched against the full text instead of the visible cut string. A match the cut hides highlights the
   truncation marker (`data-slot="highlighted-match"` with `data-truncate-marker`), a match straddling the cut
   highlights its visible end and the marker, and text that exists only where the visible ends join no longer matches.
-  Text that fits and the CSS strategy highlight as before. Where the cut is measured in the DOM (text with emoji, or
-  styles canvas cannot express), it is measured as drawn, highlighted marker included, so with the marker or a
-  straddling match highlighted it can keep one grapheme less than before; otherwise the measured cut does not change.
+  Text that fits and the CSS strategy highlight as before. A highlighted cut is measured as drawn (see Fixed), so with
+  a match or the marker highlighted it can keep one grapheme less than before.
+- The package entry no longer starts with `"use client"`; only the `TextTruncate` module does. React Server
+  Components can now call `truncateText` and `splitTextGraphemes` and render `HighlightedMatchText` from
+  `inline-truncate`, and `TextTruncate` stays a client component.
+- The package declares `"sideEffects": false`, so a bundle that imports only `truncateText` or `splitTextGraphemes`
+  leaves out the component, Inline Measure and React: with Vite 8, minified, about 62 kB becomes 5 kB and 0.5 kB.
+
+### Removed
+
+- The package no longer ships source maps (`dist/*.js.map`, `dist/*.d.ts.map`). They named `src/` files the package
+  does not include, so they never resolved; the archive shrinks from about 34 kB to 22 kB.
+
+### Fixed
+
+- In WebKit, measured text with a highlighted match could paint up to 1.4px wider than its box and lose the end of
+  its last glyph: Canvas measured the plain string, and WebKit shapes each side of a highlight span apart. When the
+  query matches, the final string is now verified in the DOM as drawn, as emoji text already was. With a query, that
+  is one cached DOM measurement per component and update.
+- `query` matching keeps its place in the original text when lowercasing changes a character's length (`İ`
+  lowercases to two code units, which shifted every later highlight), and a match no longer splits a user-perceived
+  character: `👩` does not match inside `👨‍👩‍👧`, nor `e` the base of `e` plus a combining accent. Matching is the
+  Unicode lowercase mapping in every locale, without case folding, as the README states.
 
 ## 0.4.1 - 2026-11-23
 
