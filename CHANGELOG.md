@@ -4,6 +4,11 @@ Versions and release rules: [docs/VERSIONING.md](docs/VERSIONING.md).
 
 ## Unreleased
 
+### Fixed
+
+- Correction to 0.5.0: the old scoped `@maxvyshniakov/text-truncate` is not deprecated on npmjs.org;
+  it never existed there and lives only in the private GitHub Packages registry, at 0.4.1.
+
 ## 0.5.1 - 2026-11-24
 
 ### Changed

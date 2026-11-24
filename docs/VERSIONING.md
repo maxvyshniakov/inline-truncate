@@ -65,6 +65,10 @@ publisher as "Pending validation" until one publication from `release-npm.yml`. 
 npmjs.org shows is its own placeholder for a trusted publisher set up on the website for a new name;
 publishing that version is refused.
 
+The old name, `@maxvyshniakov/text-truncate` (up to 0.4.1), lives only in the private GitHub Packages
+registry and receives no further releases. It was never on npmjs.org, and GitHub Packages has no
+deprecation, so it carries no deprecation notice.
+
 After publication and tag creation, the same command requests Data Grid's
 **Update catalog dependencies** workflow. Its catalog and package dependencies
 advance together only after Data Grid tests and every Storybook render/axe check
