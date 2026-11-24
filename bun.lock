@@ -6,7 +6,7 @@
       "name": "inline-truncate",
       "dependencies": {
         "cn": "^0.4.0",
-        "inline-measure": "^0.5.0",
+        "inline-measure": "^0.5.1",
       },
       "devDependencies": {
         "@maxvyshniakov/package-kit": "1.0.1",
@@ -242,7 +242,7 @@
 
     "indent-string": ["indent-string@4.0.0", "", {}, "sha512-EdDDZu4A2OyIK7Lr/2zG+w5jmbuk1DVBnEwREQvBzspBJkCEbRa8GxU1lghYcaGJCnRWibjDXlq779X1/y5xwg=="],
 
-    "inline-measure": ["inline-measure@0.5.0", "", { "dependencies": { "linebreak": "^1.1.0" } }, "sha512-LF7dJhL/lW9AuCDcCIgqw0vjAIXtIEtH69/Hvwvb0uP8AUj4tUxObjOvkDNQR8aFVjusjFnHEUkaRNmZZKnPnA=="],
+    "inline-measure": ["inline-measure@0.5.1", "", { "dependencies": { "linebreak": "^1.1.0" } }, "sha512-Y490mHUER/bIcrqDcOrUomXbtwIQ36EeyMULmIbdMzvS48njaLutQ9K2FyWDOJR5DcHlYyZDnGGHKE7kzZH24Q=="],
 
     "js-tokens": ["js-tokens@4.0.0", "", {}, "sha512-RdJUflcE3cUzKiMqQgsCu06FPu9UdIJO0beYbPhHN4k6apgJtifcoCtT9bcxOpYBtpD2kCM6Sbzg4CausW/PKQ=="],
 

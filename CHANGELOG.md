@@ -4,6 +4,10 @@ Versions and release rules: [docs/VERSIONING.md](docs/VERSIONING.md).
 
 ## Unreleased
 
+### Changed
+
+- Depends on `inline-measure` `^0.5.1` (was `^0.5.0`); 0.5.1 changes only its release tooling.
+
 ### Fixed
 
 - Correction to 0.5.0: the old scoped `@maxvyshniakov/text-truncate` is not deprecated on npmjs.org;
