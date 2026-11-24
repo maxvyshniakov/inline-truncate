@@ -12,14 +12,14 @@
 - The hook holds one slotfather slot for the installs and every verification.
 
 ## Push
-- `dev`: `sha=$(git rev-parse HEAD)`, then `lanefather promote "$sha"`. Push a SHA, never `HEAD` or a branch by name.
-- `dev` and `main`: `lanefather promote "$sha" --ship`.
+- `dev`: `lanefather promote <sha>`, with `<sha>` from `git rev-parse HEAD`. Push a SHA, never `HEAD` or a branch by name.
+- `dev` and `main`: `lanefather promote <sha> --ship`.
 - promote takes the landing lock that `.githooks/reference-transaction` requires of agent sessions, pushes the SHA and
   fast-forwards the local branches. Never use a bare `git push` to `dev` or `main`, and never force-push.
 - Landing a task branch: rebase onto `origin/dev`, push the tip.
 - Standing permission (owner, 2026-11-24): an orchestrator pushes a green batch with every review resolved to `dev`
-  without asking, and reports it in one line. `main`, a release and a publication to npmjs.org each
-  need the owner's command; the release guard (`MASTACK_RELEASE_OK`) refuses agents without it.
+  without asking, and reports it in one line. `main`, a release and a publication to npmjs.org
+  follow the standing permission under Release.
 
 ## CI
 - `.github/workflows/check.yml` ("Library checks") runs on `main` pushes, pull requests and `workflow_dispatch`, on a
@@ -32,6 +32,7 @@
   finished when Library checks has a final result on it.
 
 ## Release
+- Standing permission (owner, 2026-11-24): agents release and publish a patch or minor of the package in `docs/agents/hooks.json` `release_standing` without asking, once the release gate passed on the commit and every review is resolved, with the plain commands below, each alone, from the repository root. A major or breaking change, a first publication, and visibility, access or Pages changes stay the owner's command each time. The guard reads the opt-in from `main`, so it applies from the first release after this file lands there.
 - Rules: [docs/VERSIONING.md](../VERSIONING.md). Cut right before pushing to `main`: `bun run release -- <patch|minor|major>`.
 - Publish from GitHub Actions, after the release commit is on `origin/main`:
   `gh workflow run release-npm.yml --ref main`. Its `check` job runs `verify --release`; its `publish` job (the only
