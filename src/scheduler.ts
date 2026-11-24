@@ -98,9 +98,10 @@ export type MeasurementChange = "text" | "style" | "query" | "mode";
  * - text: every width and the grapheme index, all measured on the old text.
  * - style (class, computed typography, fonts, device pixel ratio): every
  *   width and the captured style.
- * - query: the DOM probe draws highlights, so DOM-drawn widths go: verified
- *   widths always, primary widths when the last measurement ran in the DOM.
- *   Canvas widths ignore markup and stay; with none dropped the cut stands.
+ * - query: the DOM probe draws highlights and verifies any highlighted cut,
+ *   so the cut is redone and DOM-drawn widths go: verified widths always,
+ *   primary widths when the last measurement ran in the DOM. Canvas widths
+ *   ignore markup and stay.
  * - mode: the cut only; a width does not depend on the mode.
  * The available width needs no rule: widths do not depend on it, and the cut
  * is redone whenever it differs from `completedWidth`.
@@ -111,7 +112,6 @@ export function invalidateMeasurements(job: MeasureJob, change: MeasurementChang
     return;
   }
   const dropsPrimary = change !== "query" || job.lastNeedsDOM;
-  if (change === "query" && !dropsPrimary && !job.emojiText) return;
   job.completedWidth = undefined;
   job.verifiedWidths.clear();
   job.verifiedUnits = 0;

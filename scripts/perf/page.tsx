@@ -187,6 +187,18 @@ async function correctness() {
     await settle();
     if (!componentFits(1)) failures.push(`highlighted-cut/${query}/${width}`);
   }
+  // Plain text on the Canvas path: a highlight span can paint wider than Canvas
+  // measured (WebKit). The listed widths clipped by 0.5-1.4px before the final
+  // string was verified in the DOM.
+  const clipped = [106,133,176,191,197,217,236,244,249,253,261,265,268,273,285,293,296,311,314,316,320,328,333,339,349,364,377];
+  for (const mode of ["middle", "end"] as const) for (const query of ["oak", "lookbook", "spring"]) {
+    for (const width of [...Array.from({length:31},(_,i)=>120+i*8),...clipped]) {
+      fixture.style.cssText = `width:${width}px;font:14px/20px TruncateHarnessInter`;
+      flushSync(() => root.render(<TextTruncate key={`plain-${mode}-${query}-${width}`} mode={mode} strategy="measure" query={query} text="oak-collection-spring-lookbook-2026-final-print-oak.pdf" />));
+      await settle();
+      if (!componentFits(1)) failures.push(`highlighted-plain/${mode}/${query}/${width}`);
+    }
+  }
   // A query change where the cut is measured in the DOM (a style canvas cannot
   // express): the new query's highlight must be measured, not the old one's.
   for (const width of [...Array.from({length:61},(_,i)=>120+i*4),295]) {

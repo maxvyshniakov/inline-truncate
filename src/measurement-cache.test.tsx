@@ -177,3 +177,33 @@ describe("cached widths are keyed so no two candidates share one", () => {
     expect(widthCacheKey(shown(left), left, false)).toBe(widthCacheKey(shown(right), right, false));
   });
 });
+
+// Canvas measures the plain string; a highlight span can paint wider (WebKit
+// splits shaping at it). So with a match, the final string is verified in the
+// DOM, as emoji text is.
+describe("highlighted text on the Canvas path", () => {
+  for (const [name, query] of [["a visible match", "oak"], ["a match in the cut", "lookbook"], ["a straddling match", "spring"]] as const) {
+    for (const mode of ["middle", "end"] as const) it(`fits as drawn with ${name} (${mode})`, () => {
+      const view = scene(24);
+      const { container } = render(<TextTruncate mode={mode} strategy="measure" text={TEXT} query={query} />);
+      view.flush();
+      const root = container.querySelector<HTMLElement>("[data-truncate]")!;
+      expect(drawnWidth(visible(root))).toBeLessThanOrEqual(view.width);
+    });
+  }
+
+  it("fits as drawn when the whole text fits on Canvas but not with its highlight", () => {
+    const view = scene(TEXT.length + 1);
+    const { container } = render(<TextTruncate mode="middle" text={TEXT} query="lookbook" />);
+    view.flush();
+    const root = container.querySelector<HTMLElement>("[data-truncate]")!;
+    expect(drawnWidth(visible(root))).toBeLessThanOrEqual(view.width);
+  });
+
+  it("measures nothing in the DOM without a match", () => {
+    const view = scene(24);
+    render(<TextTruncate mode="middle" text={TEXT} query="walnut" />);
+    view.flush();
+    expect(view.reads).not.toHaveBeenCalled();
+  });
+});

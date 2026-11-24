@@ -26,9 +26,8 @@ Versions and release rules: [docs/VERSIONING.md](docs/VERSIONING.md).
 - `query` is matched against the full text instead of the visible cut string. A match the cut hides highlights the
   truncation marker (`data-slot="highlighted-match"` with `data-truncate-marker`), a match straddling the cut
   highlights its visible end and the marker, and text that exists only where the visible ends join no longer matches.
-  Text that fits and the CSS strategy highlight as before. Where the cut is measured in the DOM (text with emoji, or
-  styles canvas cannot express), it is measured as drawn, highlighted marker included, so with the marker or a
-  straddling match highlighted it can keep one grapheme less than before; otherwise the measured cut does not change.
+  Text that fits and the CSS strategy highlight as before. A highlighted cut is measured as drawn (see Fixed), so with
+  a match or the marker highlighted it can keep one grapheme less than before.
 - The package entry no longer starts with `"use client"`; only the `TextTruncate` module does. React Server
   Components can now call `truncateText` and `splitTextGraphemes` and render `HighlightedMatchText` from
   `inline-truncate`, and `TextTruncate` stays a client component.
@@ -42,6 +41,10 @@ Versions and release rules: [docs/VERSIONING.md](docs/VERSIONING.md).
 
 ### Fixed
 
+- In WebKit, measured text with a highlighted match could paint up to 1.4px wider than its box and lose the end of
+  its last glyph: Canvas measured the plain string, and WebKit shapes each side of a highlight span apart. When the
+  query matches, the final string is now verified in the DOM as drawn, as emoji text already was. With a query, that
+  is one cached DOM measurement per component and update.
 - `query` matching keeps its place in the original text when lowercasing changes a character's length (`İ`
   lowercases to two code units, which shifted every later highlight), and a match no longer splits a user-perceived
   character: `👩` does not match inside `👨‍👩‍👧`, nor `e` the base of `e` plus a combining accent. Matching is the

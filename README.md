@@ -35,11 +35,12 @@ Matches are found once, in the full text; the cut string only renders them. A
 match that straddles the cut highlights its visible end and the marker, and the
 query never matches text that exists only where the two visible ends join. The
 highlighted marker is a `span` with `data-slot="highlighted-match"` and
-`data-truncate-marker`, styled like any match. Where the cut is measured in the
-DOM (text with emoji, or the styles listed below that Canvas cannot express), the
-probe draws the highlight as the component renders it, so a highlighted marker or
-a straddling match can make the cut one grapheme shorter. Elsewhere Canvas
-measures the plain string and the cut is the same with or without a query.
+`data-truncate-marker`, styled like any match. Highlight spans can paint wider
+than the plain string (WebKit shapes each side of a span apart), so when the query
+matches, the result is measured as drawn: a DOM probe renders the highlighted
+string the way the component does, after Canvas selects the cut or in place of
+Canvas for the styles listed below. A highlighted match or marker can therefore
+make the cut one grapheme shorter than without a query.
 
 Matching is case-insensitive by the Unicode lowercase mapping, the same in every
 locale and without case folding: `STRAẞE` matches `Straße` but `strasse` does not,
@@ -60,8 +61,8 @@ Highlight customization is intended for colors; metric-changing host styles such
 as extra padding need their own measurement policy. Middle truncation measures only the edges it
 visits. Each mounted measured component reuses segmented text and a bounded
 width cache across resizes, and invalidates widths after a class or font-load
-change. Emoji inputs select through Canvas first, then verify the complete final string
-with a cached DOM measurement. At most two corrections use the observed width
+change. Emoji inputs and text with a matching query select through Canvas first, then verify the complete final
+string with a cached DOM measurement. At most two corrections use the observed width
 discrepancy; a native predicate handles larger disagreements. CSS numeric
 features, variation settings, disabled optical sizing, word spacing and text
 transforms use a hidden DOM predicate when Canvas cannot express them. Emoji native widths are invalidated
