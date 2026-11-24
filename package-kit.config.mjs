@@ -9,15 +9,20 @@ const ENGINES = ["chromium", "firefox", "webkit"];
 // GiB a script's process tree peaks at (measured 2026-11-24: Firefox 3.8, the others under 1).
 const ENGINE_MEMORY = { chromium: 1, firefox: 4, webkit: 1 };
 // What the browser scripts read: a change elsewhere (docs) plans none of them.
-const BROWSER_INPUTS = ["src/**", "scripts/perf/**", "scripts/a11y/**", "package.json", "bun.lock"];
-const SCRIPTS = { browser: "check:browser:engine", a11y: "check:a11y:engine", pointer: "check:a11y:pointer" };
+const BROWSER_INPUTS = ["src/**", "scripts/perf/**", "scripts/a11y/**", "scripts/highlight/**", "package.json", "bun.lock"];
+const SCRIPTS = {
+  browser: "check:browser:engine",
+  a11y: "check:a11y:engine",
+  pointer: "check:a11y:pointer",
+  highlight: "check:highlight:engine",
+};
 
 export default {
   verify: {
     // `bun run verify:browser`, and package-kit's local release gate after
     // `verify --release`. Hosted CI (check.yml, release-npm.yml's check job) runs
     // plain verify, whose runner has no Firefox or WebKit installed.
-    // Nine independent steps, no `needs`: the first failure stops the run, and
+    // Twelve independent steps, no `needs`: the first failure stops the run, and
     // --keep-going reports every engine's. One slot runs them one at a time.
     browser: ENGINES.flatMap((engine) => Object.entries(SCRIPTS).map(([check, script]) => ({
       name: `${check} ${engine}`,

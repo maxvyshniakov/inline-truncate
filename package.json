@@ -25,7 +25,7 @@
     "check:changelogs": "package-kit check-changelogs",
     "check:kit": "package-kit check",
     "check:consumer": "package-kit packed-consumer",
-    "lint": "oxlint --config .oxlintrc.json --max-warnings=0 src scripts/perf scripts/a11y scripts/packed-consumer-probes.mjs package-kit.config.mjs",
+    "lint": "oxlint --config .oxlintrc.json --max-warnings=0 src scripts/perf scripts/a11y scripts/highlight scripts/packed-consumer-probes.mjs package-kit.config.mjs",
     "test": "node --test scripts/perf/*.test.mjs && vitest --config vitest.config.ts run",
     "typecheck": "tsc --noEmit -p tsconfig.build.json && tsc --noEmit -p tsconfig.test.json",
     "typecheck:fast": "tsc --noEmit -p tsconfig.build.json",
@@ -36,7 +36,8 @@
     "check:browser:engine": "node scripts/perf/run.mjs --check",
     "check:a11y:engine": "node scripts/a11y/check.mjs",
     "check:a11y:pointer": "node scripts/a11y/pointer.mjs",
-    "check:a11y": "package-kit heavy 1 node scripts/a11y/all.mjs"
+    "check:a11y": "package-kit heavy 1 node scripts/a11y/all.mjs",
+    "check:highlight:engine": "node scripts/highlight/check.mjs"
   },
   "dependencies": {
     "cn": "^0.5.2",

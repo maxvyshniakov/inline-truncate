@@ -18,8 +18,8 @@
 ## Browser and visual
 - No Storybook. Unit tests run in happy-dom.
 - `bun run verify:browser` (`package-kit verify --browser`): the browser suite in `package-kit.config.mjs`,
-  `verify.browser`. It runs the correctness check (`scripts/perf/run.mjs --check`), `scripts/a11y/check.mjs` and
-  `scripts/a11y/pointer.mjs` in Chromium, Firefox and WebKit, one script at a time under one slot. Each script has a
+  `verify.browser`. It runs the correctness check (`scripts/perf/run.mjs --check`), `scripts/a11y/check.mjs`,
+  `scripts/a11y/pointer.mjs` and `scripts/highlight/check.mjs` in Chromium, Firefox and WebKit, one script at a time under one slot. Each script has a
   hard timeout of 4 minutes, after which verify stops its whole process tree. package-kit's local release gate runs
   it after `verify --release`. Hosted CI does not, because its runner has no Firefox or WebKit. Run it before handing
   back any change under `src/` or `scripts/`: the plain gate does not run it.
@@ -27,6 +27,13 @@
   truncated cells (`scripts/a11y/pointer.mjs`), in Chromium, Firefox (the installed stable, over WebDriver BiDi)
   and WebKit, one engine at a time, behind one heavy slot, each script stopped with its process group after the same
   4 minutes (`scripts/a11y/all.mjs`). Run it for changes to the rendered DOM. Reports land in `artifacts/a11y/`.
+- `scripts/highlight/check.mjs --browser=<engine>`: how a highlighted match meets the edge of the box, read from a
+  screenshot at device pixel ratio 2 (inline-truncate#8, data-grid#148). On "Lomboc boat bookcase" narrowed from
+  100 to 190px in end, middle and start-ellipsis layouts, and on "Sofas" in a fitted column, it fails when a match
+  paints past the box the text is cut to, a hidden or split match leaves the marker plain, a highlight is not drawn
+  in the highlight foreground or holds light text, or Data Grid's 1px decoration (emulated in
+  `scripts/highlight/page.html`, with the root's classes as Tailwind compiles them) loses its pixel or its radius
+  on one side. Reports and the screenshot land in `artifacts/highlight/`.
 
 ## Pins
 - `@maxvyshniakov/package-kit` exact (from npmjs.org): each commit's gate is the kit its lockfile records. Raise it

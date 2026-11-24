@@ -1,0 +1,18 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>TextTruncate highlight edges</title><style>
+@font-face{font-family:Harness;src:url("/scripts/perf/fonts/InterVariable.woff2")}
+/* Tailwind's preflight makes every box border-box; the root must not depend on it. */
+*,::before,::after{box-sizing:border-box}
+:root{--cell:#1e1e1e;--text:#f0f0f0;--match:#ffff00;--match-fg:#000000;--text-truncate-highlight-background:var(--match);--text-truncate-highlight-foreground:var(--match-fg)}
+body{margin:0;padding:8px 12px;background:var(--cell);color:var(--text);font:16px/24px Harness}
+/* A cell as Data Grid's fit box lays it out: a flex row, the root filling it. */
+.cell{display:flex;align-items:center;height:24px;margin:0 0 8px}
+/* The root's classes, as Tailwind compiles them (src/text-truncate.tsx). */
+.block{display:block}.w-full{width:100%}.min-w-0{min-width:0}.box-content{box-sizing:content-box}
+.px-px{padding-inline:1px}.-mx-px{margin-inline:-1px}.overflow-hidden{overflow:hidden}.whitespace-nowrap{white-space:nowrap}
+.truncate{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.\[direction\:rtl\]{direction:rtl}
+/* The package's own highlight class, as Tailwind compiles HIGHLIGHT_CLASS_NAME. */
+[data-slot="highlighted-match"]{position:relative;isolation:isolate;border-radius:2px;color:var(--text-truncate-highlight-foreground,currentColor)}
+[data-slot="highlighted-match"]::before{content:"";pointer-events:none;position:absolute;inset:0;z-index:-10;border-radius:2px;background:var(--text-truncate-highlight-background,#fde68a)}
+/* Data Grid's decoration (search-highlights.css): paint 1px beyond the glyphs each side. */
+[data-slot="highlighted-match"]{background-color:var(--match);color:var(--match-fg);box-decoration-break:clone;-webkit-box-decoration-break:clone;box-shadow:1px 0 var(--match),-1px 0 var(--match)}
+</style><div id="fixture"></div><script type="module" src="/scripts/highlight/page.tsx"></script></html>
