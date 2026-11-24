@@ -151,6 +151,9 @@ export const TextTruncate = React.memo(function TextTruncate({
     return () => {
       job.active = false;
       jobRef.current = null;
+      // Measuring stops: a held cut is not another strategy's result, so
+      // measuring again starts from the full text.
+      setTruncation((previous) => (previous.cut === null ? previous : fullTextState(previous.source)));
       cancelJob(job);
       unobserve();
       unsubscribe();

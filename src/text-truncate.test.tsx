@@ -91,6 +91,24 @@ describe("the device pixel ratio", () => {
 });
 
 describe("the truncated state", () => {
+  for (const [name, measured, css] of [
+    ["the CSS strategy", { strategy: "measure" as const, mode: "middle" as const }, { strategy: "css" as const, mode: "middle" as const }],
+    ["mode under strategy auto", { mode: "middle" as const }, { mode: "end" as const }],
+  ] as const) it(`drops a previous cut when ${name} took over in between`, () => {
+    const flush = queuedFrames(40);
+    const longer = "a-much-longer-file-name-than-fits-the-cell.pdf";
+    const { container, rerender } = render(<TextTruncate {...measured} text={longer} />);
+    flush();
+    const root = container.querySelector<HTMLElement>("[data-truncate]")!;
+    expect(root.dataset.truncateState).toBe("truncated");
+    rerender(<TextTruncate {...css} text="short.pdf" />);
+    flush();
+    rerender(<TextTruncate {...measured} text="short.pdf" />);
+    expect(root.dataset.truncateState).toBeUndefined();
+    expect(root.querySelector("[data-truncate-full-text]")).toBeNull();
+    expect(root.textContent).toBe("short.pdf");
+  });
+
   it("is not claimed for a result that fit while a new text waits for its measurement", () => {
     const flush = queuedFrames(40);
     const { container, rerender } = render(<TextTruncate mode="middle" text="short.pdf" />);
@@ -121,9 +139,6 @@ describe("the truncated state", () => {
 });
 
 describe("highlight spans of a cut", () => {
-  // Positioned inline spans can keep stale shaping when React reuses them, so
-  // a different cut or source recreates them even if the visible string is
-  // the same.
   it("are recreated when a new text keeps the same visible string", () => {
     const flush = queuedFrames(10);
     const { container, rerender } = render(<TextTruncate mode="middle" text="Quarterly-design-review.pdf" query="design" />);
