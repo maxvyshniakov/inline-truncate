@@ -17,6 +17,9 @@ Versions and release rules: [docs/VERSIONING.md](docs/VERSIONING.md).
   `K` (U+212A) finds `k` and `K`. Every such match was dropped.
 - Text with a matching `query` is measured again when the device pixel ratio changes, as emoji text already was:
   its final width is verified in the DOM, and moving the window to another display could keep a cut that no longer fit.
+- After a text change, until the next frame measures it, a previous result that fit no longer counts as truncated:
+  for that frame the root set `data-truncate-state="truncated"` and rendered the hidden full-text copy although
+  nothing was cut, so hosts reading the state (tooltips) saw a false truncation. It now shows the new text whole.
 
 ## 0.5.0 - 2026-11-24
 

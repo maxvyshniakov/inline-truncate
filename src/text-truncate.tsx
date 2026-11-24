@@ -210,12 +210,13 @@ export const TextTruncate = React.memo(function TextTruncate({
     return undefined;
   }, [className, mode, query, resolvedStrategy, text]);
 
-  const renderedText = resolvedStrategy === "measure" ? truncation.text : text;
-  const isTruncated = resolvedStrategy === "measure" && truncation.text !== text;
-  // The search hands over where it cut and which text it cut. Until it has run
-  // for a new `text`, the previous visible string stays up, so its highlight
-  // comes from the text and cut it was made of.
-  const cut = isTruncated ? truncation.cut : null;
+  // The search hands over where it cut and which text it cut. Truncated means
+  // a cut is shown. Until the search has run for a new `text`, a previous cut
+  // stays up, and its highlight comes from the text and cut it was made of; a
+  // previous result that fit is not a cut, so the current text shows whole.
+  const cut = resolvedStrategy === "measure" ? truncation.cut : null;
+  const isTruncated = cut !== null;
+  const renderedText = isTruncated ? truncation.text : text;
   const trimmedQuery = query?.trim();
   // Recreate decorated text when it changes. Reusing positioned inline spans
   // can retain stale shaping across a resize even with identical font styles.

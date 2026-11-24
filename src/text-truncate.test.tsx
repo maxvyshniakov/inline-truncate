@@ -89,3 +89,33 @@ describe("the device pixel ratio", () => {
     expect(dpr.live()).toHaveLength(0);
   });
 });
+
+describe("the truncated state", () => {
+  it("is not claimed for a result that fit while a new text waits for its measurement", () => {
+    const flush = queuedFrames(40);
+    const { container, rerender } = render(<TextTruncate mode="middle" text="short.pdf" />);
+    flush();
+    const root = container.querySelector<HTMLElement>("[data-truncate]")!;
+    expect(root.dataset.truncateState).toBeUndefined();
+    const longer = "a-much-longer-file-name-than-fits-the-cell.pdf";
+    rerender(<TextTruncate mode="middle" text={longer} />);
+    expect(root.dataset.truncateState).toBeUndefined();
+    expect(root.querySelector("[data-truncate-full-text]")).toBeNull();
+    expect(root.textContent).toBe(longer);
+    flush();
+    expect(root.dataset.truncateState).toBe("truncated");
+  });
+
+  it("is not claimed after switching from the CSS strategy to measuring a new text", () => {
+    const flush = queuedFrames(40);
+    const { container, rerender } = render(<TextTruncate mode="end" strategy="css" text="short.pdf" />);
+    flush();
+    const longer = "a-much-longer-file-name-than-fits-the-cell.pdf";
+    rerender(<TextTruncate mode="end" strategy="measure" text={longer} />);
+    const root = container.querySelector<HTMLElement>("[data-truncate]")!;
+    expect(root.dataset.truncateState).toBeUndefined();
+    expect(root.querySelector("[data-truncate-full-text]")).toBeNull();
+    flush();
+    expect(root.dataset.truncateState).toBe("truncated");
+  });
+});
