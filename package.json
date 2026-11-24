@@ -2,6 +2,7 @@
   "name": "inline-truncate",
   "version": "0.4.1",
   "type": "module",
+  "sideEffects": false,
   "packageManager": "bun@1.4.4",
   "description": "React text truncation and search highlighting, measured with Inline Measure.",
   "files": [

@@ -37,3 +37,36 @@ export async function publicEntry({ consumerDir, run, ok, fail }) {
     else fail(`dist/${file} ${wanted ? 'lacks "use client"' : 'starts with "use client", which makes every export a client reference'}`);
   }
 }
+
+// Code only the component pulls in: its DOM attributes, Inline Measure's DOM
+// probe and the class merger.
+const COMPONENT_MARKERS = ["data-truncate-full-text", "createInlineMeasurementRoot", "useLayoutEffect"];
+
+/** Importing only a pure function bundles none of the component. */
+export async function pureImportsBundle({ consumerDir, run, ok, fail, writeFile }) {
+  console.log("\nPure imports bundle");
+  const entries = {
+    "truncate-only": 'import { truncateText } from "inline-truncate";\nconsole.log(truncateText({ text: "report.pdf", maxWidth: 5, mode: "end", measureText: (value) => value.length }).text);\n',
+    "graphemes-only": 'import { splitTextGraphemes } from "inline-truncate";\nconsole.log(splitTextGraphemes("a👍🏽b"));\n',
+  };
+  for (const [name, source] of Object.entries(entries)) writeFile(path.join(consumerDir, `${name}.js`), source);
+  writeFile(path.join(consumerDir, "bundle.mjs"), `import { build } from "vite";
+const sizes = {};
+for (const name of ${JSON.stringify(Object.keys(entries))}) {
+  const result = await build({ configFile: false, logLevel: "silent", build: { write: false, minify: true, lib: { entry: name + ".js", formats: ["es"], fileName: name }, rollupOptions: { external: ["react", "react-dom", /^react\\//] } } });
+  const code = [result].flat().flatMap(output => output.output).filter(chunk => chunk.type === "chunk").map(chunk => chunk.code).join("\\n");
+  sizes[name] = { bytes: Buffer.byteLength(code), markers: ${JSON.stringify(COMPONENT_MARKERS)}.filter(marker => code.includes(marker)), react: /from\\s*["']react/.test(code) };
+}
+console.log(JSON.stringify(sizes));
+`);
+  const result = run("node", ["bundle.mjs"], { cwd: consumerDir });
+  if (result.status !== 0) {
+    fail(`vite build of pure imports: ${result.stderr.trim().split("\n").filter(Boolean).slice(-3).join(" ")}`);
+    return;
+  }
+  const sizes = JSON.parse(result.stdout.trim().split("\n").at(-1));
+  for (const [name, { bytes, markers, react }] of Object.entries(sizes)) {
+    if (!markers.length && !react) ok(`${name}: ${bytes} bytes, no component code`);
+    else fail(`${name}: ${bytes} bytes, pulls the component (${[...markers, ...(react ? ["react"] : [])].join(", ")})`);
+  }
+}

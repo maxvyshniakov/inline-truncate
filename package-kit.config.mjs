@@ -1,6 +1,6 @@
 // The gate (bun run verify), the pre-push hook, release and publish:
 // @maxvyshniakov/package-kit (README.md there).
-import { publicEntry } from "./scripts/packed-consumer-probes.mjs";
+import { publicEntry, pureImportsBundle } from "./scripts/packed-consumer-probes.mjs";
 
 export default {
   verify: {
@@ -15,7 +15,9 @@ export default {
     ],
   },
   packedConsumer: {
-    probes: [publicEntry],
+    // The bundler for the pure-imports probe, at its devDependencies pin.
+    dependencies: ["vite"],
+    probes: [publicEntry, pureImportsBundle],
   },
   publish: {
     // npmjs.org with trusted publishing, from .github/workflows/release-npm.yml.
