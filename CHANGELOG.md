@@ -4,6 +4,12 @@ Versions and release rules: [docs/VERSIONING.md](docs/VERSIONING.md).
 
 ## Unreleased
 
+### Fixed
+
+- Highlighted `<TextTruncate>` instances now share a single `window.matchMedia` device-pixel-ratio listener and reuse
+  the measurement session's cached match ranges instead of creating a listener and running an uncached match scan per
+  instance (inline-truncate#9).
+
 ## 0.6.0 - 2026-11-24
 
 ### Changed

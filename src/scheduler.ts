@@ -1,4 +1,5 @@
 import type React from "react";
+import { findMatchRanges, type MatchRange } from "./highlight.js";
 import {
   createCanvasMeasurerFromStyle,
   createMeasurementSession,
@@ -64,6 +65,30 @@ interface MeasureWorkItem {
   style: StyleSnapshot | null;
 }
 
+export interface WidthCache {
+  entries: Map<string, number>;
+  units: number;
+}
+
+export function createWidthCache(): WidthCache {
+  return { entries: new Map(), units: 0 };
+}
+
+function clearWidthCache(cache: WidthCache) {
+  cache.entries.clear();
+  cache.units = 0;
+}
+
+function setCachedWidth(cache: WidthCache, key: string, unitLength: number, width: number) {
+  if (cache.entries.size >= MAX_CACHED_WIDTHS || cache.units + unitLength > MAX_CACHED_CODE_UNITS) {
+    clearWidthCache(cache);
+  }
+  if (unitLength <= MAX_CACHED_CODE_UNITS) {
+    cache.entries.set(key, width);
+    cache.units += unitLength;
+  }
+}
+
 export interface MeasureJob {
   active: boolean;
   initialized: boolean;
@@ -79,15 +104,15 @@ export interface MeasureJob {
   className: string | undefined;
   emojiText: boolean;
   indexedText: IndexedText | undefined;
+  matchRanges: readonly MatchRange[] | undefined;
   lastStyle: StyleSnapshot | undefined;
   lastNeedsDOM: boolean;
+  lastHasMatch: boolean;
   completedWidth: number | undefined;
-  widths: Map<string, number>;
-  cachedUnits: number;
-  verifiedWidths: Map<string, number>;
-  verifiedUnits: number;
+  widths: WidthCache;
+  verifiedWidths: WidthCache;
   setTruncation: React.Dispatch<React.SetStateAction<TruncationState>>;
-  /** Called when whether the style needs the DOM changes (lastNeedsDOM). */
+  /** Called when whether the style or highlight needs the DOM changes. */
   resolutionNeedChanged?: () => void;
 }
 
@@ -129,14 +154,13 @@ export function invalidateMeasurements(job: MeasureJob, change: MeasurementChang
   }
   const dropsPrimary = change !== "query" || job.lastNeedsDOM;
   job.completedWidth = undefined;
-  job.verifiedWidths.clear();
-  job.verifiedUnits = 0;
+  clearWidthCache(job.verifiedWidths);
   if (dropsPrimary) {
-    job.widths.clear();
-    job.cachedUnits = 0;
+    clearWidthCache(job.widths);
   }
   if (change === "style") job.lastStyle = undefined;
   if (change === "text") job.indexedText = undefined;
+  if (change === "text" || change === "query") job.matchRanges = undefined;
 }
 
 function resolveLang(element: Element, flush: FlushContext): string {
@@ -336,10 +360,6 @@ function flushJobs() {
     }
 
     const needsDOM = needsDomMeasurement(style);
-    if (job.lastNeedsDOM !== needsDOM) {
-      job.lastNeedsDOM = needsDOM;
-      job.resolutionNeedChanged?.();
-    }
 
     let sharedCanvasMeasure: ((value: string) => number) | undefined;
     let flushWidthMap: Map<string, number> | undefined;
@@ -363,12 +383,21 @@ function flushJobs() {
     const side: TruncationSide = job.mode === "middle"
       ? "middle"
       : endModeSide(job.text, job.startEllipsis ? "rtl" : style.direction);
+    const matchRanges = (job.matchRanges ??= findMatchRanges(job.text, job.query));
+    const hasMatch = matchRanges.length > 0;
+    if (job.lastNeedsDOM !== needsDOM || job.lastHasMatch !== hasMatch) {
+      job.lastNeedsDOM = needsDOM;
+      job.lastHasMatch = hasMatch;
+      job.resolutionNeedChanged?.();
+    }
+
     const session = createMeasurementSession(job.element, computed, job.query, {
       emojiText: job.emojiText,
       // The component isolates the text in a bdi with the ellipsis first, and
       // a cut that keeps the end; the probe draws the same structure.
       isolate: (cut) => job.startEllipsis || (cut !== undefined && cut.prefixEnd === 0 && cut.suffixStart < job.text.length),
       lang: style.lang,
+      matchRanges,
       needsDOM,
       originalText: job.text,
       sharedCanvasMeasure,
@@ -388,19 +417,12 @@ function flushJobs() {
 
     const measureText = (value: string, cut?: TruncationCut) => {
       const key = widthCacheKey(value, cut, primaryByCut);
-      const cached = job.widths.get(key);
+      const cached = job.widths.entries.get(key);
       if (cached !== undefined) return cached;
       if (flushWidthMap) {
         const flushHit = flushWidthMap.get(value);
         if (flushHit !== undefined) {
-          if (job.widths.size >= MAX_CACHED_WIDTHS || job.cachedUnits + value.length > MAX_CACHED_CODE_UNITS) {
-            job.widths.clear();
-            job.cachedUnits = 0;
-          }
-          if (value.length <= MAX_CACHED_CODE_UNITS) {
-            job.widths.set(key, flushHit);
-            job.cachedUnits += value.length;
-          }
+          setCachedWidth(job.widths, key, value.length, flushHit);
           return flushHit;
         }
       }
@@ -410,14 +432,7 @@ function flushJobs() {
       }
       // Component-local, bounded by both entries and retained text size.
       // Evict between measurements; no global strings survive unmount.
-      if (job.widths.size >= MAX_CACHED_WIDTHS || job.cachedUnits + value.length > MAX_CACHED_CODE_UNITS) {
-        job.widths.clear();
-        job.cachedUnits = 0;
-      }
-      if (value.length <= MAX_CACHED_CODE_UNITS) {
-        job.widths.set(key, measured);
-        job.cachedUnits += value.length;
-      }
+      setCachedWidth(job.widths, key, value.length, measured);
       return measured;
     };
 
@@ -434,18 +449,11 @@ function flushJobs() {
         truncatePrepared({ text: job.text, maxWidth: budget, mode: side, measureText: measure }, getIndexed);
       const verify = ({ text: value, cut }: TruncationResult) => {
         const key = widthCacheKey(value, cut ?? undefined, highlighted);
-        const cached = job.verifiedWidths.get(key);
+        const cached = job.verifiedWidths.entries.get(key);
         if (cached !== undefined) return cached;
         const actual = session.verifyText?.(value, cut ?? undefined);
         if (actual === undefined) return undefined;
-        if (job.verifiedWidths.size >= MAX_CACHED_WIDTHS || job.verifiedUnits + value.length > MAX_CACHED_CODE_UNITS) {
-          job.verifiedWidths.clear();
-          job.verifiedUnits = 0;
-        }
-        if (value.length <= MAX_CACHED_CODE_UNITS) {
-          job.verifiedWidths.set(key, actual);
-          job.verifiedUnits += value.length;
-        }
+        setCachedWidth(job.verifiedWidths, key, value.length, actual);
         return actual;
       };
 

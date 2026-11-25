@@ -1,6 +1,8 @@
 import { indexTextGraphemes, NON_ASCII_OR_CR } from "./graphemes.js";
 import { TRUNCATION_MARKER, type TruncationCut } from "./truncation.js";
 
+export const HIGHLIGHT_SLOT = "highlighted-match";
+
 export const HIGHLIGHT_CLASS_NAME =
   "relative isolate rounded-[2px] text-[var(--text-truncate-highlight-foreground,currentColor)] before:pointer-events-none before:absolute before:inset-x-0 before:inset-y-0 before:-z-10 before:rounded-[2px] before:bg-[var(--text-truncate-highlight-background,#fde68a)]";
 
@@ -176,6 +178,46 @@ export function cutHighlightRuns(
   return runs;
 }
 
+function renderHighlightParts(parts: readonly HighlightedTextPart[]) {
+  return (
+    <>
+      {parts.map((part) =>
+        part.matched ? (
+          <span
+            key={part.start}
+            data-slot={HIGHLIGHT_SLOT}
+            data-truncate-marker={part.marker ? "" : undefined}
+            className={HIGHLIGHT_CLASS_NAME}
+          >
+            {part.text}
+          </span>
+        ) : (
+          part.text
+        ),
+      )}
+    </>
+  );
+}
+
+/** Builds DOM nodes matching `renderHighlightParts` for the measurement probe. */
+export function createHighlightNodes(doc: Document, parts: readonly HighlightedTextPart[]): Node[] {
+  const nodes: Node[] = [];
+  for (let i = 0; i < parts.length; i++) {
+    const part = parts[i];
+    if (!part.matched) {
+      nodes.push(doc.createTextNode(part.text));
+    } else {
+      const span = doc.createElement("span");
+      span.dataset.slot = HIGHLIGHT_SLOT;
+      if (part.marker) span.dataset.truncateMarker = "";
+      span.className = HIGHLIGHT_CLASS_NAME;
+      span.textContent = part.text;
+      nodes.push(span);
+    }
+  }
+  return nodes;
+}
+
 export function HighlightedMatchText({
   query,
   text,
@@ -185,19 +227,7 @@ export function HighlightedMatchText({
 }) {
   const parts = highlightedTextParts(text, query);
   if (parts.length === 1 && !parts[0].matched) return text;
-  return (
-    <>
-      {parts.map((part) =>
-        part.matched ? (
-          <span key={part.start} data-slot="highlighted-match" className={HIGHLIGHT_CLASS_NAME}>
-            {part.text}
-          </span>
-        ) : (
-          part.text
-        ),
-      )}
-    </>
-  );
+  return renderHighlightParts(parts);
 }
 
 /**
@@ -215,22 +245,5 @@ export function CutHighlightedText({
   query?: string;
   text: string;
 }) {
-  return (
-    <>
-      {cutHighlightRuns(text, query, cut).map((part) =>
-        part.matched ? (
-          <span
-            key={part.start}
-            data-slot="highlighted-match"
-            data-truncate-marker={part.marker ? "" : undefined}
-            className={HIGHLIGHT_CLASS_NAME}
-          >
-            {part.text}
-          </span>
-        ) : (
-          part.text
-        ),
-      )}
-    </>
-  );
+  return renderHighlightParts(cutHighlightRuns(text, query, cut));
 }

@@ -4,7 +4,13 @@ import {
   createInlineTextMeasurementNode,
   parseCssPixelValue,
 } from "inline-measure";
-import { cutHighlightRuns, findMatchRanges, highlightedTextParts, HIGHLIGHT_CLASS_NAME } from "./highlight.js";
+import {
+  createHighlightNodes,
+  cutHighlightRuns,
+  findMatchRanges,
+  highlightedTextParts,
+  type MatchRange,
+} from "./highlight.js";
 import type { TruncationCut } from "./truncation.js";
 
 const NON_ASCII = /[\u0080-\uffff]/;
@@ -127,6 +133,8 @@ export interface MeasurementSessionOptions {
   /** Whether the component isolates this candidate in a `bdi`; the probe does too. */
   isolate?: (cut?: TruncationCut) => boolean;
   lang?: string;
+  /** Precomputed matches for `originalText` and `query`, reused across frames. */
+  matchRanges?: readonly MatchRange[];
   needsDOM?: boolean;
   originalText?: string;
   sharedCanvasMeasure?: (text: string) => number;
@@ -146,8 +154,8 @@ export function createMeasurementSession(
   const originalText = options?.originalText ?? element.dataset.truncateOriginal ?? "";
   const emojiText = options?.emojiText ?? hasEmoji(originalText);
   const needsDOM = options?.needsDOM ?? needsDomMeasurement(options?.style ?? computed);
-  // Matches in the full text, found once per session by the rendering rule.
-  const fullTextMatches = findMatchRanges(originalText, query);
+  // Matches in the full text, found once per session (or reused from the job cache).
+  const fullTextMatches = options?.matchRanges ?? findMatchRanges(originalText, query);
   const hasHighlights = fullTextMatches.length > 0;
 
   if (!needsDOM && !emojiText && !hasHighlights) {
@@ -195,22 +203,7 @@ export function createMeasurementSession(
       const parts = cut
         ? cutHighlightRuns(originalText, query, cut, fullTextMatches)
         : highlightedTextParts(value, query, value === originalText ? fullTextMatches : undefined);
-      const nodes: Node[] = [];
-      const doc = element.ownerDocument;
-      for (let i = 0; i < parts.length; i++) {
-        const part = parts[i];
-        if (!part.matched) {
-          nodes.push(doc.createTextNode(part.text));
-        } else {
-          const span = doc.createElement("span");
-          span.dataset.slot = "highlighted-match";
-          if (part.marker) span.dataset.truncateMarker = "";
-          span.className = HIGHLIGHT_CLASS_NAME;
-          span.textContent = part.text;
-          nodes.push(span);
-        }
-      }
-      target.replaceChildren(...nodes);
+      target.replaceChildren(...createHighlightNodes(element.ownerDocument, parts));
     }
     const contentWidth = Math.max(0, probe.getBoundingClientRect().width - box);
     if (!hasHighlights) return contentWidth;

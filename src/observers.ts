@@ -85,3 +85,68 @@ export function observeResize(element: Element, onResize: () => void): () => voi
     }
   };
 }
+
+// --- Shared device-pixel-ratio (resolution) listener hub ---
+// Each matching/DOM-measured instance needs to remeasure when DPR changes,
+// but creating a MediaQueryList per instance scales O(N) with visible rows.
+// Share one matchMedia query per Window and rebind it once on change.
+type ResolutionWindow = Pick<Window, "matchMedia" | "devicePixelRatio">;
+
+interface ResolutionHub {
+  matchMedia: ResolutionWindow["matchMedia"] | undefined;
+  query: MediaQueryList | undefined;
+  subscribers: Set<() => void>;
+  onChange: () => void;
+  bind: () => void;
+  unbind: () => void;
+}
+
+const resolutionHubs = new WeakMap<ResolutionWindow, ResolutionHub>();
+
+export function subscribeResolutionChange(
+  win: ResolutionWindow | undefined,
+  onResolutionChanged: () => void,
+): () => void {
+  if (!win || typeof win.matchMedia !== "function") return () => {};
+  let hub = resolutionHubs.get(win);
+  if (!hub) {
+    const subscribers = new Set<() => void>();
+    const unbind = () => {
+      hub!.query?.removeEventListener?.("change", hub!.onChange);
+      hub!.query = undefined;
+    };
+    const bind = () => {
+      unbind();
+      hub!.matchMedia = win.matchMedia;
+      hub!.query = win.matchMedia?.(`(resolution: ${win.devicePixelRatio}dppx)`);
+      hub!.query?.addEventListener?.("change", hub!.onChange);
+    };
+    const onChange = () => {
+      unbind();
+      for (const subscriber of Array.from(subscribers)) {
+        if (subscribers.has(subscriber)) subscriber();
+      }
+      if (subscribers.size > 0 && !hub!.query) {
+        bind();
+      }
+    };
+    hub = { matchMedia: undefined, query: undefined, subscribers, onChange, bind, unbind };
+    resolutionHubs.set(win, hub);
+  }
+
+  hub.subscribers.add(onResolutionChanged);
+  if (!hub.query || hub.matchMedia !== win.matchMedia) {
+    hub.bind();
+  }
+
+  let active = true;
+  return () => {
+    if (!active) return;
+    active = false;
+    hub!.subscribers.delete(onResolutionChanged);
+    if (hub!.subscribers.size === 0) {
+      hub!.unbind();
+      resolutionHubs.delete(win);
+    }
+  };
+}

@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, render } from "@testing-library/react";
 import { TextTruncate } from "./index";
+import * as highlight from "./highlight";
 
 afterEach(() => {
   cleanup();
@@ -123,6 +124,58 @@ describe("the device pixel ratio", () => {
     dpr.change(2);
     flush();
     expect(reads).toHaveBeenCalled();
+  });
+
+  it("shares one resolution listener and reuses cached matches across 50 highlighted instances", () => {
+    const COUNT = 50;
+    const flush = queuedFrames(16);
+    const reads = vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (this: HTMLElement) {
+      return { width: this.textContent?.length ?? 0, height: 16 } as DOMRect;
+    });
+    const matchScan = vi.spyOn(highlight, "findMatchRanges");
+    const dpr = resolution();
+    const items = Array.from({ length: COUNT }, (_, i) => `plain-spring-long-file-name-${i}.pdf`);
+
+    const { rerender, unmount } = render(
+      <>
+        {items.map((item) => (
+          <TextTruncate key={item} mode="middle" text={item} query="spring" />
+        ))}
+      </>,
+    );
+    // Before the first measurement flush, syncResolutionNeed must not run an uncached
+    // findMatchRanges scan synchronously in useLayoutEffect.
+    expect(matchScan).toHaveBeenCalledTimes(0);
+
+    flush();
+    // Each measurement session runs findMatchRanges once, and all 50 matching
+    // instances share a single matchMedia query and a single listener.
+    expect(matchScan).toHaveBeenCalledTimes(COUNT);
+    expect(dpr.match).toHaveBeenCalledTimes(1);
+    expect(dpr.live()).toHaveLength(1);
+    expect(dpr.live()[0].listeners.size).toBe(1);
+    expect(dpr.live()[0].media).toContain("1dppx");
+
+    // DPR change notifies all 50 instances, rebinds once to 2dppx, and reuses cached matches.
+    reads.mockClear();
+    matchScan.mockClear();
+    dpr.change(2);
+    flush();
+    expect(reads.mock.calls.length).toBeGreaterThanOrEqual(COUNT);
+    expect(dpr.match).toHaveBeenCalledTimes(2);
+    expect(dpr.live()).toHaveLength(1);
+    expect(dpr.live()[0].listeners.size).toBe(1);
+    expect(dpr.live()[0].media).toContain("2dppx");
+    expect(matchScan).toHaveBeenCalledTimes(0);
+
+    // Unmounting 49 of 50 keeps the shared listener alive.
+    rerender(<TextTruncate key={items[0]} mode="middle" text={items[0]} query="spring" />);
+    expect(dpr.live()).toHaveLength(1);
+    expect(dpr.live()[0].listeners.size).toBe(1);
+
+    // Unmounting the last instance removes the shared listener cleanly (0 leaks).
+    unmount();
+    expect(dpr.live()).toHaveLength(0);
   });
 });
 

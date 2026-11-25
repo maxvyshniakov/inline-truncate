@@ -4,8 +4,15 @@ import React from "react";
 import { hasEmoji } from "./measurement.js";
 import { CutHighlightedText, findMatchRanges, HighlightedMatchText } from "./highlight.js";
 import { TRUNCATION_MARKER, type TextTruncateMode } from "./truncation.js";
-import { cancelJob, fullTextState, invalidateMeasurements, scheduleJob, type MeasureJob } from "./scheduler.js";
-import { observeResize, subscribeFonts } from "./observers.js";
+import {
+  cancelJob,
+  createWidthCache,
+  fullTextState,
+  invalidateMeasurements,
+  scheduleJob,
+  type MeasureJob,
+} from "./scheduler.js";
+import { observeResize, subscribeFonts, subscribeResolutionChange } from "./observers.js";
 import { cn } from "cn";
 
 export type TextTruncateStrategy = "auto" | "css" | "measure";
@@ -127,13 +134,13 @@ export const TextTruncate = React.memo(function TextTruncate({
       className: undefined,
       emojiText: false,
       indexedText: undefined,
+      matchRanges: undefined,
       lastStyle: undefined,
       lastNeedsDOM: false,
+      lastHasMatch: false,
       completedWidth: undefined,
-      widths: new Map(),
-      cachedUnits: 0,
-      verifiedWidths: new Map(),
-      verifiedUnits: 0,
+      widths: createWidthCache(),
+      verifiedWidths: createWidthCache(),
       setTruncation,
     };
 
@@ -143,34 +150,29 @@ export const TextTruncate = React.memo(function TextTruncate({
       scheduleJob(job, true);
     };
 
-    let resolutionQuery: MediaQueryList | undefined;
-    const resolutionChanged = () => {
+    let unsubscribeResolution: (() => void) | undefined;
+    const onResolutionChanged = () => {
       if (!job.active) return;
       invalidateMeasurements(job, "style");
       scheduleJob(job, true);
-      bindResolution();
     };
     const unbindResolution = () => {
-      resolutionQuery?.removeEventListener?.("change", resolutionChanged);
-      resolutionQuery = undefined;
-    };
-    const bindResolution = () => {
-      unbindResolution();
-      resolutionQuery = window.matchMedia?.(`(resolution: ${window.devicePixelRatio}dppx)`);
-      resolutionQuery?.addEventListener?.("change", resolutionChanged);
-    };
-    const syncResolution = (needsResolution: boolean) => {
-      if (needsResolution && !resolutionQuery) {
-        bindResolution();
-      } else if (!needsResolution && resolutionQuery) {
-        unbindResolution();
-      }
+      unsubscribeResolution?.();
+      unsubscribeResolution = undefined;
     };
 
     // DOM-measured widths follow the device pixel ratio: emoji text, text
     // whose style needs the DOM, and text whose highlight is verified there.
-    const syncResolutionNeed = () =>
-      syncResolution(job.emojiText || job.lastNeedsDOM || findMatchRanges(job.text, job.query).length > 0);
+    // Match presence comes from the measurement session (job.lastHasMatch),
+    // avoiding a redundant uncached findMatchRanges scan in useLayoutEffect.
+    const syncResolutionNeed = () => {
+      const needsResolution = job.emojiText || job.lastNeedsDOM || job.lastHasMatch;
+      if (needsResolution && !unsubscribeResolution) {
+        unsubscribeResolution = subscribeResolutionChange(window, onResolutionChanged);
+      } else if (!needsResolution && unsubscribeResolution) {
+        unbindResolution();
+      }
+    };
     job.resolutionNeedChanged = syncResolutionNeed;
     jobRef.current = { job, syncResolutionNeed };
 
@@ -237,9 +239,10 @@ export const TextTruncate = React.memo(function TextTruncate({
     }
     if (queryChanged) {
       job.query = query;
+      if (!query?.trim()) job.lastHasMatch = false;
       invalidateMeasurements(job, "query");
     }
-    if (textChanged || queryChanged) syncResolutionNeed();
+    if (textChanged || (queryChanged && !query?.trim())) syncResolutionNeed();
 
     scheduleJob(job);
     return undefined;
