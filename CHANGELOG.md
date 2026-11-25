@@ -6,9 +6,9 @@ Versions and release rules: [docs/VERSIONING.md](docs/VERSIONING.md).
 
 ### Fixed
 
-- Highlighted `<TextTruncate>` instances now share a single `window.matchMedia` device-pixel-ratio listener and reuse
-  the measurement session's cached match ranges instead of creating a listener and running an uncached match scan per
-  instance (inline-truncate#9).
+- Measured `<TextTruncate>` instances that remeasure on device-pixel-ratio changes (highlighted matches, emoji, and
+  DOM-measured styles) now share one `window.matchMedia` listener per window instead of registering one per instance,
+  and highlighted instances avoid redundant match scans across mount and device-pixel-ratio updates (inline-truncate#9).
 
 ## 0.6.0 - 2026-11-24
 

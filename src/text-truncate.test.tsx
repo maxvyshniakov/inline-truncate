@@ -1,7 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, render } from "@testing-library/react";
 import { TextTruncate } from "./index";
-import * as highlight from "./highlight";
 
 afterEach(() => {
   cleanup();
@@ -128,45 +127,64 @@ describe("the device pixel ratio", () => {
 
   it("shares one resolution listener and reuses cached matches across 50 highlighted instances", () => {
     const COUNT = 50;
+    const PREFIX = "plain-spring-long-file-name-";
     const flush = queuedFrames(16);
-    const reads = vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (this: HTMLElement) {
-      return { width: this.textContent?.length ?? 0, height: 16 } as DOMRect;
-    });
-    const matchScan = vi.spyOn(highlight, "findMatchRanges");
     const dpr = resolution();
-    const items = Array.from({ length: COUNT }, (_, i) => `plain-spring-long-file-name-${i}.pdf`);
+    const reads = vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (this: HTMLElement) {
+      return { width: (this.textContent?.length ?? 0) * window.devicePixelRatio, height: 16 } as DOMRect;
+    });
+    const nativeToLowerCase = String.prototype.toLowerCase;
+    let textLowercased = 0;
+    vi.spyOn(String.prototype, "toLowerCase").mockImplementation(function (this: string) {
+      if (String(this).startsWith(PREFIX)) textLowercased += 1;
+      return nativeToLowerCase.call(this);
+    });
+    const items = Array.from({ length: COUNT }, (_, i) => `${PREFIX}${i}.pdf`);
 
-    const { rerender, unmount } = render(
+    const { container, rerender, unmount } = render(
       <>
         {items.map((item) => (
           <TextTruncate key={item} mode="middle" text={item} query="spring" />
         ))}
       </>,
     );
-    // Before the first measurement flush, syncResolutionNeed must not run an uncached
-    // findMatchRanges scan synchronously in useLayoutEffect.
-    expect(matchScan).toHaveBeenCalledTimes(0);
+    // Before the first flush, only HighlightedMatchText scans each item once (50).
+    // syncResolutionNeed must not run a second uncached match scan in useLayoutEffect.
+    expect(textLowercased).toBe(COUNT);
 
+    textLowercased = 0;
     flush();
-    // Each measurement session runs findMatchRanges once, and all 50 matching
-    // instances share a single matchMedia query and a single listener.
-    expect(matchScan).toHaveBeenCalledTimes(COUNT);
+    // First flush scans once per measurement session (50) and once per CutHighlightedText render (50).
+    expect(textLowercased).toBe(COUNT * 2);
+    // All 50 matching instances share a single matchMedia query and a single listener.
     expect(dpr.match).toHaveBeenCalledTimes(1);
     expect(dpr.live()).toHaveLength(1);
     expect(dpr.live()[0].listeners.size).toBe(1);
     expect(dpr.live()[0].media).toContain("1dppx");
 
-    // DPR change notifies all 50 instances, rebinds once to 2dppx, and reuses cached matches.
+    const visibleLengths = () =>
+      [...container.querySelectorAll("[data-truncate-visible]")].map((node) => node.textContent?.length ?? 0);
+    const lengthsAt1x = visibleLengths();
+    expect(lengthsAt1x).toHaveLength(COUNT);
+
+    // DPR change notifies all 50 instances, rebinds once to 2dppx, shortens every
+    // visible cut, and reuses cached match ranges during measurement (only
+    // CutHighlightedText re-renders scan the updated cuts: 50 instead of 100).
     reads.mockClear();
-    matchScan.mockClear();
+    textLowercased = 0;
     dpr.change(2);
     flush();
     expect(reads.mock.calls.length).toBeGreaterThanOrEqual(COUNT);
+    const lengthsAt2x = visibleLengths();
+    expect(lengthsAt2x).toHaveLength(COUNT);
+    for (let i = 0; i < COUNT; i++) {
+      expect(lengthsAt2x[i]).toBeLessThan(lengthsAt1x[i]);
+    }
     expect(dpr.match).toHaveBeenCalledTimes(2);
     expect(dpr.live()).toHaveLength(1);
     expect(dpr.live()[0].listeners.size).toBe(1);
     expect(dpr.live()[0].media).toContain("2dppx");
-    expect(matchScan).toHaveBeenCalledTimes(0);
+    expect(textLowercased).toBe(COUNT);
 
     // Unmounting 49 of 50 keeps the shared listener alive.
     rerender(<TextTruncate key={items[0]} mode="middle" text={items[0]} query="spring" />);
@@ -176,6 +194,66 @@ describe("the device pixel ratio", () => {
     // Unmounting the last instance removes the shared listener cleanly (0 leaks).
     unmount();
     expect(dpr.live()).toHaveLength(0);
+  });
+
+  it("drops the resolution listener when an instance collapses to zero width", () => {
+    let width = 16;
+    globalThis.ResizeObserver = class { observe() {} disconnect() {} } as unknown as typeof ResizeObserver;
+    const frames: FrameRequestCallback[] = [];
+    vi.spyOn(window, "requestAnimationFrame").mockImplementation((callback) => { frames.push(callback); return frames.length; });
+    vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockImplementation(() => width);
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue({
+      font: "", measureText: (value: string) => ({ width: value.length }),
+    } as unknown as CanvasRenderingContext2D);
+    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (this: HTMLElement) {
+      return { width: this.hasAttribute("data-truncate") ? width : (this.textContent?.length ?? 0), height: 16 } as DOMRect;
+    });
+    const flush = () => act(() => { while (frames.length) frames.shift()!(0); });
+    const dpr = resolution();
+    const text = "plain-spring-long-file-name.pdf";
+
+    const { rerender } = render(<TextTruncate mode="middle" text={text} query="spring" />);
+    flush();
+    expect(dpr.live()).toHaveLength(1);
+
+    width = 0;
+    rerender(<TextTruncate mode="middle" text={text} query="walnut" />);
+    flush();
+    expect(dpr.live()).toHaveLength(0);
+  });
+
+  it("routes resolution subscription and DPR reads through element.ownerDocument.defaultView", () => {
+    const flush = queuedFrames(16);
+    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (this: HTMLElement) {
+      return { width: this.textContent?.length ?? 0, height: 16 } as DOMRect;
+    });
+    const globalMatch = vi.spyOn(window, "matchMedia");
+    const viewQueries: { media: string; listeners: Set<() => void> }[] = [];
+    const viewMatch = vi.fn((media: string) => {
+      const query = { media, listeners: new Set<() => void>() };
+      viewQueries.push(query);
+      return {
+        media,
+        matches: true,
+        addEventListener: (_type: string, listener: () => void) => query.listeners.add(listener),
+        removeEventListener: (_type: string, listener: () => void) => query.listeners.delete(listener),
+      } as unknown as MediaQueryList;
+    });
+    const fakeView = Object.create(window, {
+      devicePixelRatio: { get: () => 3 },
+      matchMedia: { value: viewMatch },
+    }) as Window & typeof globalThis;
+    vi.spyOn(document, "defaultView", "get").mockReturnValue(fakeView);
+
+    const { unmount } = render(<TextTruncate mode="middle" text="plain-spring-long-file-name.pdf" query="spring" />);
+    flush();
+
+    expect(globalMatch).not.toHaveBeenCalled();
+    expect(viewMatch).toHaveBeenCalledTimes(1);
+    expect(viewQueries[0].media).toBe("(resolution: 3dppx)");
+
+    unmount();
+    expect(viewQueries[0].listeners.size).toBe(0);
   });
 });
 

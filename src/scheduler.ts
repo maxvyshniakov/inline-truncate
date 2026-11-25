@@ -333,10 +333,11 @@ function flushJobs() {
     }
 
     const lang = resolveLang(element, flush);
+    const dpr = element.ownerDocument.defaultView?.devicePixelRatio ?? flush.dpr;
     let style: StyleSnapshot;
-    if (!job.lastStyle || !isSameStyle(job.lastStyle, computed, lang, flush.dpr)) {
+    if (!job.lastStyle || !isSameStyle(job.lastStyle, computed, lang, dpr)) {
       invalidateMeasurements(job, "style");
-      style = captureStyle(job.lastStyle, computed, lang, flush.dpr);
+      style = captureStyle(job.lastStyle, computed, lang, dpr);
       job.lastStyle = style;
     } else {
       style = job.lastStyle;
@@ -355,6 +356,11 @@ function flushJobs() {
     if (!job.active) continue;
     if (width <= 0 || !computed || !style) {
       job.completedWidth = undefined;
+      if (job.lastNeedsDOM || job.lastHasMatch) {
+        job.lastNeedsDOM = false;
+        job.lastHasMatch = false;
+        job.resolutionNeedChanged?.();
+      }
       setTruncation(job, fullTextState(job.text));
       continue;
     }

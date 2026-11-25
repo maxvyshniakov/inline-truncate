@@ -168,7 +168,8 @@ export const TextTruncate = React.memo(function TextTruncate({
     const syncResolutionNeed = () => {
       const needsResolution = job.emojiText || job.lastNeedsDOM || job.lastHasMatch;
       if (needsResolution && !unsubscribeResolution) {
-        unsubscribeResolution = subscribeResolutionChange(window, onResolutionChanged);
+        const win = element.ownerDocument.defaultView ?? (typeof window === "undefined" ? undefined : window);
+        unsubscribeResolution = subscribeResolutionChange(win, onResolutionChanged);
       } else if (!needsResolution && unsubscribeResolution) {
         unbindResolution();
       }

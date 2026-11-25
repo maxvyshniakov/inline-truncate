@@ -123,11 +123,14 @@ export function subscribeResolutionChange(
     };
     const onChange = () => {
       unbind();
-      for (const subscriber of Array.from(subscribers)) {
-        if (subscribers.has(subscriber)) subscriber();
-      }
-      if (subscribers.size > 0 && !hub!.query) {
-        bind();
+      try {
+        for (const subscriber of Array.from(subscribers)) {
+          if (subscribers.has(subscriber)) subscriber();
+        }
+      } finally {
+        if (subscribers.size > 0 && !hub!.query) {
+          bind();
+        }
       }
     };
     hub = { matchMedia: undefined, query: undefined, subscribers, onChange, bind, unbind };
