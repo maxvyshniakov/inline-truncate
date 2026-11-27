@@ -8,6 +8,7 @@ import { chromium, firefox, webkit } from "playwright";
 import { compare, DEFAULT_MAX_CALL_RATIO, environment, markdown, summarizeScenario } from "./report.mjs";
 import {validateCaptureOptions} from "./options.mjs";
 import {productionSnapshot,referenceModulePath} from "./source.mjs";
+if (process.env.TMPDIR && process.env.TMPDIR.length > 60) process.env.TMPDIR = "/tmp";
 const args = process.argv.slice(2);
 validateCaptureOptions(args);
 const option = (name, fallback) => args.find(a=>a.startsWith(`--${name}=`))?.slice(name.length+3) ?? fallback;

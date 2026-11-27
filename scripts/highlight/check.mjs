@@ -18,6 +18,8 @@ import { createServer } from "vite";
 import { chromium, firefox, webkit } from "playwright";
 import { decodePng } from "./png.mjs";
 
+if (process.env.TMPDIR && process.env.TMPDIR.length > 60) process.env.TMPDIR = "/tmp";
+
 const browserName = process.argv.find((a) => a.startsWith("--browser="))?.slice(10) ?? "chromium";
 const DPR = 2;
 const MATCH_FOREGROUND = "rgb(0, 0, 0)";

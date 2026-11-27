@@ -12,6 +12,8 @@ import path from "node:path";
 import { createServer } from "vite";
 import { chromium, firefox, webkit } from "playwright";
 
+if (process.env.TMPDIR && process.env.TMPDIR.length > 60) process.env.TMPDIR = "/tmp";
+
 const args = process.argv.slice(2);
 const browserName = args.find((a) => a.startsWith("--browser="))?.slice(10) ?? "chromium";
 const output = path.resolve(`artifacts/a11y/pointer.${browserName}.json`);
