@@ -21,8 +21,10 @@
   `verify.browser`. It runs the correctness check (`scripts/perf/run.mjs --check`), `scripts/a11y/check.mjs`,
   `scripts/a11y/pointer.mjs` and `scripts/highlight/check.mjs` in Chromium, Firefox and WebKit, one script at a time under one slot. Each script has a
   hard timeout of 4 minutes, after which verify stops its whole process tree. package-kit's local release gate runs
-  it after `verify --release`. Hosted CI does not, because its runner has no Firefox or WebKit. Run it before handing
-  back any change under `src/` or `scripts/`: the plain gate does not run it.
+  it after `verify --release`. Hosted CI (`.github/workflows/check.yml`, `browser` job on `ubuntu-latest`) installs
+  Playwright Chromium, Firefox and WebKit and runs `check:browser:engine`, `check:a11y:engine` and `check:a11y:pointer`
+  across all three engines. Run `bun run verify:browser` locally before handing
+  back any change under `src/` or `scripts/`: the plain `verify` gate does not run it.
 - `bun run check:a11y`: accessible text, copy and find, then pointer, selection, overflow and focus on a table of
   truncated cells (`scripts/a11y/pointer.mjs`, which also fails when a measured root makes a flush scrolling box
   scroll), in Chromium, Firefox (the installed stable, over WebDriver BiDi)

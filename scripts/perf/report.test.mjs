@@ -42,3 +42,37 @@ test("a failed intermediate counter replay makes the scenario fail",()=>{
   const samples=[{ms:1,correct:true},{ms:2,correct:true},{ms:3,correct:true}];
   assert.equal(summarizeScenario("resize",samples,{calls:0,units:0,domReads:0,reactCommits:0,correct:false}).correctness,false);
 });
+
+test("ratio-based measurement-call threshold flags call regressions independent of timing",()=>{
+  const withCalls = (calls, samples = [10,10,10,10,10]) => ({
+    ...report(samples),
+    scenarios: [{ id: "algorithm.middle.200", samplesMs: samples, medianMs: percentile(samples, .5), counters: { measureText: calls } }],
+  });
+  const within = compare(withCalls(105), withCalls(100))[0];
+  assert.equal(within.callRatio, 1.05);
+  assert.equal(within.callRegression, false);
+  assert.equal(within.timingRegression, false);
+  assert.equal(within.regression, false);
+
+  const over = compare(withCalls(106), withCalls(100))[0];
+  assert.equal(over.callRatio, 1.06);
+  assert.equal(over.callRegression, true);
+  assert.equal(over.timingRegression, false);
+  assert.equal(over.regression, true);
+
+  const custom = compare(withCalls(110), withCalls(100), { maxCallRatio: 1.1 })[0];
+  assert.equal(custom.callRegression, false);
+  assert.equal(custom.regression, false);
+
+  const zeroClean = compare(withCalls(0), withCalls(0))[0];
+  assert.equal(zeroClean.callRatio, 1);
+  assert.equal(zeroClean.callRegression, false);
+
+  const zeroRegressed = compare(withCalls(1), withCalls(0))[0];
+  assert.equal(zeroRegressed.callRatio, Infinity);
+  assert.equal(zeroRegressed.callRegression, true);
+  assert.equal(zeroRegressed.regression, true);
+
+  assert.throws(() => compare(withCalls(100), withCalls(100), { maxCallRatio: 0.99 }), /maxCallRatio/);
+  assert.throws(() => compare(withCalls(100), withCalls(100), { maxCallRatio: Number.NaN }), /maxCallRatio/);
+});

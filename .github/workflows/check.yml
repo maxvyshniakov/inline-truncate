@@ -24,3 +24,23 @@ jobs:
     uses: maxvyshniakov/package-kit/.github/workflows/verify.yml@v1.0.1
     with:
       timeout-minutes: 15
+  browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: maxvyshniakov/package-kit/actions/setup-bun@v1.0.1
+      - run: bun install --frozen-lockfile
+      - name: Install Playwright browsers
+        run: bunx playwright install --with-deps chromium firefox webkit
+      - name: Browser correctness and accessibility (Chromium, Firefox, WebKit)
+        env:
+          TMPDIR: /tmp
+        run: |
+          for engine in chromium firefox webkit; do
+            bun run check:browser:engine -- --browser="$engine"
+            bun run check:a11y:engine -- --browser="$engine"
+            bun run check:a11y:pointer -- --browser="$engine"
+          done

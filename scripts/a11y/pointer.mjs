@@ -30,7 +30,9 @@ try {
   const url = `${server.resolvedUrls.local[0]}scripts/a11y/pointer.html`;
   const launcher = { chromium, firefox, webkit }[browserName];
   if (!launcher) throw new Error(`Unsupported browser ${browserName}`);
-  browser = await launcher.launch({ headless: true, ...(browserName === "firefox" ? { channel: "moz-firefox" } : {}) });
+  const systemFirefox = process.env.FIREFOX_PATH ?? { darwin: "/Applications/Firefox.app/Contents/MacOS/firefox", linux: "/snap/bin/firefox" }[process.platform];
+  const firefoxOptions = browserName === "firefox" && systemFirefox && fs.existsSync(systemFirefox) ? { channel: "moz-firefox" } : {};
+  browser = await launcher.launch({ headless: true, ...firefoxOptions });
   const context = await browser.newContext({ viewport: { width: 800, height: 600 } });
   if (browserName === "chromium") await context.grantPermissions(["clipboard-read", "clipboard-write"]);
   const page = await context.newPage();

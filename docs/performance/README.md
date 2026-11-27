@@ -2,6 +2,7 @@
 
 [Recorded results and accuracy cost, 2026-11-05](2026-11-05-results.md).
 [Same-width RO repair and matched results, 2026-11-07](2026-11-07-same-width-ro.md).
+[0.3.0 → 0.6.0 measurement-call record and ratio threshold, 2026-11-27](2026-11-27-0.3.0-search-calls.md).
 
 This harness imports Text Truncate and Inline Measure directly into a small Vite
 page. It does not import Data Grid, its fixtures, or Storybook. The checked-in
@@ -83,7 +84,10 @@ rounded frame interval is part of environment compatibility. Algorithm timings
 use only timer resolution, so this allowance cannot hide algorithm regressions. The bootstrap seed is fixed for reproducible
 reports. Small sample sets can miss real differences; use nine or more repeats
 and repeat suspicious comparisons. These are evidence checks, not universal
-latency budgets. Browser correctness failures always produce nonzero exit status.
+latency budgets. `--strict` also enforces a ratio-based measurement-call
+regression threshold (`--max-call-ratio`, default `1.05`, or any call `> 0` when
+the baseline recorded `0`), so measurement-call regressions fail even when
+wall-clock timings stay within noise. Browser correctness failures always produce nonzero exit status.
 
 `--ref=HEAD` obtains the entire production source tree from git into an ignored temporary
 snapshot, including helpers and their relative imports, without modifying the checkout;

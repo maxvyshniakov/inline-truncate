@@ -11,3 +11,8 @@ test("CLI rejects strict capture before a browser or server starts",()=>{
   const child=spawnSync(process.execPath,["scripts/perf/run.mjs","--strict"],{encoding:"utf8",timeout:3000});
   assert.notEqual(child.status,0);assert.match(child.stderr,/--strict requires --baseline/);
 });
+test("max-call-ratio requires a finite number >= 1",()=>{
+  assert.throws(()=>validateCaptureOptions(["--max-call-ratio=0.9"]),/--max-call-ratio/);
+  assert.throws(()=>validateCaptureOptions(["--max-call-ratio=abc"]),/--max-call-ratio/);
+  assert.doesNotThrow(()=>validateCaptureOptions(["--max-call-ratio=1.05"]));
+});

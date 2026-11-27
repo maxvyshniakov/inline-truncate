@@ -191,7 +191,9 @@ try {
   await server.listen();
   const launcher = { chromium, firefox, webkit }[browserName];
   if (!launcher) throw new Error(`Unsupported browser ${browserName}`);
-  browser = await launcher.launch({ headless: true, ...(browserName === "firefox" ? { channel: "moz-firefox" } : {}) });
+  const systemFirefox = process.env.FIREFOX_PATH ?? { darwin: "/Applications/Firefox.app/Contents/MacOS/firefox", linux: "/snap/bin/firefox" }[process.platform];
+  const firefoxOptions = browserName === "firefox" && systemFirefox && fs.existsSync(systemFirefox) ? { channel: "moz-firefox" } : {};
+  browser = await launcher.launch({ headless: true, ...firefoxOptions });
   const page = await browser.newPage({ viewport: { width: 400, height: 1200 }, deviceScaleFactor: DPR });
   page.on("pageerror", (error) => failures.push(`page error: ${error.message}`));
   await page.goto(`${server.resolvedUrls.local[0]}scripts/highlight/page.html`);

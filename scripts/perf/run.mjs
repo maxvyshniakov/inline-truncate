@@ -5,7 +5,7 @@ import {createHash} from "node:crypto";
 import { execFileSync } from "node:child_process";
 import { createServer } from "vite";
 import { chromium, firefox, webkit } from "playwright";
-import { compare, environment, markdown, summarizeScenario } from "./report.mjs";
+import { compare, DEFAULT_MAX_CALL_RATIO, environment, markdown, summarizeScenario } from "./report.mjs";
 import {validateCaptureOptions} from "./options.mjs";
 import {productionSnapshot,referenceModulePath} from "./source.mjs";
 const args = process.argv.slice(2);
@@ -34,16 +34,23 @@ const inlineDirectory = inlineSource ? path.resolve(inlineSource,"src") : path.d
 const inlinePackage = JSON.parse(fs.readFileSync(path.resolve(inlineDirectory,"../package.json"),"utf8"));
 const inlineMeasure = {version:inlinePackage.version,source:inlineSource ?? "registry",sourceHash:digest(fs.readdirSync(inlineDirectory).filter(file=>/\.(js|ts)$/.test(file) && !file.includes(".test.") && !file.endsWith(".d.ts")).sort().map(file=>file+digest(fs.readFileSync(path.join(inlineDirectory,file)))).join("\n"))};
 const sourceHash = digest([...production].map(([file,content])=>file+digest(content)).join("\n"));
+const inlineMeasureAlias = inlineSource ? path.resolve(inlineSource,"src/index.ts") : "inline-measure";
+const resolveAlias = {
+  ...(inlineSource ? {"inline-measure":inlineMeasureAlias} : {}),
+  ...(reference ? {"@maxvyshniakov/inline-measure":inlineMeasureAlias} : {}),
+};
 const server = await createServer({ configFile:false, root:process.cwd(), server:{port:0,host:"127.0.0.1",hmr:false,watch:null,fs:{allow:[process.cwd(),fs.realpathSync("node_modules"),...(inlineSource ? [path.resolve(inlineSource),fs.realpathSync(path.resolve(inlineSource,"node_modules"))] : [])]}}, plugins:[{name:"deferred-font-fixture",configureServer(server){server.middlewares.use((request,_response,next)=>{if(request.url?.includes("late=1"))setTimeout(next,150);else next();});}},...(reference ? [{name:"reference-source",enforce:"pre",async resolveId(id,importer){
   const target=referenceModulePath(id,importer,path.resolve("src"),path.join(referenceDirectory,"src"));
   if (target) return this.resolve(target,importer,{skipSelf:true});
-}}] : [])], resolve: inlineSource ? {alias:{"inline-measure":path.resolve(inlineSource,"src/index.ts")}} : undefined });
+}}] : [])], resolve: Object.keys(resolveAlias).length ? {alias:resolveAlias} : undefined });
 let browser;
 try {
   await server.listen();
   const launcher = {chromium,firefox,webkit}[browserName];
   if (!launcher) throw new Error(`Unsupported browser ${browserName}`);
-  browser = await launcher.launch({headless:true,...(browserName === "firefox" ? {channel:"moz-firefox"} : {})});
+  const systemFirefox = process.env.FIREFOX_PATH ?? { darwin: "/Applications/Firefox.app/Contents/MacOS/firefox", linux: "/snap/bin/firefox" }[process.platform];
+  const firefoxOptions = browserName === "firefox" && systemFirefox && fs.existsSync(systemFirefox) ? {channel:"moz-firefox"} : {};
+  browser = await launcher.launch({headless:true,...firefoxOptions});
   const page = await browser.newPage({viewport:{width:1280,height:800},deviceScaleFactor:1});
   const errors=[]; page.on("pageerror", error=>errors.push(error.message));
   await page.goto(`${server.resolvedUrls.local[0]}scripts/perf/index.html`);
@@ -66,7 +73,8 @@ try {
   report.correctness.failures.push(...errors);
   report.correctness.pass &&= !errors.length;
   const baseline=option("baseline");
-  if(baseline) report.comparison=compare(report,JSON.parse(fs.readFileSync(baseline,"utf8")),{allowInlineMeasureChange:args.includes("--allow-inline-measure-change")});
+  const maxCallRatio = Number(option("max-call-ratio", String(DEFAULT_MAX_CALL_RATIO)));
+  if(baseline) report.comparison=compare(report,JSON.parse(fs.readFileSync(baseline,"utf8")),{allowInlineMeasureChange:args.includes("--allow-inline-measure-change"),maxCallRatio});
   fs.mkdirSync(path.dirname(output),{recursive:true});
   await page.screenshot({path:output.replace(/\.json$/,"")+".png"});
   fs.writeFileSync(output,JSON.stringify(report,null,2)+"\n");

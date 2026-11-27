@@ -21,10 +21,14 @@ const browserName = args.find((a) => a.startsWith("--browser="))?.slice(10) ?? "
 const output = path.resolve(`artifacts/a11y/${browserName}.json`);
 const CUT_WORD = "northern";
 
+const systemFirefox = process.env.FIREFOX_PATH
+  ?? { darwin: "/Applications/Firefox.app/Contents/MacOS/firefox", linux: "/snap/bin/firefox" }[process.platform];
+const hasSystemFirefox = Boolean(systemFirefox && fs.existsSync(systemFirefox));
+
 async function firefoxEngineMatches(url, cases) {
-  // The same stable Firefox that Playwright's moz-firefox channel launches.
-  const executable = process.env.FIREFOX_PATH
-    ?? { darwin: "/Applications/Firefox.app/Contents/MacOS/firefox", linux: "/snap/bin/firefox" }[process.platform];
+  // Prefer the stable Firefox that Playwright's moz-firefox channel launches;
+  // fall back to Playwright's bundled Firefox when system Firefox is absent (e.g. ubuntu-latest CI).
+  const executable = hasSystemFirefox ? systemFirefox : firefox.executablePath();
   const profile = fs.mkdtempSync(path.join(os.tmpdir(), "tt-a11y-ff-"));
   const child = spawn(executable, ["--headless", "--no-remote", "--profile", profile, "--remote-debugging-port=0"], { stdio: ["ignore", "ignore", "pipe"] });
   try {
@@ -103,7 +107,7 @@ try {
   const url = `${server.resolvedUrls.local[0]}scripts/a11y/index.html`;
   const launcher = { chromium, firefox, webkit }[browserName];
   if (!launcher) throw new Error(`Unsupported browser ${browserName}`);
-  browser = await launcher.launch({ headless: true, ...(browserName === "firefox" ? { channel: "moz-firefox" } : {}) });
+  browser = await launcher.launch({ headless: true, ...(browserName === "firefox" && hasSystemFirefox ? { channel: "moz-firefox" } : {}) });
   const browserContext = await browser.newContext({ viewport: { width: 800, height: 600 } });
   if (browserName === "chromium") await browserContext.grantPermissions(["clipboard-read", "clipboard-write"]);
   const page = await browserContext.newPage();
