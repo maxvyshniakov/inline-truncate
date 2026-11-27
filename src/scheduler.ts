@@ -29,13 +29,23 @@ export interface TruncationState {
   measured: boolean;
   /** The committed string was verified against the DOM (or fit by a clear margin). */
   verified: boolean;
+  /** The mode that produced `cut` (so a held cut keeps its own bdi isolation). */
   mode?: TextTruncateMode;
-  query?: string;
-  startEllipsis?: boolean;
+  /** Content width this result was measured for (not compared in `sameTruncation`). */
+  measuredWidth?: number;
 }
 
 export function fullTextState(text: string): TruncationState {
   return { source: text, text, cut: null, measured: false, verified: false };
+}
+
+/**
+ * Available content width of `element` using the last measured horizontal
+ * padding, avoiding an extra `getComputedStyle` read in ResizeObserver callbacks.
+ */
+export function estimateContentWidth(element: HTMLElement, horizontalPadding: number): number {
+  const raw = element.clientWidth || element.getBoundingClientRect().width;
+  return raw <= 0 ? 0 : Math.max(0, raw - horizontalPadding);
 }
 
 // Keeps the previous state object when nothing changed, so React bails out of
@@ -44,18 +54,18 @@ function sameTruncation(a: TruncationState, b: TruncationState) {
   return a.source === b.source
     && a.measured === b.measured
     && a.verified === b.verified
-    && a.mode === b.mode
-    && a.query === b.query
-    && a.startEllipsis === b.startEllipsis
     && a.text === b.text
     && a.cut?.prefixEnd === b.cut?.prefixEnd
-    && a.cut?.suffixStart === b.cut?.suffixStart;
+    && a.cut?.suffixStart === b.cut?.suffixStart
+    && (a.cut === null || a.mode === b.mode);
 }
 
 function setTruncation(job: MeasureJob, next: TruncationState) {
   job.setTruncation((previous) => {
     if (sameTruncation(previous, next)) {
-      if (job.clipOverride && next.measured) {
+      job.renderedWidth = next.measured ? next.measuredWidth : undefined;
+      if (job.clipOverride && next.measured
+        && (job.renderedWidth === undefined || estimateContentWidth(job.element, job.horizontalPadding) >= job.renderedWidth)) {
         job.element.style.overflow = "";
         job.clipOverride = false;
       }
@@ -105,6 +115,10 @@ export interface MeasureJob {
   lastNeedsDOM: boolean;
   lastHasMatch: boolean;
   completedWidth: number | undefined;
+  /** Content width of the string currently committed to the DOM. */
+  renderedWidth: number | undefined;
+  /** Last observed horizontal padding (paddingLeft + paddingRight) from Phase 1. */
+  horizontalPadding: number;
   widths: BoundedWidthCache;
   verifiedWidths: BoundedWidthCache;
   setTruncation: React.Dispatch<React.SetStateAction<TruncationState>>;
@@ -312,8 +326,8 @@ function flushJobs() {
     const job = batch[i];
     if (!job.active) continue;
     const element = job.element;
-    let width = element.clientWidth || element.getBoundingClientRect().width;
-    if (width <= 0) {
+    const rawWidth = element.clientWidth || element.getBoundingClientRect().width;
+    if (rawWidth <= 0) {
       work.push({ job, width: 0, computed: null, style: null });
       continue;
     }
@@ -321,8 +335,10 @@ function flushJobs() {
     const computed = window.getComputedStyle(element);
     const padL = computed.paddingLeft;
     const padR = computed.paddingRight;
-    if (padL && padL !== "0px") width -= Number.parseFloat(padL) || 0;
-    if (padR && padR !== "0px") width -= Number.parseFloat(padR) || 0;
+    const horizontalPadding = (padL && padL !== "0px" ? Number.parseFloat(padL) || 0 : 0)
+      + (padR && padR !== "0px" ? Number.parseFloat(padR) || 0 : 0);
+    job.horizontalPadding = horizontalPadding;
+    const width = rawWidth - horizontalPadding;
     if (width <= 0) {
       work.push({ job, width: 0, computed: null, style: null });
       continue;
@@ -339,9 +355,17 @@ function flushJobs() {
       style = job.lastStyle;
     }
 
-    // RO may report only height changes, including our own cut. Validate
-    // live typography first; font/DPR events invalidate completion too.
-    if (job.completedWidth === width) continue;
+    // RO may report only height changes, including our own cut, or a shrink
+    // that bounced back to completedWidth before this frame ran. Validate
+    // live typography first; lift any temporary shrink clip if the rendered
+    // string fits again.
+    if (job.completedWidth === width) {
+      if (job.clipOverride && (job.renderedWidth === undefined || width >= job.renderedWidth)) {
+        element.style.overflow = "";
+        job.clipOverride = false;
+      }
+      continue;
+    }
     work.push({ job, width, computed, style });
   }
 
@@ -420,8 +444,7 @@ function flushJobs() {
         measured: true,
         verified,
         mode: job.mode,
-        query: job.query,
-        startEllipsis: job.startEllipsis,
+        measuredWidth: width,
       });
     };
 

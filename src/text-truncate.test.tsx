@@ -1,3 +1,4 @@
+import React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, render } from "@testing-library/react";
 import { TextTruncate } from "./index";
@@ -291,6 +292,29 @@ describe("the truncated state", () => {
     flush();
     expect(root.dataset.truncateState).toBe("truncated");
     expect(root.querySelector("[data-truncate-visible]")!.textContent).toBe(cutText);
+  });
+
+  it("does not trigger an extra state update when query changes without changing the cut", () => {
+    const flush = queuedFrames(20);
+    const longer = "a-much-longer-file-name-than-fits-the-cell.pdf";
+    let renders = 0;
+    const { rerender } = render(
+      <React.Profiler id="tt" onRender={() => { renders += 1; }}>
+        <TextTruncate mode="middle" text={longer} query="zzz1" />
+      </React.Profiler>,
+    );
+    flush();
+    renders = 0;
+    // Both queries have zero matches and produce the exact same Canvas-only cut.
+    rerender(
+      <React.Profiler id="tt" onRender={() => { renders += 1; }}>
+        <TextTruncate mode="middle" text={longer} query="zzz2" />
+      </React.Profiler>,
+    );
+    expect(renders).toBe(1);
+    flush();
+    // Same cut & verified state: setTruncation bails out with no extra render.
+    expect(renders).toBe(1);
   });
 
   it("is not claimed for a result that fit while a new text waits for its measurement", () => {

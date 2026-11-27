@@ -263,4 +263,18 @@ describe("the side end mode cuts", () => {
       sourceLength: 20,
     })).toBe(true);
   });
+
+  it("keeps the held cut's own mode for bdi isolation between a mode switch and the next frame", () => {
+    const flush = queuedFrames(100);
+    const { container, rerender } = render(<TextTruncate mode="end" text={arabic} query="ملف" />);
+    flush();
+    expect(root(container).querySelector("[data-truncate-visible] > bdi")).not.toBeNull();
+
+    // Switch to middle mode: before the next RAF measures a middle cut, the
+    // held end-mode cut (prefixEnd === 0) keeps its bdi isolation.
+    rerender(<TextTruncate mode="middle" text={arabic} query="ملف" />);
+    expect(root(container).querySelector("[data-truncate-visible] > bdi")).not.toBeNull();
+    flush();
+    expect(root(container).querySelector("[data-truncate-visible] > bdi")).toBeNull();
+  });
 });

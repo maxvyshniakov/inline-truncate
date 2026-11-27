@@ -8,7 +8,7 @@ Versions and release rules: [docs/VERSIONING.md](docs/VERSIONING.md).
 
 - Plain Canvas-only measured roots (without a DOM-verified highlight) keep `overflow: hidden` instead of
   `overflow: visible` with `clip-path`, and highlighted roots temporarily clip with `overflow: hidden` between a
-  shrinking resize or font change and the next measurement commit so unverified or stale strings never add to an
+  shrinking resize or font-load event and the next measurement commit so unverified or stale strings never add to an
   ancestor's scroll size.
 - Resuming measurement for the same text, mode, query, and ellipsis (e.g. `middle` → `end` → `middle` under
   `strategy="auto"`) keeps the held cut until the next frame remeasures instead of flashing one frame of clipped text

@@ -11,6 +11,7 @@ import {
 } from "./truncation.js";
 import {
   cancelJob,
+  estimateContentWidth,
   fullTextState,
   invalidateMeasurements,
   scheduleJob,
@@ -111,7 +112,12 @@ export const TextTruncate = React.memo(function TextTruncate({
     job: MeasureJob;
     syncResolutionNeed: () => void;
   } | null>(null);
-  const resumedFromInactiveRef = React.useRef(false);
+  const resumedFromInactiveRef = React.useRef<{
+    source: string;
+    mode: TextTruncateMode;
+    query: string | undefined;
+    startEllipsis: boolean;
+  } | null>(null);
   const [truncation, setTruncation] = React.useState(() => fullTextState(text));
   const queryMatches = React.useMemo(
     () => strategy === "auto" && mode === "end" && findMatchRanges(text, query).length > 0,
@@ -145,6 +151,8 @@ export const TextTruncate = React.memo(function TextTruncate({
       lastNeedsDOM: false,
       lastHasMatch: false,
       completedWidth: undefined,
+      renderedWidth: undefined,
+      horizontalPadding: 0,
       widths: new BoundedWidthCache(),
       verifiedWidths: new BoundedWidthCache(),
       setTruncation,
@@ -158,9 +166,9 @@ export const TextTruncate = React.memo(function TextTruncate({
     };
 
     const onResize = () => {
-      if (job.completedWidth !== undefined) {
-        const width = element.clientWidth || element.getBoundingClientRect().width;
-        if (width < job.completedWidth) clipUntilMeasured();
+      const targetWidth = job.renderedWidth ?? job.completedWidth;
+      if (targetWidth !== undefined && estimateContentWidth(element, job.horizontalPadding) < targetWidth) {
+        clipUntilMeasured();
       }
       scheduleJob(job);
     };
@@ -203,7 +211,12 @@ export const TextTruncate = React.memo(function TextTruncate({
     return () => {
       job.active = false;
       jobRef.current = null;
-      resumedFromInactiveRef.current = true;
+      resumedFromInactiveRef.current = {
+        source: job.text,
+        mode: job.mode,
+        query: job.query,
+        startEllipsis: job.startEllipsis,
+      };
       if (job.clipOverride) {
         element.style.overflow = "";
         job.clipOverride = false;
@@ -215,13 +228,17 @@ export const TextTruncate = React.memo(function TextTruncate({
     };
   }, [resolvedStrategy]);
 
-  // Once React commits a newly measured string, lift any temporary shrink/font clip.
+  // Track the content width of the string now in the DOM, and lift any
+  // temporary shrink/font clip only once the element is at least that wide.
   React.useLayoutEffect(() => {
     const entry = jobRef.current;
     if (!entry) return;
-    if (entry.job.clipOverride && truncation.measured) {
-      entry.job.element.style.overflow = "";
-      entry.job.clipOverride = false;
+    const { job } = entry;
+    job.renderedWidth = truncation.measured ? truncation.measuredWidth : undefined;
+    if (job.clipOverride && truncation.measured
+      && (job.renderedWidth === undefined || estimateContentWidth(job.element, job.horizontalPadding) >= job.renderedWidth)) {
+      job.element.style.overflow = "";
+      job.clipOverride = false;
     }
   }, [truncation]);
 
@@ -241,19 +258,26 @@ export const TextTruncate = React.memo(function TextTruncate({
       job.query = query;
       job.className = className;
       job.emojiText = hasEmoji(text);
-      if (resumedFromInactiveRef.current) {
-        resumedFromInactiveRef.current = false;
+      const previousInputs = resumedFromInactiveRef.current;
+      if (previousInputs) {
+        resumedFromInactiveRef.current = null;
         // Resuming measurement after CSS took over: keep a held cut only when
         // it still belongs to these inputs so middle->end->middle does not flash
-        // a frame of clipped text without an ellipsis; drop stale cuts.
+        // a frame of clipped text without an ellipsis; mark it unverified so it
+        // clips flush until re-measured at the current width.
         setTruncation((previous) => {
           const reusable = previous.cut !== null
             && previous.source === text
-            && previous.mode === mode
-            && previous.query === query
-            && previous.startEllipsis === startEllipsis;
-          if (reusable) return previous.measured ? { ...previous, measured: false } : previous;
-          return previous.cut === null && !previous.measured && previous.source === text
+            && previousInputs.source === text
+            && previousInputs.mode === mode
+            && previousInputs.query === query
+            && previousInputs.startEllipsis === startEllipsis;
+          if (reusable) {
+            return previous.measured || previous.verified
+              ? { ...previous, measured: false, verified: false, measuredWidth: undefined }
+              : previous;
+          }
+          return previous.cut === null && !previous.measured && !previous.verified && previous.source === text
             ? previous
             : fullTextState(text);
         });
@@ -349,8 +373,9 @@ export const TextTruncate = React.memo(function TextTruncate({
       + (startEllipsis ? START_CLASS : "");
   // The text sits in a bdi in its own direction with the ellipsis first, as
   // under CSS, and for an end-mode cut that keeps the end, so the marker leads it.
+  // Use the cut's own mode while a previous cut is still held before re-measurement.
   const isolated = needsBdiIsolation({
-    mode,
+    mode: cut !== null ? (truncation.mode ?? mode) : mode,
     startEllipsis,
     cut,
     sourceLength: truncation.source.length,

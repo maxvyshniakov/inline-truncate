@@ -71,6 +71,80 @@ describe("the root's classes", () => {
     expect(root.className).toContain("overflow-visible");
   });
 
+  it("keeps clipping across continuous multi-frame shrinks (200 -> 160 -> 120 -> 80)", () => {
+    const layout = stubMeasuredLayout(200, { queuedFrames: true, stubRect: true, stubFonts: false });
+    const { container } = render(<TextTruncate mode="end" text={fileName} query="design" />);
+    layout.flush();
+    const root = container.querySelector<HTMLElement>("[data-truncate]")!;
+    expect(root.style.overflow).toBe("");
+
+    for (const next of [160, 120, 80]) {
+      layout.setWidth(next);
+      layout.deliverResize(root);
+      expect(root.style.overflow).toBe("hidden");
+      layout.flush();
+      expect(root.style.overflow).toBe("");
+    }
+  });
+
+  it("clears the temporary clip when width bounces back to completedWidth before the frame runs", () => {
+    const layout = stubMeasuredLayout(120, { queuedFrames: true, stubRect: true, stubFonts: false });
+    const { container } = render(<TextTruncate mode="end" text={fileName} query="design" />);
+    layout.flush();
+    const root = container.querySelector<HTMLElement>("[data-truncate]")!;
+    expect(root.style.overflow).toBe("");
+
+    // Shrink to 80 triggers the temporary clip, then bounce back to 120 before RAF runs.
+    layout.setWidth(80);
+    layout.deliverResize(root);
+    expect(root.style.overflow).toBe("hidden");
+    layout.setWidth(120);
+    layout.deliverResize(root);
+    layout.flush();
+    expect(root.style.overflow).toBe("");
+  });
+
+  it("detects shrinks smaller than horizontal padding by comparing content width", () => {
+    const layout = stubMeasuredLayout(120, { queuedFrames: true, stubRect: true, stubFonts: false });
+    const { container } = render(<TextTruncate mode="end" text={fileName} query="design" />);
+    const root = container.querySelector<HTMLElement>("[data-truncate]")!;
+    root.style.paddingLeft = "8px";
+    root.style.paddingRight = "8px";
+    layout.flush();
+    expect(root.style.overflow).toBe("");
+
+    // Shrink by 8px (less than the 16px total horizontal padding: clientWidth 120 -> 112,
+    // content width 104 -> 96). Must still trigger the temporary clip.
+    layout.setWidth(112);
+    layout.deliverResize(root);
+    expect(root.style.overflow).toBe("hidden");
+    layout.flush();
+    expect(root.style.overflow).toBe("");
+  });
+
+  it("clips flush when resuming a held cut after strategy changes and box shrinks in CSS", () => {
+    const layout = stubMeasuredLayout(160, { queuedFrames: true, stubRect: true, stubFonts: false });
+    const { container, rerender } = render(
+      <TextTruncate mode="middle" strategy="measure" text={fileName} query="design" />,
+    );
+    layout.flush();
+    const root = container.querySelector<HTMLElement>("[data-truncate]")!;
+    expect(root.className).toContain("overflow-visible");
+
+    // Switch to CSS, shrink the box while CSS is active, then resume measure.
+    rerender(<TextTruncate mode="middle" strategy="css" text={fileName} query="design" />);
+    layout.setWidth(90);
+    rerender(<TextTruncate mode="middle" strategy="measure" text={fileName} query="design" />);
+    // Held cut stays visible, but verified is false so it clips flush with overflow-hidden.
+    expect(root.dataset.truncateState).toBe("truncated");
+    expect(root.className).toContain("overflow-hidden");
+    expect(root.className).not.toContain("overflow-visible");
+
+    // After re-verification at 90px, paint-clip returns.
+    layout.flush();
+    expect(root.className).toContain("overflow-visible");
+  });
+
   for (const utility of ["px-2", "mx-2", "border", "box-border"]) {
     it(`merge a consumer's ${utility} as on origin/dev, with no box classes of their own`, () => {
       measuredLayout(100);
