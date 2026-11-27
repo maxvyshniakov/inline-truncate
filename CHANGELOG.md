@@ -4,6 +4,8 @@ Versions and release rules: [docs/VERSIONING.md](docs/VERSIONING.md).
 
 ## Unreleased
 
+## 0.6.1 - 2026-11-27
+
 ### Fixed
 
 - Measured `<TextTruncate>` instances that remeasure on device-pixel-ratio changes (highlighted matches, emoji, and
