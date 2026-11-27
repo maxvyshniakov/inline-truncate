@@ -21,7 +21,7 @@ jobs:
   # docs/VERSIONING.md) for main and pull requests into main; dev and branches
   # run plain verify.
   check:
-    uses: maxvyshniakov/package-kit/.github/workflows/verify.yml@v1.0.1
+    uses: maxvyshniakov/package-kit/.github/workflows/verify.yml@v1.1.0
     with:
       timeout-minutes: 15
   browser:
@@ -31,7 +31,7 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: maxvyshniakov/package-kit/actions/setup-bun@v1.0.1
+      - uses: maxvyshniakov/package-kit/actions/setup-bun@v1.1.0
       - run: bun install --frozen-lockfile
       - name: Install Playwright browsers
         run: bunx playwright install --with-deps chromium firefox webkit

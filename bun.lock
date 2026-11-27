@@ -9,7 +9,7 @@
         "inline-measure": "^0.5.1",
       },
       "devDependencies": {
-        "@maxvyshniakov/package-kit": "https://registry.npmjs.org/@maxvyshniakov/package-kit/-/package-kit-1.0.1.tgz",
+        "@maxvyshniakov/package-kit": "https://registry.npmjs.org/@maxvyshniakov/package-kit/-/package-kit-1.1.0.tgz",
         "@testing-library/dom": "10.4.2",
         "@testing-library/jest-dom": "8.0.0",
         "@testing-library/react": "16.3.3",
@@ -52,7 +52,7 @@
 
     "@jridgewell/trace-mapping": ["@jridgewell/trace-mapping@0.3.31", "", { "dependencies": { "@jridgewell/resolve-uri": "^3.1.0", "@jridgewell/sourcemap-codec": "^1.4.14" } }, "sha512-zzNR+SdQSDJzc8joaeP8QQoCQr8NuYx2dIIytl1QeBEZHJ9uW6hebsrYgbz8hJwUQao3TWCMtmfV8Nu1twOLAw=="],
 
-    "@maxvyshniakov/package-kit": ["@maxvyshniakov/package-kit@https://registry.npmjs.org/@maxvyshniakov/package-kit/-/package-kit-1.0.1.tgz", { "peerDependencies": { "playwright": ">=1.50.0" }, "optionalPeers": ["playwright"], "hasInstallScript": true, "bin": { "package-kit": "src/cli.mjs", "package-kit-lane": "src/lanefather.mjs" } }, "sha512-EhWxxIsFS4j4p44LCUMjeEZyWJTB8llHNErE05MNbCTvyQym4wXLA9mRjpL4RSSaI51Mc4mLifj6A865X/rIGw=="],
+    "@maxvyshniakov/package-kit": ["@maxvyshniakov/package-kit@https://registry.npmjs.org/@maxvyshniakov/package-kit/-/package-kit-1.1.0.tgz", { "peerDependencies": { "playwright": ">=1.50.0" }, "optionalPeers": ["playwright"], "hasInstallScript": true, "bin": { "package-kit": "src/cli.mjs", "package-kit-lane": "src/lanefather.mjs" } }, "sha512-luuqE8RdImheUj5VY6dC87HNEEkRegvQtQyeGGlw36xn5xmJ6E1d5Y7oV9dIRH3678m7svSa6FIw7svxqPkzFg=="],
 
     "@napi-rs/wasm-runtime": ["@napi-rs/wasm-runtime@1.2.6", "", { "dependencies": { "@tybys/wasm-util": "^0.10.3" }, "peerDependencies": { "@emnapi/core": "^1.7.1 || 2.0.0-beta.2", "@emnapi/runtime": "^1.7.1 || 2.0.0-beta.2" } }, "sha512-mRyDmEw9/fCDXCGfL1sbgIw/GUK0PVxRW4YwgPN61F3LQ+fSyoBFarJVzgGyhF6kRzEQZ0FejDqm4WLXSeqQmw=="],
 
