@@ -1,41 +1,36 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render } from "@testing-library/react";
 import { TextTruncate } from "./index";
+import { resetMeasuredLayoutGlobals, stubMeasuredLayout } from "./__tests__/measured-layout";
 
 afterEach(() => {
   cleanup();
+  resetMeasuredLayoutGlobals();
   vi.restoreAllMocks();
 });
 
 const fileName = "Quarterly-design-review.pdf";
 
-function measuredLayout(width: number) {
-  globalThis.ResizeObserver = class { observe() {} unobserve() {} disconnect() {} } as unknown as typeof ResizeObserver;
-  vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockReturnValue(width);
-  vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue({
-    font: "", measureText: (value: string) => ({ width: value.length * 10 }),
-  } as unknown as CanvasRenderingContext2D);
-  vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (this: HTMLElement) {
-    return { width: (this.textContent?.length ?? 0) * 10, height: 16 } as DOMRect;
-  });
-  vi.spyOn(window, "requestAnimationFrame").mockImplementation((callback) => { callback(0); return 1; });
-}
+const measuredLayout = (width: number) => stubMeasuredLayout(width, { stubRect: true, stubFonts: false });
 
 const classes = (container: HTMLElement) => [...container.querySelectorAll<HTMLElement>("[data-truncate]")].map((root) => root.className);
 
 // data-grid#148: the room for a highlight decoration is a paint clip 1px past
-// each inline side of a measured root, so the root's box, what a host measures
-// on it and a consumer className merge stay as on origin/dev: the root has no
-// padding, margin or box-sizing of its own. scripts/highlight/check.mjs
-// compares the boxes and Inline Measure's widths in the browsers.
+// each inline side of a DOM-verified highlighted root, so the root's box, what
+// a host measures on it and a consumer className merge stay as on origin/dev:
+// the root has no padding, margin or box-sizing of its own. Plain Canvas-only
+// roots keep overflow-hidden so subpixel discrepancies never add to an
+// ancestor's scroll size. scripts/highlight/check.mjs compares the boxes and
+// Inline Measure's widths in the browsers.
 describe("the root's classes", () => {
-  it("are origin/dev's under CSS, and swap the measured root's overflow:hidden for a paint clip", () => {
+  it("keep overflow-hidden for plain measured roots and use a paint clip for verified highlighted roots", () => {
     measuredLayout(100);
     const { container } = render(
       <>
         <TextTruncate mode="end" text={fileName} />
         <TextTruncate mode="end" ellipsis="start" text={fileName} />
         <TextTruncate mode="middle" text={fileName} />
+        <TextTruncate mode="middle" text={fileName} query="design" />
         <TextTruncate mode="end" text={fileName} query="design" />
         <TextTruncate mode="end" ellipsis="start" text={fileName} query="design" />
       </>,
@@ -43,6 +38,7 @@ describe("the root's classes", () => {
     expect(classes(container)).toEqual([
       "block w-full min-w-0 truncate",
       "block w-full min-w-0 truncate [direction:rtl]",
+      "block w-full min-w-0 whitespace-nowrap overflow-hidden",
       "block w-full min-w-0 whitespace-nowrap overflow-visible [clip-path:inset(0_-1px)]",
       "block w-full min-w-0 whitespace-nowrap overflow-visible [clip-path:inset(0_-1px)]",
       "block w-full min-w-0 whitespace-nowrap overflow-visible [clip-path:inset(0_-1px)] [direction:rtl]",
@@ -51,9 +47,28 @@ describe("the root's classes", () => {
 
   it("clip flush while nothing is cut yet in middle mode, and around the marker alone", () => {
     measuredLayout(20);
-    const { container } = render(<TextTruncate mode="middle" text={fileName} />);
+    const { container } = render(<TextTruncate mode="middle" text={fileName} query="design" />);
     expect(container.querySelector("[data-truncate]")).toHaveTextContent("...");
     expect(classes(container)).toEqual(["block w-full min-w-0 whitespace-nowrap overflow-hidden"]);
+  });
+
+  it("clips flush on a shrink between frames until the narrower width commits", () => {
+    const layout = stubMeasuredLayout(120, { queuedFrames: true, stubRect: true, stubFonts: false });
+    const { container } = render(<TextTruncate mode="end" text={fileName} query="design" />);
+    layout.flush();
+    const root = container.querySelector<HTMLElement>("[data-truncate]")!;
+    expect(root.className).toContain("overflow-visible");
+    expect(root.style.overflow).toBe("");
+
+    // Shrink the container and notify ResizeObserver without running the next RAF yet.
+    layout.setWidth(80);
+    layout.deliverResize(root);
+    expect(root.style.overflow).toBe("hidden");
+
+    // Once the measurement frame commits, the temporary clip is lifted.
+    layout.flush();
+    expect(root.style.overflow).toBe("");
+    expect(root.className).toContain("overflow-visible");
   });
 
   for (const utility of ["px-2", "mx-2", "border", "box-border"]) {

@@ -3,10 +3,14 @@
 import React from "react";
 import { hasEmoji } from "./measurement.js";
 import { CutHighlightedText, findMatchRanges, HighlightedMatchText } from "./highlight.js";
-import { TRUNCATION_MARKER, type TextTruncateMode } from "./truncation.js";
+import {
+  BoundedWidthCache,
+  TRUNCATION_MARKER,
+  needsBdiIsolation,
+  type TextTruncateMode,
+} from "./truncation.js";
 import {
   cancelJob,
-  createWidthCache,
   fullTextState,
   invalidateMeasurements,
   scheduleJob,
@@ -107,6 +111,7 @@ export const TextTruncate = React.memo(function TextTruncate({
     job: MeasureJob;
     syncResolutionNeed: () => void;
   } | null>(null);
+  const resumedFromInactiveRef = React.useRef(false);
   const [truncation, setTruncation] = React.useState(() => fullTextState(text));
   const queryMatches = React.useMemo(
     () => strategy === "auto" && mode === "end" && findMatchRanges(text, query).length > 0,
@@ -126,6 +131,7 @@ export const TextTruncate = React.memo(function TextTruncate({
     const job: MeasureJob = {
       active: true,
       initialized: false,
+      clipOverride: false,
       element,
       text: "",
       mode: "middle",
@@ -139,13 +145,27 @@ export const TextTruncate = React.memo(function TextTruncate({
       lastNeedsDOM: false,
       lastHasMatch: false,
       completedWidth: undefined,
-      widths: createWidthCache(),
-      verifiedWidths: createWidthCache(),
+      widths: new BoundedWidthCache(),
+      verifiedWidths: new BoundedWidthCache(),
       setTruncation,
     };
 
-    const schedule = () => scheduleJob(job);
+    const clipUntilMeasured = () => {
+      if (!job.clipOverride) {
+        element.style.overflow = "hidden";
+        job.clipOverride = true;
+      }
+    };
+
+    const onResize = () => {
+      if (job.completedWidth !== undefined) {
+        const width = element.clientWidth || element.getBoundingClientRect().width;
+        if (width < job.completedWidth) clipUntilMeasured();
+      }
+      scheduleJob(job);
+    };
     const onFontsChanged = () => {
+      clipUntilMeasured();
       invalidateMeasurements(job, "style");
       scheduleJob(job, true);
     };
@@ -177,21 +197,33 @@ export const TextTruncate = React.memo(function TextTruncate({
     job.resolutionNeedChanged = syncResolutionNeed;
     jobRef.current = { job, syncResolutionNeed };
 
-    const unobserve = observeResize(element, schedule);
+    const unobserve = observeResize(element, onResize);
     const unsubscribe = subscribeFonts(onFontsChanged);
 
     return () => {
       job.active = false;
       jobRef.current = null;
-      // Measuring stops: a held result is not another strategy's, so
-      // measuring again starts from the full text, pending.
-      setTruncation((previous) => (previous.measured ? fullTextState(previous.source) : previous));
+      resumedFromInactiveRef.current = true;
+      if (job.clipOverride) {
+        element.style.overflow = "";
+        job.clipOverride = false;
+      }
       cancelJob(job);
       unobserve();
       unsubscribe();
       unbindResolution();
     };
   }, [resolvedStrategy]);
+
+  // Once React commits a newly measured string, lift any temporary shrink/font clip.
+  React.useLayoutEffect(() => {
+    const entry = jobRef.current;
+    if (!entry) return;
+    if (entry.job.clipOverride && truncation.measured) {
+      entry.job.element.style.overflow = "";
+      entry.job.clipOverride = false;
+    }
+  }, [truncation]);
 
   // Prop synchronization effect: updates job inputs and schedules a batched
   // measurement without tearing down observers or font listeners.
@@ -209,6 +241,23 @@ export const TextTruncate = React.memo(function TextTruncate({
       job.query = query;
       job.className = className;
       job.emojiText = hasEmoji(text);
+      if (resumedFromInactiveRef.current) {
+        resumedFromInactiveRef.current = false;
+        // Resuming measurement after CSS took over: keep a held cut only when
+        // it still belongs to these inputs so middle->end->middle does not flash
+        // a frame of clipped text without an ellipsis; drop stale cuts.
+        setTruncation((previous) => {
+          const reusable = previous.cut !== null
+            && previous.source === text
+            && previous.mode === mode
+            && previous.query === query
+            && previous.startEllipsis === startEllipsis;
+          if (reusable) return previous.measured ? { ...previous, measured: false } : previous;
+          return previous.cut === null && !previous.measured && previous.source === text
+            ? previous
+            : fullTextState(text);
+        });
+      }
       syncResolutionNeed();
       scheduleJob(job);
       return undefined;
@@ -286,13 +335,26 @@ export const TextTruncate = React.memo(function TextTruncate({
   const unmeasured = resolvedStrategy === "measure" && cut === null
     && !(truncation.measured && truncation.source === text);
   const cssLook = resolvedStrategy === "css" || (unmeasured && mode === "end");
+  // Paint-only clipping (overflow-visible + clip-path) is only safe once a
+  // highlighted commit is DOM-verified (or fit by a clear margin) and is not
+  // the marker alone; plain Canvas-only commits keep overflow-hidden so
+  // subpixel discrepancies never add to an ancestor's scroll size.
+  const paintClip = !unmeasured
+    && truncation.verified
+    && Boolean(trimmedQuery)
+    && truncation.text !== TRUNCATION_MARKER;
   const baseClass = cssLook
     ? (startEllipsis ? BASE_CSS_START_CLASS : BASE_CSS_END_CLASS)
-    : (unmeasured || truncation.text === TRUNCATION_MARKER ? BASE_MEASURE_CLIP_CLASS : BASE_MEASURE_CLASS)
+    : (paintClip ? BASE_MEASURE_CLASS : BASE_MEASURE_CLIP_CLASS)
       + (startEllipsis ? START_CLASS : "");
   // The text sits in a bdi in its own direction with the ellipsis first, as
-  // under CSS, and when a cut keeps the end, so the marker leads it.
-  const isolated = startEllipsis || (cut !== null && cut.prefixEnd === 0 && cut.suffixStart < truncation.source.length);
+  // under CSS, and for an end-mode cut that keeps the end, so the marker leads it.
+  const isolated = needsBdiIsolation({
+    mode,
+    startEllipsis,
+    cut,
+    sourceLength: truncation.source.length,
+  });
   const shown = isolated ? <bdi>{content}</bdi> : content;
   const rootClassName = className ? mergeRootClassName(baseClass, className) : baseClass;
 

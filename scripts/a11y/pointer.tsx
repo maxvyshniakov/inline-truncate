@@ -57,20 +57,29 @@ function Page() {
 }
 
 // Measured roots flush against a scrolling box with no inline room: the paint
-// clip past their sides must not scroll it, cut, fitting or the marker alone.
-export const flushCases = [
-  { width: 120, text: "Sofas", query: "fas" },
-  { width: 120, text: "Quarterly revenue report, final draft v3.pdf", query: "draft" },
-  { width: 120, text: "Quarterly revenue report, final draft v3.pdf", query: "draft", ellipsis: "start" as const },
-  { width: 8, text: "Quarterly revenue report, final draft v3.pdf", query: "draft" },
+// clip past their sides must not scroll it, cut, fitting, plain middle or the
+// marker alone.
+export const flushCases: Array<{
+  width: number;
+  mode: "end" | "middle";
+  text: string;
+  query?: string;
+  ellipsis?: "end" | "start";
+  shrinkTo?: number;
+}> = [
+  { width: 120, mode: "end", text: "Sofas", query: "fas" },
+  { width: 120, mode: "end", text: "Quarterly revenue report, final draft v3.pdf", query: "draft", shrinkTo: 80 },
+  { width: 120, mode: "end", text: "Quarterly revenue report, final draft v3.pdf", query: "draft", ellipsis: "start" },
+  { width: 8, mode: "end", text: "Quarterly revenue report, final draft v3.pdf", query: "draft" },
+  { width: 120, mode: "middle", text: "Quarterly revenue report, final draft v3.pdf" },
 ];
 
 function Flush() {
   return (
     <div id="flush">
-      {flushCases.map(({ width, text, query, ellipsis }, index) => (
-        <div key={index} data-flush={index} style={{ width, overflow: "auto" }}>
-          <TextTruncate mode="end" ellipsis={ellipsis} text={text} query={query} />
+      {flushCases.map(({ width, mode, text, query, ellipsis, shrinkTo }, index) => (
+        <div key={index} data-flush={index} data-shrink-to={shrinkTo} style={{ width, overflow: "auto" }}>
+          <TextTruncate mode={mode} ellipsis={ellipsis} text={text} query={query} />
         </div>
       ))}
     </div>

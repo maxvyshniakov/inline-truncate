@@ -103,7 +103,8 @@ try {
 
   step("flush");
   // (3b) A measured root flush against a scrolling box: its paint clip reaches
-  // 1px past its sides, which must not make the box scroll.
+  // 1px past its sides, which must not make the box scroll, including plain
+  // middle-mode text and a shrink between frames before the next RAF measures.
   const flush = await page.evaluate(() => [...document.querySelectorAll("[data-flush]")].map((box) => ({
     index: box.dataset.flush,
     state: box.querySelector("[data-truncate]").dataset.truncateState ?? "fits",
@@ -114,6 +115,37 @@ try {
   for (const box of flush) {
     if (box.strategy !== "measure") fail(`flush ${box.index}: not measured (${box.strategy})`);
     if (box.scroll[0] > box.scroll[1] || box.scroll[2] > box.scroll[3]) fail(`flush ${box.index} (${box.state}): the box scrolls ${JSON.stringify(box.scroll)}`);
+  }
+  // Shrink between frames: hold the RAF queue while ResizeObserver runs after
+  // shrinking a highlighted flush box, so we observe the pre-measurement state.
+  const shrink = await page.evaluate(() => new Promise((resolve) => {
+    const box = document.querySelector("[data-shrink-to]");
+    const targetWidth = box.dataset.shrinkTo;
+    const origRaf = window.requestAnimationFrame;
+    const held = [];
+    window.requestAnimationFrame = (cb) => {
+      held.push(cb);
+      return held.length;
+    };
+    const observer = new ResizeObserver(() => {
+      observer.disconnect();
+      const between = [box.scrollWidth, box.clientWidth, box.scrollHeight, box.clientHeight];
+      window.requestAnimationFrame = origRaf;
+      for (const cb of held) origRaf(cb);
+      origRaf(() => origRaf(() => {
+        const after = [box.scrollWidth, box.clientWidth, box.scrollHeight, box.clientHeight];
+        resolve({ index: box.dataset.flush, between, after });
+      }));
+    });
+    observer.observe(box);
+    box.style.width = `${targetWidth}px`;
+  }));
+  console.log(`[pointer ${browserName}] flush shrink: ${JSON.stringify(shrink)}`);
+  if (shrink.between[0] > shrink.between[1] || shrink.between[2] > shrink.between[3]) {
+    fail(`flush ${shrink.index} (shrink between frames): the box scrolls ${JSON.stringify(shrink.between)}`);
+  }
+  if (shrink.after[0] > shrink.after[1] || shrink.after[2] > shrink.after[3]) {
+    fail(`flush ${shrink.index} (after shrink): the box scrolls ${JSON.stringify(shrink.after)}`);
   }
 
   step("hit test");

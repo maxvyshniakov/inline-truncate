@@ -4,6 +4,7 @@ import {
   createInlineTextMeasurementNode,
   parseCssPixelValue,
 } from "inline-measure";
+import { NON_ASCII } from "./graphemes.js";
 import {
   createHighlightNodes,
   cutHighlightRuns,
@@ -13,7 +14,6 @@ import {
 } from "./highlight.js";
 import type { TruncationCut } from "./truncation.js";
 
-const NON_ASCII = /[\u0080-\uffff]/;
 const EMOJI_PATTERN = /[\p{Extended_Pictographic}\p{Regional_Indicator}\uFE0F\u20E3]/u;
 
 export function hasEmoji(value: string) {

@@ -1,7 +1,7 @@
 /*
  * The package's Tailwind utilities, written out as Tailwind 4 compiles them,
  * for the browser harnesses (perf, a11y, pointer, highlight), which have no
- * Tailwind build. src/harness-css.test.ts fails when a class the component or
+ * Tailwind build. src/harness-css.test.tsx fails when a class the component or
  * HIGHLIGHT_CLASS_NAME renders has no rule here.
  */
 .block{display:block}

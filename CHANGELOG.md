@@ -4,6 +4,20 @@ Versions and release rules: [docs/VERSIONING.md](docs/VERSIONING.md).
 
 ## Unreleased
 
+### Fixed
+
+- Plain Canvas-only measured roots (without a DOM-verified highlight) keep `overflow: hidden` instead of
+  `overflow: visible` with `clip-path`, and highlighted roots temporarily clip with `overflow: hidden` between a
+  shrinking resize or font change and the next measurement commit so unverified or stale strings never add to an
+  ancestor's scroll size.
+- Resuming measurement for the same text, mode, query, and ellipsis (e.g. `middle` → `end` → `middle` under
+  `strategy="auto"`) keeps the held cut until the next frame remeasures instead of flashing one frame of clipped text
+  without an ellipsis.
+- `middle` mode no longer wraps a cut in `<bdi>` when `prefixEnd` is `0`; `<bdi>` isolation applies only to
+  `ellipsis="start"` and end-mode cuts that keep the end.
+- Clarification to 0.6.0: skipping DOM verification when Canvas puts fitting non-emoji text more than a few pixels
+  inside the box (`FIT_MARGIN`) applies to every measured mode (`middle`, `strategy="measure"`, and auto `end`).
+
 ## 0.6.1 - 2026-11-27
 
 ### Fixed

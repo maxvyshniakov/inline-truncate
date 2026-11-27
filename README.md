@@ -70,15 +70,17 @@ the dots on the line's end side. The text's direction is its first letter's, as
 `dir="auto"` reads it; text without letters reads left to right. A cut that keeps the
 end sits in a `bdi`, so the dots lead it.
 
-A measured root clips paint, not layout: `clip-path: inset(0 -1px)` instead of
+A DOM-verified highlighted root clips paint, not layout: `clip-path: inset(0 -1px)` instead of
 `overflow: hidden`, so a highlight decoration that paints up to 1px past its glyphs
 (a `box-shadow`, as Data Grid draws) keeps that pixel and its rounded corners at the
 text's first and last character and next to the marker. The root's box, what Inline
 Measure reports for it, its scroll sizes and how a `className` merges are as with
 `overflow: hidden`; the measured string fits the box, so nothing scrolls. An ancestor
 that clips flush with the root (`overflow: hidden` or `auto` with no inline padding)
-still clips that pixel: leave the cell at least 1px of inline room. Text that is not
-cut yet in `middle` mode, and a marker alone in a box narrower than it, clip flush.
+still clips that pixel: leave the cell at least 1px of inline room. Plain Canvas-only
+measured roots, text that is not cut yet in `middle` mode, a marker alone in a box
+narrower than it, and a root between a shrinking resize and its next measurement frame
+clip flush with `overflow: hidden`.
 
 Highlight colors use `--text-truncate-highlight-background` and
 `--text-truncate-highlight-foreground`, with amber and current-text defaults.
@@ -93,11 +95,12 @@ as extra padding need their own measurement policy. Middle truncation measures o
 visits. Each mounted measured component reuses segmented text and a bounded
 width cache across resizes, and invalidates widths after a class or font-load
 change. Emoji inputs and text with a matching query select through Canvas first, then verify the complete final
-string with a cached DOM measurement. At most two corrections use the observed width
+string with a cached DOM measurement (in every measured mode, non-emoji text that Canvas puts more than
+a few pixels inside the box skips that DOM probe). At most two corrections use the observed width
 discrepancy; a native predicate handles larger disagreements. CSS numeric
 features, variation settings, disabled optical sizing, word spacing and text
-transforms use a hidden DOM predicate when Canvas cannot express them. DOM-verified widths (emoji text,
-and text with a matching query) are invalidated on font/style/query changes and resolution changes, independently of box resize. Inherited
+transforms use a hidden DOM predicate when Canvas cannot express them. DOM-measured widths (emoji text,
+text with a matching query, and text whose style Canvas cannot express) are invalidated on font/style/query changes and resolution changes, independently of box resize. Inherited
 style changes must cause a resize, font-load event, or a component class/text
 change to trigger a new measurement; arbitrary ancestor style mutations are
 not observed.

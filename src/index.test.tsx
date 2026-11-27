@@ -2,117 +2,21 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { act, render, cleanup, screen } from "@testing-library/react";
 import { HighlightedMatchText, TextTruncate, splitTextGraphemes, truncateText, type TextTruncateProps } from "./index";
 import { HIGHLIGHT_CLASS_NAME } from "./highlight";
-
-const originalFonts = Object.getOwnPropertyDescriptor(document, "fonts");
-const originalRO = globalThis.ResizeObserver;
-const originalClientWidth = Object.getOwnPropertyDescriptor(HTMLElement.prototype, "clientWidth");
-const originalGetContext = HTMLCanvasElement.prototype.getContext;
-
-// A ResizeObserver that reports nothing by itself: `deliverResize` hands an
-// observation to every live observer watching the target, as a browser would
-// after the element's box changed.
-const liveResizeObservers = new Set<FakeResizeObserver>();
-
-class FakeResizeObserver {
-  private readonly targets = new Set<Element>();
-
-  constructor(private readonly callback: ResizeObserverCallback) {
-    liveResizeObservers.add(this);
-  }
-
-  observe(target: Element) {
-    this.targets.add(target);
-  }
-
-  unobserve(target: Element) {
-    this.targets.delete(target);
-  }
-
-  disconnect() {
-    this.targets.clear();
-    liveResizeObservers.delete(this);
-  }
-
-  deliver(target: Element) {
-    if (!this.targets.has(target)) return;
-    this.callback([{ target } as ResizeObserverEntry], this as unknown as ResizeObserver);
-  }
-}
-
-function stubResizeObserver() {
-  globalThis.ResizeObserver = FakeResizeObserver as unknown as typeof ResizeObserver;
-}
-
-function deliverResize(target: Element) {
-  act(() => {
-    for (const observer of liveResizeObservers) observer.deliver(target);
-  });
-}
-
-function stubDocumentFonts(
-  status: "loaded" | "loading",
-  readySpy: () => void,
-  ready: () => Promise<unknown> = () => Promise.resolve(),
-) {
-  Object.defineProperty(document, "fonts", {
-    configurable: true,
-    value: {
-      status,
-      get ready() {
-        readySpy();
-        return ready();
-      },
-    },
-  });
-}
+import {
+  FakeResizeObserver,
+  deliverResize,
+  liveResizeObservers,
+  resetMeasuredLayoutGlobals,
+  stubDocumentFonts,
+  stubMeasuredLayout,
+  stubResizeObserver,
+} from "./__tests__/measured-layout";
 
 afterEach(() => {
   cleanup();
-  if (originalFonts) Object.defineProperty(document, "fonts", originalFonts);
-  else delete (document as unknown as { fonts?: unknown }).fonts;
-  globalThis.ResizeObserver = originalRO;
-  liveResizeObservers.clear();
-  if (originalClientWidth) Object.defineProperty(HTMLElement.prototype, "clientWidth", originalClientWidth);
-  else Reflect.deleteProperty(HTMLElement.prototype, "clientWidth");
-  HTMLCanvasElement.prototype.getContext = originalGetContext;
+  resetMeasuredLayoutGlobals();
   vi.restoreAllMocks();
 });
-
-const CHARACTER_WIDTH = 10;
-
-// Deterministic layout for the measure strategy: every root is `width` pixels
-// wide, Inline Measure's canvas gives every UTF-16 unit CHARACTER_WIDTH pixels,
-// and animation frames run at once. `setWidth` and `setCharacterWidth` change
-// the layout without telling the component, as a resize or a font swap would.
-function stubMeasuredLayout(width: number) {
-  let currentWidth = width;
-  let characterWidth = CHARACTER_WIDTH;
-  stubResizeObserver();
-  stubDocumentFonts("loaded", () => {});
-  Object.defineProperty(HTMLElement.prototype, "clientWidth", {
-    configurable: true,
-    get: () => currentWidth,
-  });
-  const getContext = vi.fn(() => ({
-    font: "",
-    measureText: (value: string) => ({ width: value.length * characterWidth }),
-  }));
-  HTMLCanvasElement.prototype.getContext = getContext as unknown as typeof HTMLCanvasElement.prototype.getContext;
-  const requestAnimationFrame = vi.spyOn(window, "requestAnimationFrame").mockImplementation((callback) => {
-    callback(0);
-    return 1;
-  });
-  return {
-    getContext,
-    requestAnimationFrame,
-    setWidth: (next: number) => {
-      currentWidth = next;
-    },
-    setCharacterWidth: (next: number) => {
-      characterWidth = next;
-    },
-  };
-}
 
 // What a sighted reader sees: the text without the visually hidden full-text copy.
 function visibleText(node: Element) {

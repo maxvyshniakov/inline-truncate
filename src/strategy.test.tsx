@@ -1,26 +1,17 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { act, cleanup, render } from "@testing-library/react";
+import { cleanup, render } from "@testing-library/react";
 import { renderToString } from "react-dom/server";
 import { TextTruncate } from "./index";
 import { indexTextGraphemes } from "./graphemes";
-import { contentDirection, endModeSide, truncatePrepared } from "./truncation";
+import { contentDirection, endModeSide, needsBdiIsolation, truncatePrepared } from "./truncation";
+import { resetMeasuredLayoutGlobals, stubMeasuredLayout } from "./__tests__/measured-layout";
 
 // Ten units per UTF-16 code unit, as index.test.tsx measures.
-function measuredLayout(width: number) {
-  globalThis.ResizeObserver = class { observe() {} unobserve() {} disconnect() {} } as unknown as typeof ResizeObserver;
-  vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockReturnValue(width);
-  const getContext = vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue({
-    font: "", measureText: (value: string) => ({ width: value.length * 10 }),
-  } as unknown as CanvasRenderingContext2D);
-  vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (this: HTMLElement) {
-    return { width: (this.textContent?.length ?? 0) * 10, height: 16 } as DOMRect;
-  });
-  vi.spyOn(window, "requestAnimationFrame").mockImplementation((callback) => { callback(0); return 1; });
-  return { getContext };
-}
+const measuredLayout = (width: number) => stubMeasuredLayout(width, { stubRect: true, stubFonts: false });
 
 afterEach(() => {
   cleanup();
+  resetMeasuredLayoutGlobals();
   vi.restoreAllMocks();
 });
 
@@ -137,19 +128,8 @@ describe("ellipsis start, measured", () => {
 
 // Frames run only when the test says, so the render before the first
 // measurement can be inspected (a synchronous requestAnimationFrame hides it).
-function queuedFrames(width: number) {
-  globalThis.ResizeObserver = class { observe() {} unobserve() {} disconnect() {} } as unknown as typeof ResizeObserver;
-  const frames: FrameRequestCallback[] = [];
-  vi.spyOn(window, "requestAnimationFrame").mockImplementation((callback) => { frames.push(callback); return frames.length; });
-  vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockReturnValue(width);
-  vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue({
-    font: "", measureText: (value: string) => ({ width: value.length * 10 }),
-  } as unknown as CanvasRenderingContext2D);
-  vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (this: HTMLElement) {
-    return { width: (this.textContent?.length ?? 0) * 10, height: 16 } as DOMRect;
-  });
-  return () => act(() => { while (frames.length) frames.shift()!(0); });
-}
+const queuedFrames = (width: number) =>
+  stubMeasuredLayout(width, { queuedFrames: true, stubRect: true, stubFonts: false }).flush;
 
 // Until measured end mode has cut, it looks as CSS draws it: dots, not a hard clip.
 describe("measured end mode before its first measurement", () => {
@@ -261,5 +241,26 @@ describe("the side end mode cuts", () => {
     const { container } = render(<TextTruncate mode="end" text={fileName} query="review" />);
     expect(visible(root(container))).toBe("Quarter...");
     expect(root(container).querySelector("bdi")).toBeNull();
+  });
+
+  it("does not isolate a middle-mode cut even when prefixEnd is 0", () => {
+    expect(needsBdiIsolation({
+      mode: "middle",
+      startEllipsis: false,
+      cut: { prefixEnd: 0, suffixStart: 10 },
+      sourceLength: 20,
+    })).toBe(false);
+    expect(needsBdiIsolation({
+      mode: "end",
+      startEllipsis: false,
+      cut: { prefixEnd: 0, suffixStart: 10 },
+      sourceLength: 20,
+    })).toBe(true);
+    expect(needsBdiIsolation({
+      mode: "end",
+      startEllipsis: true,
+      cut: null,
+      sourceLength: 20,
+    })).toBe(true);
   });
 });

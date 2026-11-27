@@ -8,10 +8,11 @@ import {
 } from "./measurement.js";
 import { indexTextGraphemes, type IndexedText } from "./graphemes.js";
 import {
+  BoundedWidthCache,
   MAX_CACHED_CODE_UNITS,
-  MAX_CACHED_WIDTHS,
   TRUNCATION_MARKER,
   endModeSide,
+  needsBdiIsolation,
   truncatePrepared,
   type TextTruncateMode,
   type TruncationSide,
@@ -26,10 +27,15 @@ export interface TruncationState {
   cut: TruncationCut | null;
   /** The search ran for `source` at the current width; false while it is pending. */
   measured: boolean;
+  /** The committed string was verified against the DOM (or fit by a clear margin). */
+  verified: boolean;
+  mode?: TextTruncateMode;
+  query?: string;
+  startEllipsis?: boolean;
 }
 
 export function fullTextState(text: string): TruncationState {
-  return { source: text, text, cut: null, measured: false };
+  return { source: text, text, cut: null, measured: false, verified: false };
 }
 
 // Keeps the previous state object when nothing changed, so React bails out of
@@ -37,13 +43,26 @@ export function fullTextState(text: string): TruncationState {
 function sameTruncation(a: TruncationState, b: TruncationState) {
   return a.source === b.source
     && a.measured === b.measured
+    && a.verified === b.verified
+    && a.mode === b.mode
+    && a.query === b.query
+    && a.startEllipsis === b.startEllipsis
     && a.text === b.text
     && a.cut?.prefixEnd === b.cut?.prefixEnd
     && a.cut?.suffixStart === b.cut?.suffixStart;
 }
 
 function setTruncation(job: MeasureJob, next: TruncationState) {
-  job.setTruncation((previous) => (sameTruncation(previous, next) ? previous : next));
+  job.setTruncation((previous) => {
+    if (sameTruncation(previous, next)) {
+      if (job.clipOverride && next.measured) {
+        job.element.style.overflow = "";
+        job.clipOverride = false;
+      }
+      return previous;
+    }
+    return next;
+  });
 }
 
 // --- Shared two-phase batched RAF scheduler ---
@@ -65,33 +84,10 @@ interface MeasureWorkItem {
   style: StyleSnapshot | null;
 }
 
-export interface WidthCache {
-  entries: Map<string, number>;
-  units: number;
-}
-
-export function createWidthCache(): WidthCache {
-  return { entries: new Map(), units: 0 };
-}
-
-function clearWidthCache(cache: WidthCache) {
-  cache.entries.clear();
-  cache.units = 0;
-}
-
-function setCachedWidth(cache: WidthCache, key: string, unitLength: number, width: number) {
-  if (cache.entries.size >= MAX_CACHED_WIDTHS || cache.units + unitLength > MAX_CACHED_CODE_UNITS) {
-    clearWidthCache(cache);
-  }
-  if (unitLength <= MAX_CACHED_CODE_UNITS) {
-    cache.entries.set(key, width);
-    cache.units += unitLength;
-  }
-}
-
 export interface MeasureJob {
   active: boolean;
   initialized: boolean;
+  clipOverride: boolean;
   element: HTMLElement;
   text: string;
   mode: TextTruncateMode;
@@ -109,8 +105,8 @@ export interface MeasureJob {
   lastNeedsDOM: boolean;
   lastHasMatch: boolean;
   completedWidth: number | undefined;
-  widths: WidthCache;
-  verifiedWidths: WidthCache;
+  widths: BoundedWidthCache;
+  verifiedWidths: BoundedWidthCache;
   setTruncation: React.Dispatch<React.SetStateAction<TruncationState>>;
   /** Called when whether the style or highlight needs the DOM changes. */
   resolutionNeedChanged?: () => void;
@@ -154,9 +150,9 @@ export function invalidateMeasurements(job: MeasureJob, change: MeasurementChang
   }
   const dropsPrimary = change !== "query" || job.lastNeedsDOM;
   job.completedWidth = undefined;
-  clearWidthCache(job.verifiedWidths);
+  job.verifiedWidths.clear();
   if (dropsPrimary) {
-    clearWidthCache(job.widths);
+    job.widths.clear();
   }
   if (change === "style") job.lastStyle = undefined;
   if (change === "text") job.indexedText = undefined;
@@ -400,8 +396,13 @@ function flushJobs() {
     const session = createMeasurementSession(job.element, computed, job.query, {
       emojiText: job.emojiText,
       // The component isolates the text in a bdi with the ellipsis first, and
-      // a cut that keeps the end; the probe draws the same structure.
-      isolate: (cut) => job.startEllipsis || (cut !== undefined && cut.prefixEnd === 0 && cut.suffixStart < job.text.length),
+      // an end-mode cut that keeps the end; the probe draws the same structure.
+      isolate: (cut) => needsBdiIsolation({
+        mode: job.mode,
+        startEllipsis: job.startEllipsis,
+        cut,
+        sourceLength: job.text.length,
+      }),
       lang: style.lang,
       matchRanges,
       needsDOM,
@@ -410,9 +411,18 @@ function flushJobs() {
       style,
     });
 
-    const commit = (result: TruncationResult) => {
+    const commit = (result: TruncationResult, verified: boolean) => {
       job.completedWidth = width;
-      setTruncation(job, { source: job.text, text: result.text, cut: result.cut, measured: true });
+      setTruncation(job, {
+        source: job.text,
+        text: result.text,
+        cut: result.cut,
+        measured: true,
+        verified,
+        mode: job.mode,
+        query: job.query,
+        startEllipsis: job.startEllipsis,
+      });
     };
 
     // The DOM probe draws a query's highlight from the candidate's cut, so a
@@ -423,12 +433,12 @@ function flushJobs() {
 
     const measureText = (value: string, cut?: TruncationCut) => {
       const key = widthCacheKey(value, cut, primaryByCut);
-      const cached = job.widths.entries.get(key);
+      const cached = job.widths.get(key);
       if (cached !== undefined) return cached;
       if (flushWidthMap) {
         const flushHit = flushWidthMap.get(value);
         if (flushHit !== undefined) {
-          setCachedWidth(job.widths, key, value.length, flushHit);
+          job.widths.set(key, flushHit, value.length);
           return flushHit;
         }
       }
@@ -438,7 +448,7 @@ function flushJobs() {
       }
       // Component-local, bounded by both entries and retained text size.
       // Evict between measurements; no global strings survive unmount.
-      setCachedWidth(job.widths, key, value.length, measured);
+      job.widths.set(key, measured, value.length);
       return measured;
     };
 
@@ -447,7 +457,7 @@ function flushJobs() {
     try {
       if (!session.verifyText) {
         const next = truncatePrepared({ text: job.text, maxWidth: width, mode: side, measureText }, getIndexed);
-        commit(next);
+        commit(next, needsDOM);
         continue;
       }
 
@@ -455,11 +465,11 @@ function flushJobs() {
         truncatePrepared({ text: job.text, maxWidth: budget, mode: side, measureText: measure }, getIndexed);
       const verify = ({ text: value, cut }: TruncationResult) => {
         const key = widthCacheKey(value, cut ?? undefined, highlighted);
-        const cached = job.verifiedWidths.entries.get(key);
+        const cached = job.verifiedWidths.get(key);
         if (cached !== undefined) return cached;
         const actual = session.verifyText?.(value, cut ?? undefined);
         if (actual === undefined) return undefined;
-        setCachedWidth(job.verifiedWidths, key, value.length, actual);
+        job.verifiedWidths.set(key, actual, value.length);
         return actual;
       };
 
@@ -468,27 +478,33 @@ function flushJobs() {
       // highlight span can paint up to about a pixel wider than Canvas measured
       // (WebKit), emoji widths can differ more.
       if (next.cut === null && !job.emojiText && measureText(job.text) <= width - FIT_MARGIN - (session.matchCount ?? 0)) {
-        commit(next);
+        commit(next, true);
         continue;
       }
       let budget = width;
+      let verified = false;
       for (let refinement = 0; ; refinement++) {
         const actual = verify(next);
-        if (next.text === TRUNCATION_MARKER || actual === undefined || actual <= width) break;
+        if (next.text === TRUNCATION_MARKER || actual === undefined || actual <= width) {
+          verified = actual !== undefined && actual <= width;
+          break;
+        }
         if (refinement >= 2) {
           next = select(width, session.measureExact!);
-          verify(next);
+          const exactActual = verify(next);
+          verified = exactActual !== undefined && exactActual <= width;
           break;
         }
         budget = Math.min(budget, width - (actual - measureText(next.text, next.cut ?? undefined)));
         if (budget <= 0) {
           next = select(width, session.measureExact!);
-          verify(next);
+          const exactActual = verify(next);
+          verified = exactActual !== undefined && exactActual <= width;
           break;
         }
         next = select(budget);
       }
-      commit(next);
+      commit(next, verified);
     } finally {
       session.dispose();
     }

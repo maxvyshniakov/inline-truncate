@@ -178,17 +178,26 @@ export function cutHighlightRuns(
   return runs;
 }
 
+const MATCH_SPAN_PROPS = {
+  className: HIGHLIGHT_CLASS_NAME,
+  "data-slot": HIGHLIGHT_SLOT,
+} as const;
+
+const MARKER_SPAN_PROPS = {
+  ...MATCH_SPAN_PROPS,
+  "data-truncate-marker": "",
+} as const;
+
+function highlightSpanProps(part: HighlightedTextPart) {
+  return part.marker ? MARKER_SPAN_PROPS : MATCH_SPAN_PROPS;
+}
+
 function renderHighlightParts(parts: readonly HighlightedTextPart[]) {
   return (
     <>
       {parts.map((part) =>
         part.matched ? (
-          <span
-            key={part.start}
-            data-slot={HIGHLIGHT_SLOT}
-            data-truncate-marker={part.marker ? "" : undefined}
-            className={HIGHLIGHT_CLASS_NAME}
-          >
+          <span key={part.start} {...highlightSpanProps(part)}>
             {part.text}
           </span>
         ) : (
@@ -208,9 +217,11 @@ export function createHighlightNodes(doc: Document, parts: readonly HighlightedT
       nodes.push(doc.createTextNode(part.text));
     } else {
       const span = doc.createElement("span");
-      span.dataset.slot = HIGHLIGHT_SLOT;
-      if (part.marker) span.dataset.truncateMarker = "";
-      span.className = HIGHLIGHT_CLASS_NAME;
+      const props = highlightSpanProps(part);
+      for (const [name, value] of Object.entries(props)) {
+        if (name === "className") span.className = value;
+        else span.setAttribute(name, value);
+      }
       span.textContent = part.text;
       nodes.push(span);
     }

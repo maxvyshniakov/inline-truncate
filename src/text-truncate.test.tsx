@@ -1,24 +1,18 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, render } from "@testing-library/react";
 import { TextTruncate } from "./index";
+import { resetMeasuredLayoutGlobals, stubMeasuredLayout } from "./__tests__/measured-layout";
 
 afterEach(() => {
   cleanup();
+  resetMeasuredLayoutGlobals();
   vi.restoreAllMocks();
 });
 
 // Frames run only when the test says, so the render between a prop change
 // and the next measurement can be inspected.
-function queuedFrames(width: number) {
-  globalThis.ResizeObserver = class { observe() {} disconnect() {} } as unknown as typeof ResizeObserver;
-  const frames: FrameRequestCallback[] = [];
-  vi.spyOn(window, "requestAnimationFrame").mockImplementation((callback) => { frames.push(callback); return frames.length; });
-  vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockReturnValue(width);
-  vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue({
-    font: "", measureText: (value: string) => ({ width: value.length }),
-  } as unknown as CanvasRenderingContext2D);
-  return () => act(() => { while (frames.length) frames.shift()!(0); });
-}
+const queuedFrames = (width: number) =>
+  stubMeasuredLayout(width, { characterWidth: 1, queuedFrames: true, stubFonts: false }).flush;
 
 const highlights = (root: Element) =>
   [...root.querySelectorAll('[data-truncate-visible] [data-slot="highlighted-match"]')].map((node) =>
@@ -274,6 +268,29 @@ describe("the truncated state", () => {
     expect(root.dataset.truncateState).toBeUndefined();
     expect(root.querySelector("[data-truncate-full-text]")).toBeNull();
     expect(root.textContent).toBe("short.pdf");
+  });
+
+  it("keeps the held cut when resuming measurement for the same text (middle -> end -> middle)", () => {
+    const flush = queuedFrames(20);
+    const longer = "a-much-longer-file-name-than-fits-the-cell.pdf";
+    const { container, rerender } = render(<TextTruncate mode="middle" text={longer} />);
+    flush();
+    const root = container.querySelector<HTMLElement>("[data-truncate]")!;
+    const cutText = root.querySelector("[data-truncate-visible]")!.textContent;
+    expect(root.dataset.truncateState).toBe("truncated");
+    expect(cutText).toContain("...");
+
+    // Switch to CSS end mode and back to measured middle mode with the same text.
+    rerender(<TextTruncate mode="end" text={longer} />);
+    expect(root.dataset.truncateStrategy).toBe("css");
+    rerender(<TextTruncate mode="middle" text={longer} />);
+    // Before the next measurement frame runs, the held cut stays up instead of
+    // flashing clipped full text without an ellipsis.
+    expect(root.dataset.truncateState).toBe("truncated");
+    expect(root.querySelector("[data-truncate-visible]")!.textContent).toBe(cutText);
+    flush();
+    expect(root.dataset.truncateState).toBe("truncated");
+    expect(root.querySelector("[data-truncate-visible]")!.textContent).toBe(cutText);
   });
 
   it("is not claimed for a result that fit while a new text waits for its measurement", () => {

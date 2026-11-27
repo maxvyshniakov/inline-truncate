@@ -42,7 +42,8 @@ end mode measures instead of using CSS, so the marker can take the highlight of 
 (`--scenario=auto-end`; origin/dev `4ca4761`, the first fix `6d73e9b` and the working tree) the overflowing case went
 from 0 to 53 Canvas calls, 200 DOM reads and 150 style reads. The fitting case took 50 Canvas calls, 200 DOM reads and
 150 style reads with `6d73e9b`, which verified every highlighted string in the DOM, and 100 DOM reads and 100 style
-reads once text that Canvas puts more than a few pixels inside the box skips that probe; it commits twice, the
+reads once text that Canvas puts more than a few pixels inside the box skips that probe (this fitting-margin
+shortcut applies to every measured mode, including `middle` and `strategy="measure"`); it commits twice, the
 pending CSS look and the measured one. Medians, origin/dev to working tree: Chromium 47.9 to 47.7 ms (overflowing)
 and 47.6 to 47.9 ms (fitting), Firefox 22 to 22 and 23 to 22 ms, WebKit 48 to 47 and 48 to 46 ms, all at the frame
 floor. The case without a query stays at zero work. A separate 50-component emoji mount case records the cost of the

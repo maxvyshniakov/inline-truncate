@@ -4,9 +4,11 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render } from "@testing-library/react";
 import { TextTruncate } from "./index";
 import { HIGHLIGHT_CLASS_NAME } from "./highlight";
+import { resetMeasuredLayoutGlobals, stubMeasuredLayout } from "./__tests__/measured-layout";
 
 afterEach(() => {
   cleanup();
+  resetMeasuredLayoutGlobals();
   vi.restoreAllMocks();
 });
 
@@ -18,17 +20,7 @@ describe("scripts/harness.css", () => {
   const selector = (token: string) => `.${token.replace(/[^\w-]/g, (character) => `\\${character}`)}`;
 
   it("has a rule for every class the root and the highlight render", () => {
-    globalThis.ResizeObserver = class { observe() {} unobserve() {} disconnect() {} } as unknown as typeof ResizeObserver;
-    const frames: FrameRequestCallback[] = [];
-    vi.spyOn(window, "requestAnimationFrame").mockImplementation((callback) => { frames.push(callback); return frames.length; });
-    let width = 100;
-    vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockImplementation(() => width);
-    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue({
-      font: "", measureText: (value: string) => ({ width: value.length * 10 }),
-    } as unknown as CanvasRenderingContext2D);
-    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (this: HTMLElement) {
-      return { width: (this.textContent?.length ?? 0) * 10, height: 16 } as DOMRect;
-    });
+    const layout = stubMeasuredLayout(100, { queuedFrames: true, stubRect: true, stubFonts: false });
     const tokens = new Set(HIGHLIGHT_CLASS_NAME.split(" "));
     const collect = (container: HTMLElement) => {
       for (const root of container.querySelectorAll("[data-truncate]")) for (const token of root.classList) tokens.add(token);
@@ -46,9 +38,9 @@ describe("scripts/harness.css", () => {
     const { container, rerender } = render(cases);
     collect(container);
     for (const next of [100, 1000, 20]) {
-      width = next;
+      layout.setWidth(next);
       for (const root of container.querySelectorAll("[data-truncate]")) root.setAttribute("data-width", String(next));
-      while (frames.length) frames.shift()!(0);
+      layout.flush();
       rerender(cases);
       collect(container);
     }

@@ -1,5 +1,6 @@
 // In 7-bit ASCII (0x00..0x7F), only CRLF (\r\n) forms a multi-code-unit
 // grapheme cluster under UAX #29; all other ASCII characters are 1:1 graphemes.
+export const NON_ASCII = /[\u0080-\uffff]/;
 export const NON_ASCII_OR_CR = /[\r\u0080-\uffff]/;
 
 let cachedSegmenterCtor: typeof Intl.Segmenter | undefined;

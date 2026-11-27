@@ -45,6 +45,34 @@ export const MAX_CACHED_WIDTHS = 256;
 export const MAX_CACHED_CODE_UNITS = 32_768;
 
 /**
+ * Width cache bounded by both entry count and retained UTF-16 code units,
+ * evicting all entries when either limit would be exceeded.
+ */
+export class BoundedWidthCache {
+  private readonly entries = new Map<string, number>();
+  private units = 0;
+
+  get(key: string): number | undefined {
+    return this.entries.get(key);
+  }
+
+  set(key: string, width: number, unitLength = key.length): void {
+    if (this.entries.size >= MAX_CACHED_WIDTHS || this.units + unitLength > MAX_CACHED_CODE_UNITS) {
+      this.clear();
+    }
+    if (unitLength <= MAX_CACHED_CODE_UNITS) {
+      this.entries.set(key, width);
+      this.units += unitLength;
+    }
+  }
+
+  clear(): void {
+    this.entries.clear();
+    this.units = 0;
+  }
+}
+
+/**
  * Where the search cut the full text: the visible string is
  * `text.slice(0, prefixEnd) + TRUNCATION_MARKER + text.slice(suffixStart)`.
  * Offsets are UTF-16 code units on grapheme boundaries.
@@ -52,6 +80,27 @@ export const MAX_CACHED_CODE_UNITS = 32_768;
 export interface TruncationCut {
   prefixEnd: number;
   suffixStart: number;
+}
+
+/**
+ * Whether the visible text sits in a `bdi`: with `ellipsis="start"` (as under
+ * CSS) and for an end-mode cut that keeps the end (`prefixEnd === 0`), so the
+ * leading marker stays on the end edge instead of reordering inside RTL text.
+ * Middle mode never isolates a cut even when `prefixEnd` happens to be 0.
+ */
+export function needsBdiIsolation({
+  mode,
+  startEllipsis,
+  cut,
+  sourceLength,
+}: {
+  mode: TextTruncateMode;
+  startEllipsis: boolean;
+  cut: TruncationCut | null | undefined;
+  sourceLength: number;
+}): boolean {
+  if (startEllipsis) return true;
+  return mode === "end" && cut != null && cut.prefixEnd === 0 && cut.suffixStart < sourceLength;
 }
 
 /** The search's result: the visible string and, when it is cut, the cut. */
@@ -77,20 +126,12 @@ type CandidateMeasure = (value: string, cut?: TruncationCut) => number;
 type PreparedInput = Omit<TruncateInput, "measureText" | "mode"> & { measureText: CandidateMeasure; mode: TruncationSide };
 
 export function truncateText(input: TruncateInput): { text: string; truncated: boolean } {
-  const widths = new Map<string, number>();
-  let cachedUnits = 0;
+  const widths = new BoundedWidthCache();
   const measureText = (value: string) => {
     const cached = widths.get(value);
     if (cached !== undefined) return cached;
     const width = input.measureText(value);
-    if (widths.size >= MAX_CACHED_WIDTHS || cachedUnits + value.length > MAX_CACHED_CODE_UNITS) {
-      widths.clear();
-      cachedUnits = 0;
-    }
-    if (value.length <= MAX_CACHED_CODE_UNITS) {
-      widths.set(value, width);
-      cachedUnits += value.length;
-    }
+    widths.set(value, width, value.length);
     return width;
   };
   const { text, truncated } = truncatePrepared(
