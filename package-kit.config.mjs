@@ -4,8 +4,8 @@ import { publicEntry, pureImportsBundle, serverImport } from "./scripts/packed-c
 
 // Minutes one browser script may run before verify stops its whole process
 // tree. Each takes well under one minute; a11y/pointer.mjs once hung 2,699 s.
-const BROWSER_SCRIPT_TIMEOUT = 4;
-const ENGINES = ["chromium", "firefox", "webkit"];
+export const BROWSER_SCRIPT_TIMEOUT = 4;
+export const ENGINES = ["chromium", "firefox", "webkit"];
 // GiB a script's process tree peaks at (measured 2026-11-24: Firefox 3.8, the others under 1).
 const ENGINE_MEMORY = { chromium: 1, firefox: 4, webkit: 1 };
 // What the browser scripts read: a change elsewhere (docs) plans none of them.

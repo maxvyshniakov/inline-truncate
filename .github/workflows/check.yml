@@ -40,7 +40,7 @@ jobs:
           TMPDIR: /tmp
         run: |
           for engine in chromium firefox webkit; do
-            bun run check:browser:engine -- --browser="$engine"
-            bun run check:a11y:engine -- --browser="$engine"
-            bun run check:a11y:pointer -- --browser="$engine"
+            timeout --kill-after=10 240 bun run check:browser:engine -- --browser="$engine"
+            timeout --kill-after=10 240 bun run check:a11y:engine -- --browser="$engine"
+            timeout --kill-after=10 240 bun run check:a11y:pointer -- --browser="$engine"
           done
