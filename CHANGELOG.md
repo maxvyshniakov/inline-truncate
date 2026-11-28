@@ -4,6 +4,8 @@ Versions and release rules: [docs/VERSIONING.md](docs/VERSIONING.md).
 
 ## Unreleased
 
+## 0.6.2 - 2026-11-28
+
 ### Fixed
 
 - Plain Canvas-only measured roots (without a DOM-verified highlight) keep `overflow: hidden` instead of
